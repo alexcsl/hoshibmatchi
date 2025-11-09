@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package user;
+
+// This option tells the protoc compiler where to save the generated Go files.
+option go_package = "github.com/hoshiBmaTchi/user-service/proto";
+
+// The UserService defines the actions our service can perform.
+service UserService {
+  // A function to register a new user.
+  rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
+}
+
+// The data required to register a user.
+message RegisterUserRequest {
+  string name = 1;
+  string username = 2;
+  string email = 3;
+  string password = 4;
+  string date_of_birth = 5; // Send as string "YYYY-MM-DD"
+  string gender = 6;
+}
+
+// The data returned after a successful registration.
+message RegisterUserResponse {
+  int64 id = 1;
+  string username = 2;
+  string email = 3;
+}

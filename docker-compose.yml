@@ -1,0 +1,241 @@
+# Note: The 'version' attribute is removed as it's obsolete in modern Docker Compose.
+
+services:
+  # ==================================================================
+  # 1. REVERSE PROXY & ENTRYPOINT
+  # ==================================================================
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=your-email@example.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/acme.json:/acme.json"
+    networks:
+      - hoshi-net
+
+  # ==================================================================
+  # 2. CORE INFRASTRUCTURE
+  # ==================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - hoshi-net
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - hoshi-net
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - hoshi-net
+
+  # ==================================================================
+  # 3. DATABASES (Database-per-Service)
+  # ==================================================================
+  user-db:
+    image: postgres:15-alpine
+    container_name: user-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=user_service_db
+    ports:
+      - "5431:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+
+  post-db:
+    image: postgres:15-alpine
+    container_name: post-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=post_service_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - post-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+
+  story-db:
+    image: postgres:15-alpine
+    container_name: story-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=story_service_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - story-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+
+  message-db:
+    image: postgres:15-alpine
+    container_name: message-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=message_service_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - message-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+
+  notification-db:
+    image: postgres:15-alpine
+    container_name: notification-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=notification_service_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+
+  # ==================================================================
+  # 4. BACKEND SERVICES
+  # ==================================================================
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    depends_on: [rabbitmq, redis]
+    networks: [hoshi-net]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api-gateway.rule=Host(`api.hoshi.local`)"
+      - "traefik.http.routers.api-gateway.entrypoints=web"
+      # In a real scenario with HTTPS:
+      # - "traefik.http.routers.api-gateway.entrypoints=websecure"
+      # - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
+      - "traefik.http.services.api-gateway.loadbalancer.server.port=8000"
+
+  user-service:
+    build: { context: ./backend/user-service, dockerfile: Dockerfile }
+    container_name: user-service
+    depends_on: [user-db]
+    networks: [hoshi-net]
+
+  post-service:
+    build: { context: ./backend/post-service, dockerfile: Dockerfile }
+    container_name: post-service
+    depends_on: [post-db]
+    networks: [hoshi-net]
+
+  story-service:
+    build: { context: ./backend/story-service, dockerfile: Dockerfile }
+    container_name: story-service
+    depends_on: [story-db]
+    networks: [hoshi-net]
+
+  media-service:
+    build: { context: ./backend/media-service, dockerfile: Dockerfile }
+    container_name: media-service
+    depends_on: [minio]
+    networks: [hoshi-net]
+
+  message-service:
+    build: { context: ./backend/message-service, dockerfile: Dockerfile }
+    container_name: message-service
+    depends_on: [message-db, redis]
+    networks: [hoshi-net]
+
+  notification-service:
+    build: { context: ./backend/notification-service, dockerfile: Dockerfile }
+    container_name: notification-service
+    depends_on: [notification-db, redis]
+    networks: [hoshi-net]
+
+  email-service:
+    build: { context: ./backend/email-service, dockerfile: Dockerfile }
+    container_name: email-service
+    depends_on: [rabbitmq]
+    networks: [hoshi-net]
+
+  worker-service:
+    build: { context: ./backend/worker-service, dockerfile: Dockerfile }
+    container_name: worker-service
+    depends_on: [rabbitmq, minio]
+    networks: [hoshi-net]
+
+  ai-service:
+    build: { context: ./backend/ai-service, dockerfile: Dockerfile }
+    container_name: ai-service
+    networks: [hoshi-net]
+
+
+  # ==================================================================
+  # 5. FRONTEND SERVICE
+  # ==================================================================
+  hoshi-vue:
+    build:
+      context: ./frontend/hoshi-vue
+      dockerfile: Dockerfile
+    container_name: hoshi-vue
+    networks: [hoshi-net]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.hoshi-vue.rule=Host(`hoshi.local`)"
+      - "traefik.http.routers.hoshi-vue.entrypoints=web"
+      # In a real scenario with HTTPS:
+      # - "traefik.http.routers.hoshi-vue.entrypoints=websecure"
+      # - "traefik.http.routers.hoshi-vue.tls.certresolver=myresolver"
+      - "traefik.http.services.hoshi-vue.loadbalancer.server.port=80"
+
+# ==================================================================
+# VOLUMES & NETWORKS
+# ==================================================================
+volumes:
+  minio-data:
+  user-db-data:
+  post-db-data:
+  story-db-data:
+  message-db-data:
+  notification-db-data:
+
+networks:
+  hoshi-net:
+    driver: bridge

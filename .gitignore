@@ -1,0 +1,17 @@
+# Go
+*.exe
+*.test
+*.out
+bin/
+pkg/
+vendor/
+
+# Node
+node_modules/
+dist/
+.npm
+npm-debug.log*
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
