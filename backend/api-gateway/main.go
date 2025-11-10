@@ -14,10 +14,12 @@ import (
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
 	pb "github.com/hoshibmatchi/user-service/proto"
+	postPb "github.com/hoshibmatchi/post-service/proto"
 )
 
 // client will hold the persistent gRPC connection
 var client pb.UserServiceClient
+var postClient postPb.PostServiceClient
 
 func main() {
 	// Connect to the gRPC user-service
@@ -31,6 +33,14 @@ func main() {
 
 	// Create a new client stub
 	client = pb.NewUserServiceClient(conn)
+
+	postConn, err := grpc.Dial("post-service:9001", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to post-service: %v", err)
+	}
+	defer postConn.Close()
+	postClient = postPb.NewPostServiceClient(postConn)
+	log.Println("Successfully connected to post-service")
 
 	// Your existing health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -49,10 +59,11 @@ func main() {
 	// 2FA
 	http.HandleFunc("/auth/login/verify-2fa", handleVerify2FA)
 
-	// Reset Password
-
+	// Post & PW Reset 
 	http.HandleFunc("/auth/password-reset/request", handleSendPasswordReset)
 	http.HandleFunc("/auth/password-reset/submit", handleResetPassword)
+	http.HandleFunc("/posts", handleCreatePost)
+
 
 	log.Println("API Gateway starting on port 8000...")
 	if err := http.ListenAndServe(":8000", nil); err != nil {
@@ -266,21 +277,17 @@ func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-// --- ADD HANDLER 1: handleSendPasswordReset ---
+// --- HANDLER 1: handleSendPasswordReset ---
 func handleSendPasswordReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-
-	var req struct {
-		Email string `json:"email"`
-	}
+	var req struct { Email string `json:"email"` }
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	grpcReq := &pb.SendPasswordResetRequest{Email: req.Email}
 	grpcRes, err := client.SendPasswordReset(r.Context(), grpcReq)
 	if err != nil {
@@ -288,19 +295,17 @@ func handleSendPasswordReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- ADD HANDLER 2: handleResetPassword ---
+// --- HANDLER 2: handleResetPassword ---
 func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-
 	var req struct {
 		Email       string `json:"email"`
 		OtpCode     string `json:"otp_code"`
@@ -310,7 +315,6 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	grpcReq := &pb.ResetPasswordRequest{
 		Email:       req.Email,
 		OtpCode:     req.OtpCode,
@@ -322,8 +326,46 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(grpcRes)
+}
+
+// --- HANDLER 3: handleCreatePost ---
+func handleCreatePost(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// TODO: Get author_id from a real JWT
+	var authorID int64 = 1 
+
+	var req struct {
+		Caption          string   `json:"caption"`
+		MediaURLs        []string `json:"media_urls"`
+		CommentsDisabled bool     `json:"comments_disabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	grpcReq := &postPb.CreatePostRequest{
+		AuthorId:         authorID,
+		Caption:          req.Caption,
+		MediaUrls:        req.MediaURLs,
+		CommentsDisabled: req.CommentsDisabled,
+	}
+
+	grpcRes, err := postClient.CreatePost(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to post-service failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(grpcRes.Post)
 }

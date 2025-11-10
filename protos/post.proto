@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package post;
+
+option go_package = "github.com/hoshibmatchi/post-service/proto";
+
+// Import user.proto so we can use its types if needed
+// (We don't need it for this, but it's good practice
+import "user.proto";
+
+service PostService {
+  rpc CreatePost (CreatePostRequest) returns (CreatePostResponse);
+}
+
+// Data from the API Gateway
+message CreatePostRequest {
+  int64 author_id = 1; // This will come from the JWT token
+  string caption = 2;
+  repeated string media_urls = 3;
+  bool comments_disabled = 4;
+}
+
+// The created Post
+message Post {
+  string id = 1;
+  string caption = 2;
+  
+  // Denormalized data from user-service
+  string author_username = 3;
+  string author_profile_url = 4;
+  bool author_is_verified = 5;
+  
+  repeated string media_urls = 6;
+  string created_at = 7;
+}
+
+message CreatePostResponse {
+  Post post = 1;
+}

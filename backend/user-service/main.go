@@ -451,6 +451,22 @@ func (s *server) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest
 	return &pb.ResetPasswordResponse{Message: "Password has been reset successfully. You can now log in."}, nil
 }
 
+// --- GPRC 3: GetUserData ---
+func (s *server) GetUserData(ctx context.Context, req *pb.GetUserDataRequest) (*pb.GetUserDataResponse, error) {
+	var user User
+	if err := s.db.First(&user, req.UserId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "User not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Database error")
+	}
+
+	return &pb.GetUserDataResponse{
+		Username:          user.Username,
+		ProfilePictureUrl: user.ProfilePictureURL,
+		IsVerified:        false, // Placeholder for now
+	}, nil
+}
+
 // Helper function for age validation
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()
