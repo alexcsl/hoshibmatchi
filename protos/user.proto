@@ -2,16 +2,13 @@ syntax = "proto3";
 
 package user;
 
-// This option tells the protoc compiler where to save the generated Go files.
-option go_package = "github.com/hoshiBmaTchi/user-service/proto";
+// FIX: Changed "hoshiBmaTchi" to "hoshibmatchi" to match your go.mod
+option go_package = "github.com/hoshibmatchi/user-service/proto";
 
-// The UserService defines the actions our service can perform.
 service UserService {
-  // A function to register a new user.
   rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
 }
 
-// The data required to register a user.
 message RegisterUserRequest {
   string name = 1;
   string username = 2;
@@ -19,9 +16,13 @@ message RegisterUserRequest {
   string password = 4;
   string date_of_birth = 5; // Send as string "YYYY-MM-DD"
   string gender = 6;
+  
+  // --- ADDED ---
+  string profile_picture_url = 7;
+  string otp_code = 8;
+  // --- END ADDED ---
 }
 
-// The data returned after a successful registration.
 message RegisterUserResponse {
   int64 id = 1;
   string username = 2;

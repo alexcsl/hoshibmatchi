@@ -1,108 +1,152 @@
+<!-- frontend/hoshi-vue/src/views/RegisterView.vue -->
+
 <template>
-  <form @submit.prevent="handleRegister">
-    <input type="text" v-model="form.name" placeholder="Full Name" required>
-    <div v-if="errors.name" class="error">{{ errors.name }}</div>
+  <div class="register-container">
+    <div class="register-box">
+      <h1>hoshiBmatchi</h1>
+      <p class="subtitle">Sign up to see photos and videos from your friends.</p>
+      
+      <form @submit.prevent="handleRegister">
+        <input v-model="form.name" type="text" placeholder="Full Name" required />
+        <input v-model="form.username" type="text" placeholder="Username" required />
+        <input v-model="form.email" type="email" placeholder="Email" required />
+        <input v-model="form.password" type="password" placeholder="Password" required />
+        
+        <div class="form-group">
+          <label for="dob">Date of Birth:</label>
+          <input v-model="form.date_of_birth" id="dob" type="date" required />
+        </div>
 
-    <input type="text" v-model="form.username" placeholder="Username" required>
-    <div v-if="errors.username" class="error">{{ errors.username }}</div>
+        <div class="form-group">
+          <label>Gender:</label>
+          <select v-model="form.gender" required>
+            <option disabled value="">Please select one</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
 
-    <input type="email" v-model="form.email" placeholder="Email" required>
-    <div v-if="errors.email" class="error">{{ errors.email }}</div>
+        <button type="submit" :disabled="isLoading">
+          {{ isLoading ? 'Signing Up...' : 'Sign Up' }}
+        </button>
+      </form>
 
-    <input type="password" v-model="form.password" placeholder="Password" required>
-    <div v-if="errors.password" class="error">{{ errors.password }}</div>
-
-    <input type="date" v-model="form.dateOfBirth" required>
-    <div v-if="errors.dateOfBirth" class="error">{{ errors.dateOfBirth }}</div>
-
-    <select v-model="form.gender" required>
-      <option value="">Select Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-      <option value="other">Other</option>
-    </select>
-    <div v-if="errors.gender" class="error">{{ errors.gender }}</div>
-
-    <button type="submit">Sign Up</button>
-  </form>
+      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { ref } from 'vue';
+import axios from 'axios';
 
-const form = reactive({
+// Reactive state for our form data
+const form = ref({
   name: '',
   username: '',
   email: '',
   password: '',
-  dateOfBirth: '',
+  date_of_birth: '', // Will be in "YYYY-MM-DD" format from the input
   gender: ''
-})
+});
 
-const errors = reactive({
-  name: '',
-  username: '',
-  email: '',
-  password: '',
-  dateOfBirth: '',
-  gender: ''
-})
+// State for loading and messages
+const isLoading = ref(false);
+const errorMessage = ref('');
+const successMessage = ref('');
 
-const handleRegister = () => {
-  // Clear previous errors
-  Object.keys(errors).forEach(key => {
-    errors[key as keyof typeof errors] = ''
-  })
-  
-  // Basic validation
-  if (!form.name.trim()) errors.name = 'Name is required'
-  if (!form.username.trim()) errors.username = 'Username is required'
-  if (!form.email.trim()) errors.email = 'Email is required'
-  if (!form.password.trim()) errors.password = 'Password is required'
-  if (!form.dateOfBirth) errors.dateOfBirth = 'Date of birth is required'
-  if (!form.gender) errors.gender = 'Gender is required'
-  
-  // If no errors, proceed with registration
-  const hasErrors = Object.values(errors).some(error => error !== '')
-  if (!hasErrors) {
-    console.log('Registration data:', form)
-    // TODO: Implement actual registration logic
+// Function to handle form submission
+const handleRegister = async () => {
+  isLoading.value = true;
+  errorMessage.value = '';
+  successMessage.value = '';
+
+  try {
+    // The URL for our API Gateway. We'll make 'api.hoshi.local' work in the next step.
+    const apiUrl = 'http://api.hoshi.local/auth/register';
+    
+    // Send the form data to the API Gateway
+    const response = await axios.post(apiUrl, form.value);
+
+    // Handle success
+    successMessage.value = `Successfully registered user ${response.data.username}! You can now log in.`;
+    console.log('Registration successful:', response.data);
+    
+  } catch (error: any) {
+    // Handle errors
+    console.error('Registration failed:', error);
+    if (error.response) {
+      errorMessage.value = error.response.data.error || 'An unknown error occurred.';
+    } else {
+      errorMessage.value = 'Could not connect to the server. Please try again later.';
+    }
+  } finally {
+    isLoading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
-.error {
-  color: red;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #fafafa;
 }
-
-form {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 2rem;
+.register-box {
+  width: 350px;
+  padding: 40px;
+  border: 1px solid #dbdbdb;
+  background-color: white;
+  text-align: center;
 }
-
-input, select {
+h1 {
+  font-family: 'Grand Hotel', cursive; /* A font similar to Instagram's */
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+.subtitle {
+  color: #8e8e8e;
+  margin-bottom: 20px;
+}
+input, select, button {
   width: 100%;
-  padding: 0.5rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #dbdbdb;
+  border-radius: 3px;
+  box-sizing: border-box;
 }
-
 button {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #007bff;
+  background-color: #0095f6;
   color: white;
+  font-weight: bold;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
 }
-
-button:hover {
-  background-color: #0056b3;
+button:disabled {
+  background-color: #b2dffc;
+  cursor: not-allowed;
+}
+.form-group {
+  text-align: left;
+  margin-bottom: 10px;
+}
+.form-group label {
+  display: block;
+  font-size: 0.9em;
+  color: #8e8e8e;
+  margin-bottom: 5px;
+}
+.error-message {
+  color: red;
+  margin-top: 15px;
+}
+.success-message {
+  color: green;
+  margin-top: 15px;
 }
 </style>
