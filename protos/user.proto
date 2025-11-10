@@ -10,6 +10,9 @@ service UserService {
   rpc SendRegistrationOtp (SendOtpRequest) returns (SendOtpResponse);
   rpc LoginUser (LoginRequest) returns (LoginResponse);
   rpc Verify2FA (Verify2FARequest) returns (Verify2FAResponse);
+
+  rpc SendPasswordReset (SendPasswordResetRequest) returns (SendPasswordResetResponse);
+  rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
 }
 
 message RegisterUserRequest {
@@ -67,4 +70,24 @@ message Verify2FARequest {
 message Verify2FAResponse {
   string access_token = 1;
   string refresh_token = 2;
+}
+
+// --- Password Reset (Request) ---
+message SendPasswordResetRequest {
+  string email = 1;
+}
+
+message SendPasswordResetResponse {
+  string message = 1; // "Password reset email sent"
+}
+
+// --- Password Reset (Submit) ---
+message ResetPasswordRequest {
+  string email = 1;
+  string otp_code = 2; // re-use this name for the reset token
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {
+  string message = 1; // "Password reset successfully"
 }
