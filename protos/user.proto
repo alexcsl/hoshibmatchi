@@ -7,6 +7,8 @@ option go_package = "github.com/hoshibmatchi/user-service/proto";
 
 service UserService {
   rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
+  rpc SendRegistrationOtp (SendOtpRequest) returns (SendOtpResponse);
+  rpc LoginUser (LoginRequest) returns (LoginResponse);
 }
 
 message RegisterUserRequest {
@@ -27,4 +29,29 @@ message RegisterUserResponse {
   int64 id = 1;
   string username = 2;
   string email = 3;
+}
+
+// --- Send OTP ---
+// The request just needs the email
+message SendOtpRequest {
+  string email = 1;
+}
+
+// The response is a success message
+message SendOtpResponse {
+  string message = 1;
+  int32 rate_limit_seconds = 2; // Tell the frontend how long to wait
+}
+
+// --- Login ---
+message LoginRequest {
+  string email_or_username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string message = 1; // e.g., "Login successful" or "2FA required"
+  string access_token = 2;
+  string refresh_token = 3;
+  bool is_2fa_required = 4;
 }

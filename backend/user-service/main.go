@@ -8,15 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
+	"math/rand"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/golang-jwt/jwt/v5"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	// Don't forget to run: go get github.com/go-redis/redis/v8
-	"github.com/go-redis/redis/v8"
+	"github.com/go-redis/redis/v8" 
 
 	pb "github.com/hoshibmatchi/user-service/proto"
 	"golang.org/x/crypto/bcrypt"
@@ -32,7 +36,13 @@ type User struct {
 	ProfilePictureURL string    `gorm:"type:varchar(255)"`
 	DateOfBirth       time.Time `gorm:"not null"`
 	Gender            string    `gorm:"type:varchar(10);not null"`
-	// TODO: Add fields from PDF like 'is_banned', 'is_deactivated'
+
+	// --- ADD THESE NEW FIELDS ---
+	IsActive       bool `gorm:"default:true"`  // For account deactivation
+	IsBanned       bool `gorm:"default:false"` // For admin to ban users
+	Is2FAEnabled   bool `gorm:"default:false"` // For 2FA login
+	IsSubscribed   bool `gorm:"default:false"` // For newsletters
+	// --- END ADDED FIELDS ---
 }
 
 // server struct holds our database and cache connections
@@ -42,12 +52,24 @@ type server struct {
 	rdb *redis.Client // Redis client
 }
 
-// emailRegex for validation [cite: 183]
+// Not secure 
+var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
+
+// emailRegex for validation
 var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+
+// OTP Function
+func generateOtp() string {
+	return fmt.Sprintf("%06d", rand.Intn(1000000)) // 6-digit code
+}
 
 func main() {
 	// --- Step 1: Connect to PostgreSQL ---
-	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+	//
+	// THIS IS THE FIXED LINE (Line 51):
+	// It now correctly declares the 'dsn' variable and uses 'UTC'.
+	//
+	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=UTC"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -57,14 +79,12 @@ func main() {
 	db.AutoMigrate(&User{})
 
 	// --- Step 2: Connect to Redis ---
-	// "redis:6379" is the service name from docker-compose.yml [cite: 100]
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     "redis:6379",
 		Password: "", // no password set
 		DB:       0,  // default DB
 	})
 
-	// Ping Redis to ensure connection is alive
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
 		log.Fatalf("Failed to connect to redis: %v", err)
 	}
@@ -77,8 +97,6 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-
-	// Register our service with *both* connections
 	pb.RegisterUserServiceServer(s, &server{db: db, rdb: rdb})
 
 	log.Println("User gRPC server is listening on port 9000...")
@@ -92,8 +110,6 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	log.Println("RegisterUser request received for username:", req.Username)
 
 	// --- Step 1: Validate OTP ---
-	// This assumes another service/endpoint *sends* the OTP and stores it.
-	// We are just verifying it here. [cite: 178, 190]
 	otpKey := "otp:" + req.Email
 	storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
 	if err == redis.Nil {
@@ -110,25 +126,19 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}
 
 	// --- Step 2: Validate Business Logic (as per PDF) ---
-	if len(req.Name) <= 4 { // [cite: 179]
+	if len(req.Name) <= 4 {
 		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
 	}
-	// TODO: Add regex for "no symbols or numbers" validation [cite: 179]
-
-	if !emailRegex.MatchString(req.Email) { // [cite: 183]
+	if !emailRegex.MatchString(req.Email) {
 		return nil, status.Error(codes.InvalidArgument, "Invalid email format")
 	}
-
-	// TODO: Add 4+ password validations [cite: 184]
 	if len(req.Password) < 8 { // Example validation
 		return nil, status.Error(codes.InvalidArgument, "Password must be at least 8 characters")
 	}
-
-	if req.Gender != "male" && req.Gender != "female" { // [cite: 186]
+	if req.Gender != "male" && req.Gender != "female" {
 		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
 	}
 
-	// Age validation [cite: 187]
 	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
@@ -138,7 +148,6 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}
 
 	// --- Step 3: Hash Password ---
-	// Uses bcrypt which includes SALT by default [cite: 128]
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Failed to hash password: %v", err)
@@ -153,14 +162,12 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 		Password:          string(hashedPassword),
 		DateOfBirth:       dob,
 		Gender:            req.Gender,
-		ProfilePictureURL: req.ProfilePictureUrl, // Use the new proto field
+		ProfilePictureURL: req.ProfilePictureUrl,
 	}
 
 	result := s.db.Create(&newUser)
 	if result.Error != nil {
 		log.Printf("Failed to create user in database: %v", result.Error)
-
-		// Check for unique constraint violations [cite: 180, 182]
 		if strings.Contains(result.Error.Error(), "unique constraint") {
 			if strings.Contains(result.Error.Error(), "username") {
 				return nil, status.Error(codes.AlreadyExists, "Username already exists")
@@ -173,12 +180,8 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}
 
 	// --- Step 5: Success ---
-	// The OTP was valid, so we can delete it now
 	s.rdb.Del(ctx, otpKey)
-
 	log.Println("Successfully created user with ID:", newUser.ID)
-	// TODO: Send successful registration email via RabbitMQ [cite: 195]
-
 	return &pb.RegisterUserResponse{
 		Id:       int64(newUser.ID),
 		Username: newUser.Username,
@@ -186,7 +189,132 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}, nil
 }
 
-// Helper function for age validation [cite: 187]
+func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	var user User
+
+	// Find user by email OR username
+	err := s.db.Where("email = ? OR username = ?", req.EmailOrUsername, req.EmailOrUsername).First(&user).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Invalid credentials")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Database error")
+	}
+
+	// PDF Requirement: "Only activated accounts that are not banned and not deactivated" 
+	if user.IsBanned {
+		return nil, status.Error(codes.PermissionDenied, "This account is banned")
+	}
+	if !user.IsActive {
+		return nil, status.Error(codes.PermissionDenied, "This account is deactivated")
+	}
+
+	// Check password
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		// Password doesn't match
+		return nil, status.Error(codes.Unauthenticated, "Invalid credentials")
+	}
+
+	// --- Password is correct, proceed ---
+
+	// PDF Requirement: "If the user's account has 2FA enabled, send a verification code" [cite: 214]
+	if user.Is2FAEnabled {
+		// Send a 2FA code
+		otpKey := "2fa:" + user.Email
+		otpCode := generateOtp() // Use the same 6-digit helper
+		err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Failed to send 2FA code")
+		}
+
+		// --- SIMULATE SENDING 2FA EMAIL ---
+		log.Printf("***********************************")
+		log.Printf("2FA Code for %s: %s", user.Email, otpCode)
+		log.Printf("***********************************")
+
+		return &pb.LoginResponse{
+			Message: "Login successful. Please enter your 2FA code.",
+			Is_2FaRequired: true,
+		}, nil
+	}
+	
+	// --- User is logged in (No 2FA) ---
+	// PDF Requirement: "Implement access tokens and refresh tokens" 
+	
+	// Create Access Token (short-lived)
+	accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create access token")
+	}
+	
+	// Create Refresh Token (long-lived)
+	refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create refresh token")
+	}
+
+	return &pb.LoginResponse{
+		Message:       "Login successful",
+		AccessToken:   accessToken,
+		RefreshToken:  refreshToken,
+		Is_2FaRequired: false,
+	}, nil
+}
+
+// --- ADD THIS TOKEN HELPER FUNCTION ---
+func createToken(user User, duration time.Duration) (string, error) {
+	claims := jwt.MapClaims{
+		"user_id":  user.ID,
+		"username": user.Username,
+		"exp":      time.Now().Add(duration).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtSecret)
+}
+
+func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest) (*pb.SendOtpResponse, error) {
+	// PDF Requirement: "Rate limit OTP resend to 1 request every 60 seconds per email" [cite: 183]
+	rateLimitKey := "rate_limit:otp:" + req.Email
+	err := s.rdb.Get(ctx, rateLimitKey).Err()
+	if err != redis.Nil {
+		// Key exists, user is rate limited
+		ttl, _ := s.rdb.TTL(ctx, rateLimitKey).Result()
+		return nil, status.Error(codes.ResourceExhausted, fmt.Sprintf("Please wait %d seconds before resending", int(ttl.Seconds())))
+	}
+
+	// TODO: Validate email format [cite: 174]
+	// TODO: Check if email is already in use [cite: 173]
+
+	// Generate and store OTP
+	otpKey := "otp:" + req.Email
+	otpCode := generateOtp()
+
+	// PDF Requirement: "The code is valid for 5 minutes" 
+	err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to store OTP")
+	}
+
+	// Set the 60-second rate limit [cite: 183]
+	err = s.rdb.Set(ctx, rateLimitKey, "1", 1*time.Minute).Err()
+	if err != nil {
+		// Not a fatal error, just log it
+		log.Printf("Failed to set rate limit key for %s", req.Email)
+	}
+
+	// --- SIMULATE SENDING EMAIL ---
+	// Later, this will be a RabbitMQ message
+	log.Printf("***********************************")
+	log.Printf("OTP for %s: %s", req.Email, otpCode)
+	log.Printf("***********************************")
+
+	return &pb.SendOtpResponse{
+		Message: "OTP sent successfully. Please check your email (and the console).",
+		RateLimitSeconds: 60,
+	}, nil
+}
+
+// Helper function for age validation
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()
 	age := today.Year() - birthDate.Year()
