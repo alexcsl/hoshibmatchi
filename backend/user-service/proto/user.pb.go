@@ -402,6 +402,112 @@ func (x *LoginResponse) GetIs_2FaRequired() bool {
 	return false
 }
 
+// --- 2FA Verification ---
+type Verify2FARequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	OtpCode       string                 `protobuf:"bytes,2,opt,name=otp_code,json=otpCode,proto3" json:"otp_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Verify2FARequest) Reset() {
+	*x = Verify2FARequest{}
+	mi := &file_user_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Verify2FARequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Verify2FARequest) ProtoMessage() {}
+
+func (x *Verify2FARequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Verify2FARequest.ProtoReflect.Descriptor instead.
+func (*Verify2FARequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *Verify2FARequest) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *Verify2FARequest) GetOtpCode() string {
+	if x != nil {
+		return x.OtpCode
+	}
+	return ""
+}
+
+// The response is the same as a successful login: it returns tokens
+type Verify2FAResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Verify2FAResponse) Reset() {
+	*x = Verify2FAResponse{}
+	mi := &file_user_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Verify2FAResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Verify2FAResponse) ProtoMessage() {}
+
+func (x *Verify2FAResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Verify2FAResponse.ProtoReflect.Descriptor instead.
+func (*Verify2FAResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *Verify2FAResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *Verify2FAResponse) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
@@ -433,11 +539,18 @@ const file_user_proto_rawDesc = "" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12!\n" +
 	"\faccess_token\x18\x02 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x03 \x01(\tR\frefreshToken\x12&\n" +
-	"\x0fis_2fa_required\x18\x04 \x01(\bR\ris2faRequired2\xce\x01\n" +
+	"\x0fis_2fa_required\x18\x04 \x01(\bR\ris2faRequired\"C\n" +
+	"\x10Verify2FARequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x19\n" +
+	"\botp_code\x18\x02 \x01(\tR\aotpCode\"[\n" +
+	"\x11Verify2FAResponse\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken2\x8c\x02\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x124\n" +
-	"\tLoginUser\x12\x12.user.LoginRequest\x1a\x13.user.LoginResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\tLoginUser\x12\x12.user.LoginRequest\x1a\x13.user.LoginResponse\x12<\n" +
+	"\tVerify2FA\x12\x16.user.Verify2FARequest\x1a\x17.user.Verify2FAResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -451,7 +564,7 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_user_proto_goTypes = []any{
 	(*RegisterUserRequest)(nil),  // 0: user.RegisterUserRequest
 	(*RegisterUserResponse)(nil), // 1: user.RegisterUserResponse
@@ -459,16 +572,20 @@ var file_user_proto_goTypes = []any{
 	(*SendOtpResponse)(nil),      // 3: user.SendOtpResponse
 	(*LoginRequest)(nil),         // 4: user.LoginRequest
 	(*LoginResponse)(nil),        // 5: user.LoginResponse
+	(*Verify2FARequest)(nil),     // 6: user.Verify2FARequest
+	(*Verify2FAResponse)(nil),    // 7: user.Verify2FAResponse
 }
 var file_user_proto_depIdxs = []int32{
 	0, // 0: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
 	2, // 1: user.UserService.SendRegistrationOtp:input_type -> user.SendOtpRequest
 	4, // 2: user.UserService.LoginUser:input_type -> user.LoginRequest
-	1, // 3: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3, // 4: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5, // 5: user.UserService.LoginUser:output_type -> user.LoginResponse
-	3, // [3:6] is the sub-list for method output_type
-	0, // [0:3] is the sub-list for method input_type
+	6, // 3: user.UserService.Verify2FA:input_type -> user.Verify2FARequest
+	1, // 4: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3, // 5: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5, // 6: user.UserService.LoginUser:output_type -> user.LoginResponse
+	7, // 7: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	4, // [4:8] is the sub-list for method output_type
+	0, // [0:4] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -485,7 +602,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

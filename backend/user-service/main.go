@@ -20,7 +20,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	"github.com/go-redis/redis/v8" 
+	"github.com/go-redis/redis/v8"
 
 	pb "github.com/hoshibmatchi/user-service/proto"
 	"golang.org/x/crypto/bcrypt"
@@ -37,12 +37,10 @@ type User struct {
 	DateOfBirth       time.Time `gorm:"not null"`
 	Gender            string    `gorm:"type:varchar(10);not null"`
 
-	// --- ADD THESE NEW FIELDS ---
-	IsActive       bool `gorm:"default:true"`  // For account deactivation
-	IsBanned       bool `gorm:"default:false"` // For admin to ban users
-	Is2FAEnabled   bool `gorm:"default:false"` // For 2FA login
-	IsSubscribed   bool `gorm:"default:false"` // For newsletters
-	// --- END ADDED FIELDS ---
+	IsActive     bool `gorm:"default:true"`  // For account deactivation
+	IsBanned     bool `gorm:"default:false"` // For admin to ban users
+	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
+	IsSubscribed bool `gorm:"default:false"` // For newsletters
 }
 
 // server struct holds our database and cache connections
@@ -52,7 +50,7 @@ type server struct {
 	rdb *redis.Client // Redis client
 }
 
-// Not secure 
+// Not secure
 var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
 
 // emailRegex for validation
@@ -200,7 +198,7 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, status.Error(codes.Internal, "Database error")
 	}
 
-	// PDF Requirement: "Only activated accounts that are not banned and not deactivated" 
+	// PDF Requirement: "Only activated accounts that are not banned and not deactivated"
 	if user.IsBanned {
 		return nil, status.Error(codes.PermissionDenied, "This account is banned")
 	}
@@ -233,20 +231,20 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		log.Printf("***********************************")
 
 		return &pb.LoginResponse{
-			Message: "Login successful. Please enter your 2FA code.",
+			Message:        "Login successful. Please enter your 2FA code.",
 			Is_2FaRequired: true,
 		}, nil
 	}
-	
+
 	// --- User is logged in (No 2FA) ---
-	// PDF Requirement: "Implement access tokens and refresh tokens" 
-	
+	// PDF Requirement: "Implement access tokens and refresh tokens"
+
 	// Create Access Token (short-lived)
 	accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to create access token")
 	}
-	
+
 	// Create Refresh Token (long-lived)
 	refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
 	if err != nil {
@@ -254,9 +252,9 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	}
 
 	return &pb.LoginResponse{
-		Message:       "Login successful",
-		AccessToken:   accessToken,
-		RefreshToken:  refreshToken,
+		Message:        "Login successful",
+		AccessToken:    accessToken,
+		RefreshToken:   refreshToken,
 		Is_2FaRequired: false,
 	}, nil
 }
@@ -289,7 +287,7 @@ func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest
 	otpKey := "otp:" + req.Email
 	otpCode := generateOtp()
 
-	// PDF Requirement: "The code is valid for 5 minutes" 
+	// PDF Requirement: "The code is valid for 5 minutes"
 	err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to store OTP")
@@ -309,8 +307,57 @@ func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest
 	log.Printf("***********************************")
 
 	return &pb.SendOtpResponse{
-		Message: "OTP sent successfully. Please check your email (and the console).",
+		Message:          "OTP sent successfully. Please check your email (and the console).",
 		RateLimitSeconds: 60,
+	}, nil
+}
+
+func (s *server) Verify2FA(ctx context.Context, req *pb.Verify2FARequest) (*pb.Verify2FAResponse, error) {
+	log.Printf("Verify2FA request received for: %s", req.Email)
+
+	// --- Step 1: Validate 2FA OTP ---
+	otpKey := "2fa:" + req.Email
+	storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
+	if err == redis.Nil {
+		log.Printf("2FA code not found or expired for: %s", req.Email)
+		return nil, status.Error(codes.Unauthenticated, "Invalid or expired 2FA code")
+	} else if err != nil {
+		log.Printf("Redis error checking 2FA OTP: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to verify 2FA code")
+	}
+
+	if storedOtp != req.OtpCode {
+		log.Printf("Invalid 2FA code for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
+		return nil, status.Error(codes.Unauthenticated, "Invalid or expired 2FA code")
+	}
+
+	// --- Step 2: Code is valid, get user and generate tokens ---
+	var user User
+	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		// This should be rare, but good to check
+		log.Printf("Failed to find user %s after 2FA success", req.Email)
+		return nil, status.Error(codes.Internal, "Failed to retrieve user data")
+	}
+
+	// Code is correct, delete it from Redis so it can't be reused
+	s.rdb.Del(ctx, otpKey)
+
+	// --- Step 3: Create tokens (using the helper we already have) ---
+	accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create access token")
+	}
+
+	refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create refresh token")
+	}
+
+	log.Printf("2FA verification successful for: %s", req.Email)
+
+	return &pb.Verify2FAResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}, nil
 }
 

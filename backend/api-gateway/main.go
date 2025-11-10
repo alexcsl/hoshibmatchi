@@ -46,6 +46,9 @@ func main() {
 	// Login
 	http.HandleFunc("/auth/login", handleLogin)
 
+	// 2FA
+	http.HandleFunc("/auth/login/verify-2fa", handleVerify2FA)
+
 	log.Println("API Gateway starting on port 8000...")
 	if err := http.ListenAndServe(":8000", nil); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -206,4 +209,54 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res) // Encode our custom struct
+}
+
+func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Email   string `json:"email"`
+		OtpCode string `json:"otp_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	grpcReq := &pb.Verify2FARequest{
+		Email:   req.Email,
+		OtpCode: req.OtpCode,
+	}
+	
+	// 'grpcRes' is the response from the gRPC service
+	grpcRes, err := client.Verify2FA(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+
+	// We can reuse the same JSON response struct from handleLogin
+	// to return the tokens in the same format.
+	type jsonResponse struct {
+		Message       string `json:"message"`
+		AccessToken   string `json:"access_token,omitempty"`
+		RefreshToken  string `json:"refresh_token,omitempty"`
+		Is2FARequired bool   `json:"is_2fa_required"`
+	}
+	
+	res := jsonResponse{
+		Message:       "2FA verification successful. Logged in.",
+		AccessToken:   grpcRes.AccessToken,
+		RefreshToken:  grpcRes.RefreshToken,
+		Is2FARequired: false, // We've just completed it
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(res)
 }
