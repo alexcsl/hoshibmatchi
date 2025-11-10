@@ -1,30 +1,25 @@
-# Stage 1: Build the Go binary
+# Stage 1: Build
 FROM golang:1.25-alpine AS builder
+WORKDIR /app/backend/api-gateway
 
-WORKDIR /app
+# 1. Copy this service's mod files
+COPY backend/api-gateway/go.mod backend/api-gateway/go.sum ./
 
-# Copy and download dependencies
-COPY go.mod ./
+# 2. Copy mod files for dependencies
+COPY backend/user-service/go.mod backend/user-service/go.sum ../user-service/
+
+# 3. Download dependencies
 RUN go mod download
 
-# Copy the source code
-COPY . .
+# 4. Copy all backend source
+COPY backend/ /app/backend/
 
-# Build the application
-# CGO_ENABLED=0 is important for a static binary
-# -o /app/main creates the output file in the specified path
+# 5. Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/main .
 
-# Stage 2: Create the final, minimal image
+# Stage 2: Final
 FROM alpine:latest
-
 WORKDIR /app
-
-# Copy only the built binary from the builder stage
 COPY --from=builder /app/main .
-
-# Expose the port the app runs on (e.g., 8000)
 EXPOSE 8000
-
-# Command to run the executable
 CMD ["/app/main"]

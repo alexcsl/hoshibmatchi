@@ -10,25 +10,29 @@
 </template>
 
 <script setup lang="ts">
-import LeftSidebar from '../components/LeftSidebar.vue'
+// Create this component next
+import LeftSidebar from '../components/LeftSidebar.vue';
 </script>
 
 <style scoped>
 .main-layout {
   display: flex;
+  background-color: #000; /* Example background */
+  color: #fff;
 }
 
-/* This is the key to the independent scrolling */
+/* This is the key to the PDF requirement [cite: 279, 280] */
 .main-content {
   /* It must be positioned to the *right* of the sidebar */
-  margin-left: 250px; /* Must match sidebar width */
+  /* This value MUST match the width of LeftSidebar */
+  margin-left: 244px; 
   
   /* It must take up the remaining width */
-  width: calc(100% - 250px);
+  width: calc(100% - 244px);
   
   /* It must have its *own* scrollbar */
   height: 100vh;
-  overflow-y: auto; /*  */
+  overflow-y: auto;
   
   padding: 2rem; /* Example padding */
 }

@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.33.0
-// source: protos/user.proto
+// source: user.proto
 
 package proto
 
@@ -25,10 +25,7 @@ const (
 // UserServiceClient is the client API for UserService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// The UserService defines the actions our service can perform.
 type UserServiceClient interface {
-	// A function to register a new user.
 	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error)
 }
 
@@ -53,10 +50,7 @@ func (c *userServiceClient) RegisterUser(ctx context.Context, in *RegisterUserRe
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
-//
-// The UserService defines the actions our service can perform.
 type UserServiceServer interface {
-	// A function to register a new user.
 	RegisterUser(context.Context, *RegisterUserRequest) (*RegisterUserResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
@@ -123,5 +117,5 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "protos/user.proto",
+	Metadata: "user.proto",
 }

@@ -2,49 +2,47 @@ package main
 
 import (
 	"context"
-	"errors" // Import errors
 	"log"
 	"net"
-	"regexp" // For email validation
-	"strings" // For error checking
+	"regexp"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes" // For gRPC status codes
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	// GORM imports
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
-	// Redis import
-	"github.com/go-redis/redis/v8" // <-- Add this import (run 'go get github.com/go-redis/redis/v8')
+	// Don't forget to run: go get github.com/go-redis/redis/v8
+	"github.com/go-redis/redis/v8"
 
 	pb "github.com/hoshibmatchi/user-service/proto"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// User struct (model)
+// User defines the data model as per GORM tags
 type User struct {
 	gorm.Model
 	Name              string    `gorm:"type:varchar(100);not null"`
 	Username          string    `gorm:"type:varchar(50);uniqueIndex;not null"`
 	Email             string    `gorm:"type:varchar(100);uniqueIndex;not null"`
 	Password          string    `gorm:"type:varchar(255);not null"`
-	ProfilePictureURL string    `gorm:"type:varchar(255)"` // This was already here, good.
+	ProfilePictureURL string    `gorm:"type:varchar(255)"`
 	DateOfBirth       time.Time `gorm:"not null"`
 	Gender            string    `gorm:"type:varchar(10);not null"`
-	// TODO: Add fields for 'is_verified', 'is_banned', 'is_deactivated' etc.
+	// TODO: Add fields from PDF like 'is_banned', 'is_deactivated'
 }
 
-// server struct now holds both DB and Redis connections
+// server struct holds our database and cache connections
 type server struct {
 	pb.UnimplementedUserServiceServer
 	db  *gorm.DB
-	rdb *redis.Client // <-- Add Redis client
+	rdb *redis.Client // Redis client
 }
 
-// Email regex for validation
+// emailRegex for validation [cite: 183]
 var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
 
 func main() {
@@ -59,11 +57,11 @@ func main() {
 	db.AutoMigrate(&User{})
 
 	// --- Step 2: Connect to Redis ---
-	// "redis:6379" is the service name from docker-compose.yml
+	// "redis:6379" is the service name from docker-compose.yml [cite: 100]
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "redis:6379",
+		Addr:     "redis:6379",
 		Password: "", // no password set
-		DB:   0,  // default DB
+		DB:       0,  // default DB
 	})
 
 	// Ping Redis to ensure connection is alive
@@ -71,15 +69,15 @@ func main() {
 		log.Fatalf("Failed to connect to redis: %v", err)
 	}
 	log.Println("Successfully connected to Redis.")
-    
-    // --- Step 3: Set up and start the gRPC server ---
+
+	// --- Step 3: Set up and start the gRPC server ---
 	lis, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}
 
 	s := grpc.NewServer()
-	
+
 	// Register our service with *both* connections
 	pb.RegisterUserServiceServer(s, &server{db: db, rdb: rdb})
 
@@ -89,46 +87,48 @@ func main() {
 	}
 }
 
-// RegisterUser is now a fully-featured implementation
+// RegisterUser is the implementation of our gRPC service function
 func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
 	log.Println("RegisterUser request received for username:", req.Username)
 
 	// --- Step 1: Validate OTP ---
-	// This assumes another service (or this one) has an endpoint to *send* the OTP
-	// and stored it in Redis, e.g., "otp:user@example.com"
-	// This matches the PDF requirement 
+	// This assumes another service/endpoint *sends* the OTP and stores it.
+	// We are just verifying it here. [cite: 178, 190]
 	otpKey := "otp:" + req.Email
 	storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
 	if err == redis.Nil {
+		log.Printf("OTP not found or expired for: %s", req.Email)
 		return nil, status.Error(codes.InvalidArgument, "OTP expired or not requested")
 	} else if err != nil {
-		return nil, status.Error(codes.Internal, "Redis error")
+		log.Printf("Redis error checking OTP: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to verify OTP")
 	}
 
 	if storedOtp != req.OtpCode {
+		log.Printf("Invalid OTP for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
 		return nil, status.Error(codes.InvalidArgument, "Invalid OTP code")
 	}
 
 	// --- Step 2: Validate Business Logic (as per PDF) ---
-	if len(req.Name) <= 4 { // [cite: 613]
+	if len(req.Name) <= 4 { // [cite: 179]
 		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
 	}
-	// TODO: Add regex for "no symbols or numbers" validation [cite: 613]
+	// TODO: Add regex for "no symbols or numbers" validation [cite: 179]
 
-	if !emailRegex.MatchString(req.Email) { // [cite: 617]
+	if !emailRegex.MatchString(req.Email) { // [cite: 183]
 		return nil, status.Error(codes.InvalidArgument, "Invalid email format")
 	}
 
-	// TODO: Add 4+ password validations [cite: 618]
+	// TODO: Add 4+ password validations [cite: 184]
 	if len(req.Password) < 8 { // Example validation
 		return nil, status.Error(codes.InvalidArgument, "Password must be at least 8 characters")
 	}
-	
-	if req.Gender != "male" && req.Gender != "female" { // [cite: 620]
+
+	if req.Gender != "male" && req.Gender != "female" { // [cite: 186]
 		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
 	}
 
-	// Age validation [cite: 621]
+	// Age validation [cite: 187]
 	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
@@ -138,6 +138,7 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}
 
 	// --- Step 3: Hash Password ---
+	// Uses bcrypt which includes SALT by default [cite: 128]
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Failed to hash password: %v", err)
@@ -152,14 +153,14 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 		Password:          string(hashedPassword),
 		DateOfBirth:       dob,
 		Gender:            req.Gender,
-		ProfilePictureURL: req.ProfilePictureUrl, // Use the new field
+		ProfilePictureURL: req.ProfilePictureUrl, // Use the new proto field
 	}
 
 	result := s.db.Create(&newUser)
 	if result.Error != nil {
 		log.Printf("Failed to create user in database: %v", result.Error)
-		
-		// This is the CRITICAL part for the frontend 
+
+		// Check for unique constraint violations [cite: 180, 182]
 		if strings.Contains(result.Error.Error(), "unique constraint") {
 			if strings.Contains(result.Error.Error(), "username") {
 				return nil, status.Error(codes.AlreadyExists, "Username already exists")
@@ -174,8 +175,10 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	// --- Step 5: Success ---
 	// The OTP was valid, so we can delete it now
 	s.rdb.Del(ctx, otpKey)
-	
+
 	log.Println("Successfully created user with ID:", newUser.ID)
+	// TODO: Send successful registration email via RabbitMQ [cite: 195]
+
 	return &pb.RegisterUserResponse{
 		Id:       int64(newUser.ID),
 		Username: newUser.Username,
@@ -183,7 +186,7 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}, nil
 }
 
-// Helper function for age validation
+// Helper function for age validation [cite: 187]
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()
 	age := today.Year() - birthDate.Year()
