@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"encoding/hex"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -359,6 +361,94 @@ func (s *server) Verify2FA(ctx context.Context, req *pb.Verify2FARequest) (*pb.V
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func generateSecureToken(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+// --- ADD GPRC FUNCTION 1: SendPasswordReset ---
+func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordResetRequest) (*pb.SendPasswordResetResponse, error) {
+	var user User
+	
+	// PDF Requirement: "Only registered emails that are not banned can be used"
+	err := s.db.Where("email = ?", req.Email).First(&user).Error
+	if err == gorm.ErrRecordNotFound {
+		// Don't tell the user if the email exists or not.
+		return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
+	}
+	if user.IsBanned {
+		return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
+	}
+
+	// Generate a secure token
+	token, err := generateSecureToken(32) // 32 bytes = 64-char string
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to generate reset token")
+	}
+
+	// Store token in Redis with a 15-minute expiry
+	tokenKey := "reset_token:" + req.Email
+	if err := s.rdb.Set(ctx, tokenKey, token, 15*time.Minute).Err(); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to store reset token")
+	}
+	
+	// --- SIMULATE SENDING RESET EMAIL ---
+	log.Printf("***********************************")
+	log.Printf("Password Reset Token for %s: %s", req.Email, token)
+	log.Printf("***********************************")
+	
+	return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
+}
+
+// --- ADD GPRC FUNCTION 2: ResetPassword ---
+func (s *server) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest) (*pb.ResetPasswordResponse, error) {
+	// --- Step 1: Verify the token ---
+	tokenKey := "reset_token:" + req.Email
+	storedToken, err := s.rdb.Get(ctx, tokenKey).Result()
+	if err == redis.Nil {
+		return nil, status.Error(codes.InvalidArgument, "Invalid or expired reset token")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to verify token")
+	}
+
+	if storedToken != req.OtpCode {
+		return nil, status.Error(codes.InvalidArgument, "Invalid or expired reset token")
+	}
+
+	// --- Step 2: Token is good, find user ---
+	var user User
+	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to find user")
+	}
+
+	// --- Step 3: Validate new password ---
+	// PDF Requirement: "Validate the new password can't be the same as the old one"
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.NewPassword))
+	if err == nil {
+		// 'err == nil' means the passwords *match*, which is an error
+		return nil, status.Error(codes.InvalidArgument, "New password cannot be the same as the old one")
+	}
+
+	// --- Step 4: Hash and save new password ---
+	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to hash new password")
+	}
+
+	if err := s.db.Model(&user).Update("password", string(newHashedPassword)).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update password")
+	}
+
+	// --- Step 5: Success. Delete the token. ---
+	s.rdb.Del(ctx, tokenKey)
+	log.Printf("Password successfully reset for %s", req.Email)
+
+	return &pb.ResetPasswordResponse{Message: "Password has been reset successfully. You can now log in."}, nil
 }
 
 // Helper function for age validation
