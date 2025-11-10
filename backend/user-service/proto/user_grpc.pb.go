@@ -23,16 +23,26 @@ const (
 	UserService_SendRegistrationOtp_FullMethodName = "/user.UserService/SendRegistrationOtp"
 	UserService_LoginUser_FullMethodName           = "/user.UserService/LoginUser"
 	UserService_Verify2FA_FullMethodName           = "/user.UserService/Verify2FA"
+	UserService_SendPasswordReset_FullMethodName   = "/user.UserService/SendPasswordReset"
+	UserService_ResetPassword_FullMethodName       = "/user.UserService/ResetPassword"
+	UserService_GetUserData_FullMethodName         = "/user.UserService/GetUserData"
 )
 
 // UserServiceClient is the client API for UserService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
+	// From Auth
 	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error)
 	SendRegistrationOtp(ctx context.Context, in *SendOtpRequest, opts ...grpc.CallOption) (*SendOtpResponse, error)
 	LoginUser(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	// From 2FA
 	Verify2FA(ctx context.Context, in *Verify2FARequest, opts ...grpc.CallOption) (*Verify2FAResponse, error)
+	// From Password Reset
+	SendPasswordReset(ctx context.Context, in *SendPasswordResetRequest, opts ...grpc.CallOption) (*SendPasswordResetResponse, error)
+	ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error)
+	// From Post Service integration
+	GetUserData(ctx context.Context, in *GetUserDataRequest, opts ...grpc.CallOption) (*GetUserDataResponse, error)
 }
 
 type userServiceClient struct {
@@ -83,14 +93,51 @@ func (c *userServiceClient) Verify2FA(ctx context.Context, in *Verify2FARequest,
 	return out, nil
 }
 
+func (c *userServiceClient) SendPasswordReset(ctx context.Context, in *SendPasswordResetRequest, opts ...grpc.CallOption) (*SendPasswordResetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendPasswordResetResponse)
+	err := c.cc.Invoke(ctx, UserService_SendPasswordReset_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ResetPassword(ctx context.Context, in *ResetPasswordRequest, opts ...grpc.CallOption) (*ResetPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetPasswordResponse)
+	err := c.cc.Invoke(ctx, UserService_ResetPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetUserData(ctx context.Context, in *GetUserDataRequest, opts ...grpc.CallOption) (*GetUserDataResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserDataResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUserData_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
 type UserServiceServer interface {
+	// From Auth
 	RegisterUser(context.Context, *RegisterUserRequest) (*RegisterUserResponse, error)
 	SendRegistrationOtp(context.Context, *SendOtpRequest) (*SendOtpResponse, error)
 	LoginUser(context.Context, *LoginRequest) (*LoginResponse, error)
+	// From 2FA
 	Verify2FA(context.Context, *Verify2FARequest) (*Verify2FAResponse, error)
+	// From Password Reset
+	SendPasswordReset(context.Context, *SendPasswordResetRequest) (*SendPasswordResetResponse, error)
+	ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error)
+	// From Post Service integration
+	GetUserData(context.Context, *GetUserDataRequest) (*GetUserDataResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -112,6 +159,15 @@ func (UnimplementedUserServiceServer) LoginUser(context.Context, *LoginRequest) 
 }
 func (UnimplementedUserServiceServer) Verify2FA(context.Context, *Verify2FARequest) (*Verify2FAResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Verify2FA not implemented")
+}
+func (UnimplementedUserServiceServer) SendPasswordReset(context.Context, *SendPasswordResetRequest) (*SendPasswordResetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendPasswordReset not implemented")
+}
+func (UnimplementedUserServiceServer) ResetPassword(context.Context, *ResetPasswordRequest) (*ResetPasswordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResetPassword not implemented")
+}
+func (UnimplementedUserServiceServer) GetUserData(context.Context, *GetUserDataRequest) (*GetUserDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserData not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -206,6 +262,60 @@ func _UserService_Verify2FA_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SendPasswordReset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendPasswordResetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SendPasswordReset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SendPasswordReset_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SendPasswordReset(ctx, req.(*SendPasswordResetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ResetPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ResetPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ResetPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ResetPassword(ctx, req.(*ResetPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetUserData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUserData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUserData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUserData(ctx, req.(*GetUserDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +338,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Verify2FA",
 			Handler:    _UserService_Verify2FA_Handler,
+		},
+		{
+			MethodName: "SendPasswordReset",
+			Handler:    _UserService_SendPasswordReset_Handler,
+		},
+		{
+			MethodName: "ResetPassword",
+			Handler:    _UserService_ResetPassword_Handler,
+		},
+		{
+			MethodName: "GetUserData",
+			Handler:    _UserService_GetUserData_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

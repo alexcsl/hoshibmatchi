@@ -2,28 +2,36 @@ syntax = "proto3";
 
 package user;
 
-// FIX: Changed "hoshiBmaTchi" to "hoshibmatchi" to match your go.mod
+// This is the correct go_package we settled on
 option go_package = "github.com/hoshibmatchi/user-service/proto";
 
 service UserService {
+  // From Auth
   rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
   rpc SendRegistrationOtp (SendOtpRequest) returns (SendOtpResponse);
   rpc LoginUser (LoginRequest) returns (LoginResponse);
+  
+  // From 2FA
   rpc Verify2FA (Verify2FARequest) returns (Verify2FAResponse);
+
+  // From Password Reset
+  rpc SendPasswordReset (SendPasswordResetRequest) returns (SendPasswordResetResponse);
+  rpc ResetPassword (ResetPasswordRequest) returns (ResetPasswordResponse);
+
+  // From Post Service integration
+  rpc GetUserData (GetUserDataRequest) returns (GetUserDataResponse);
 }
 
+// --- Register ---
 message RegisterUserRequest {
   string name = 1;
   string username = 2;
   string email = 3;
   string password = 4;
-  string date_of_birth = 5; // Send as string "YYYY-MM-DD"
+  string date_of_birth = 5;
   string gender = 6;
-  
-  // --- ADDED ---
   string profile_picture_url = 7;
   string otp_code = 8;
-  // --- END ADDED ---
 }
 
 message RegisterUserResponse {
@@ -33,15 +41,13 @@ message RegisterUserResponse {
 }
 
 // --- Send OTP ---
-// The request just needs the email
 message SendOtpRequest {
   string email = 1;
 }
 
-// The response is a success message
 message SendOtpResponse {
   string message = 1;
-  int32 rate_limit_seconds = 2; // Tell the frontend how long to wait
+  int32 rate_limit_seconds = 2;
 }
 
 // --- Login ---
@@ -51,7 +57,7 @@ message LoginRequest {
 }
 
 message LoginResponse {
-  string message = 1; // e.g., "Login successful" or "2FA required"
+  string message = 1;
   string access_token = 2;
   string refresh_token = 3;
   bool is_2fa_required = 4;
@@ -63,8 +69,38 @@ message Verify2FARequest {
   string otp_code = 2;
 }
 
-// The response is the same as a successful login: it returns tokens
 message Verify2FAResponse {
   string access_token = 1;
   string refresh_token = 2;
+}
+
+// --- Password Reset (Request) ---
+message SendPasswordResetRequest {
+  string email = 1;
+}
+
+message SendPasswordResetResponse {
+  string message = 1;
+}
+
+// --- Password Reset (Submit) ---
+message ResetPasswordRequest {
+  string email = 1;
+  string otp_code = 2;
+  string new_password = 3;
+}
+
+message ResetPasswordResponse {
+  string message = 1;
+}
+
+// --- Get User Data (for service-to-service) ---
+message GetUserDataRequest {
+  int64 user_id = 1;
+}
+
+message GetUserDataResponse {
+  string username = 1;
+  string profile_picture_url = 2;
+  bool is_verified = 3;
 }
