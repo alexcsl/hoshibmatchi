@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
+	"context"
 
 	// Import the gRPC client connection library
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+
+	"github.com/golang-jwt/jwt/v5"
 
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
@@ -24,6 +27,58 @@ import (
 var client pb.UserServiceClient
 var postClient postPb.PostServiceClient
 var storyClient storyPb.StoryServiceClient
+
+// ADD THIS (must match user-service)
+// TODO: Load this from an environment variable, not hardcoded
+var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
+
+type contextKey string
+const userIDKey contextKey = "userID"
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1. Get the Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			return
+		}
+
+		// 2. The header should be in the format "Bearer <token>"
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+			return
+		}
+		tokenString := parts[1]
+
+		// 3. Parse and validate the token
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil // Use our shared secret
+		})
+
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+
+		// 4. Extract the user_id from the token's "claims"
+		// We must convert it from float64 (default for JSON numbers) to int64
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+			return
+		}
+		userID := int64(userIDFloat)
+
+		// 5. Add the userID to the request's context
+		ctx := context.WithValue(r.Context(), userIDKey, userID)
+
+		// 6. Call the *next* handler (e.g., handleCreatePost) with the new context
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
 
 func main() {
 	// Connect to the gRPC user-service
@@ -78,14 +133,12 @@ func main() {
 	http.HandleFunc("/auth/password-reset/request", handleSendPasswordReset)
 	http.HandleFunc("/auth/password-reset/submit", handleResetPassword)
 
-	http.HandleFunc("/posts", handleCreatePost)
-	http.HandleFunc("/posts/{id}/like", handlePostLike)
-	http.HandleFunc("/comments", handleCreateComment)
-	http.HandleFunc("/comments/{id}", handleDeleteComment)
-
-	// Story 
-	http.HandleFunc("/stories", handleCreateStory)
-	http.HandleFunc("/stories/{id}/like", handleStoryLike)
+	http.Handle("/posts", authMiddleware(http.HandlerFunc(handleCreatePost)))
+	http.Handle("/stories", authMiddleware(http.HandlerFunc(handleCreateStory)))
+	http.Handle("/posts/{id}/like", authMiddleware(http.HandlerFunc(handlePostLike)))
+	http.Handle("/comments", authMiddleware(http.HandlerFunc(handleCreateComment)))
+	http.Handle("/comments/{id}", authMiddleware(http.HandlerFunc(handleDeleteComment)))
+	http.Handle("/stories/{id}/like", authMiddleware(http.HandlerFunc(handleStoryLike)))
 
 
 	log.Println("API Gateway starting on port 8000...")
@@ -361,8 +414,7 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Get author_id from a real JWT
-	var authorID int64 = 1 
+	userID := r.Context().Value(userIDKey).(int64)
 
 	var req struct {
 		Caption          string   `json:"caption"`
@@ -375,7 +427,7 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grpcReq := &postPb.CreatePostRequest{
-		AuthorId:         authorID,
+		AuthorId:         userID,
 		Caption:          req.Caption,
 		MediaUrls:        req.MediaURLs,
 		CommentsDisabled: req.CommentsDisabled,
@@ -399,8 +451,7 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Get author_id from a real JWT
-	var authorID int64 = 1 
+	userID := r.Context().Value(userIDKey).(int64)
 
 	var req struct {
 		MediaURL string `json:"media_url"`
@@ -411,7 +462,7 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	grpcReq := &storyPb.CreateStoryRequest{
-		AuthorId: authorID,
+		AuthorId: userID,
 		MediaUrl: req.MediaURL,
 	}
 
@@ -429,8 +480,7 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 
 // --- HANDLER: handlePostLike (Handles POST for Like, DELETE for Unlike) ---
 func handlePostLike(w http.ResponseWriter, r *http.Request) {
-	// TODO: Get author_id from a real JWT
-	var userID int64 = 1
+	userID := r.Context().Value(userIDKey).(int64)
 
 	postIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/posts/"), "/like")
 	postID, err := strconv.ParseInt(postIDStr, 10, 64)
@@ -441,7 +491,6 @@ func handlePostLike(w http.ResponseWriter, r *http.Request) {
 	
 	if r.Method == http.MethodPost {
 		// --- Like Post ---
-		// FIX: Was pb.LikePostRequest, now postPb.LikePostRequest
 		req := &postPb.LikePostRequest{UserId: userID, PostId: postID} 
 		res, err := postClient.LikePost(r.Context(), req)
 		if err != nil {
@@ -455,7 +504,6 @@ func handlePostLike(w http.ResponseWriter, r *http.Request) {
 
 	} else if r.Method == http.MethodDelete {
 		// --- Unlike Post ---
-		// FIX: Was pb.LikePostRequest, now postPb.LikePostRequest
 		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
 		res, err := postClient.UnlikePost(r.Context(), req)
 		if err != nil {
@@ -479,7 +527,7 @@ func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	var userID int64 = 1 // TODO: Get from JWT
+	userID := r.Context().Value(userIDKey).(int64)
 
 	var req struct {
 		PostID          int64  `json:"post_id"`
@@ -517,7 +565,7 @@ func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	var userID int64 = 1 // TODO: Get from JWT
+	userID := r.Context().Value(userIDKey).(int64)
 
 	commentIDStr := strings.TrimPrefix(r.URL.Path, "/comments/")
 	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
@@ -545,7 +593,7 @@ func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
 
 // --- HANDLER: handleStoryLike (Handles POST for Like, DELETE for Unlike) ---
 func handleStoryLike(w http.ResponseWriter, r *http.Request) {
-	var userID int64 = 1 // TODO: Get from JWT
+	userID := r.Context().Value(userIDKey).(int64)
 
 	storyIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/stories/"), "/like")
 	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
