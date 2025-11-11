@@ -3,6 +3,7 @@ module github.com/hoshibmatchi/api-gateway
 go 1.25.3
 
 require (
+	github.com/hoshibmatchi/media-service v0.0.0
 	github.com/hoshibmatchi/post-service v0.0.0
 	github.com/hoshibmatchi/story-service v0.0.0
 	github.com/hoshibmatchi/user-service v0.0.0
@@ -25,3 +26,5 @@ replace github.com/hoshibmatchi/user-service => ../user-service
 replace github.com/hoshibmatchi/post-service => ../post-service
 
 replace github.com/hoshibmatchi/story-service => ../story-service
+
+replace github.com/hoshibmatchi/media-service => ../media-service

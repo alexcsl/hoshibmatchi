@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package media;
+
+option go_package = "github.com/hoshibmatchi/media-service/proto";
+
+service MediaService {
+  // Requests a secure URL to upload a file
+  rpc GetUploadURL (GetUploadURLRequest) returns (GetUploadURLResponse);
+}
+
+message GetUploadURLRequest {
+  string filename = 1; // e.g., "my-photo.jpg"
+  string content_type = 2; // e.g., "image/jpeg"
+  int64 user_id = 3; // To create a user-specific path
+}
+
+message GetUploadURLResponse {
+  string upload_url = 1; // The pre-signed URL to PUT the file to
+  string final_media_url = 2; // The URL to save in the Post/Story database
+}

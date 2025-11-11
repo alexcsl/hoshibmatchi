@@ -21,12 +21,14 @@ import (
 	pb "github.com/hoshibmatchi/user-service/proto"
 	postPb "github.com/hoshibmatchi/post-service/proto"
 	storyPb "github.com/hoshibmatchi/story-service/proto"
+	mediaPb "github.com/hoshibmatchi/media-service/proto"
 )
 
 // client will hold the persistent gRPC connection
 var client pb.UserServiceClient
 var postClient postPb.PostServiceClient
 var storyClient storyPb.StoryServiceClient
+var mediaClient mediaPb.MediaServiceClient
 
 // ADD THIS (must match user-service)
 // TODO: Load this from an environment variable, not hardcoded
@@ -111,6 +113,15 @@ func main() {
 	storyClient = storyPb.NewStoryServiceClient(storyConn)
 	log.Println("Successfully connected to story-service")
 
+	// Media
+	mediaConn, err := grpc.Dial("media-service:9005", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to media-service: %v", err)
+	}
+	defer mediaConn.Close()
+	mediaClient = mediaPb.NewMediaServiceClient(mediaConn)
+	log.Println("Successfully connected to media-service")
+
 
 	// Your existing health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +150,9 @@ func main() {
 	http.Handle("/comments", authMiddleware(http.HandlerFunc(handleCreateComment)))
 	http.Handle("/comments/{id}", authMiddleware(http.HandlerFunc(handleDeleteComment)))
 	http.Handle("/stories/{id}/like", authMiddleware(http.HandlerFunc(handleStoryLike)))
+
+	// Media
+	http.Handle("/media/upload-url", authMiddleware(http.HandlerFunc(handleGetUploadURL)))
 
 
 	log.Println("API Gateway starting on port 8000...")
@@ -633,4 +647,38 @@ func handleStoryLike(w http.ResponseWriter, r *http.Request) {
 	} else {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 	}
+}
+
+func handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Context().Value(userIDKey).(int64) // Get from JWT
+
+	// Get query params, e.g., /media/upload-url?filename=foo.jpg&type=image/jpeg
+	filename := r.URL.Query().Get("filename")
+	contentType := r.URL.Query().Get("type")
+
+	if filename == "" || contentType == "" {
+		http.Error(w, "Missing 'filename' or 'type' query parameters", http.StatusBadRequest)
+		return
+	}
+
+	grpcReq := &mediaPb.GetUploadURLRequest{
+		Filename:    filename,
+		ContentType: contentType,
+		UserId:      userID,
+	}
+
+	grpcRes, err := mediaClient.GetUploadURL(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(grpcRes)
 }
