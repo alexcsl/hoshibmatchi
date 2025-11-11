@@ -15,11 +15,13 @@ import (
 	// This path MUST match the 'go_package' option in your user.proto
 	pb "github.com/hoshibmatchi/user-service/proto"
 	postPb "github.com/hoshibmatchi/post-service/proto"
+	storyPb "github.com/hoshibmatchi/story-service/proto"
 )
 
 // client will hold the persistent gRPC connection
 var client pb.UserServiceClient
 var postClient postPb.PostServiceClient
+var storyClient storyPb.StoryServiceClient
 
 func main() {
 	// Connect to the gRPC user-service
@@ -34,6 +36,7 @@ func main() {
 	// Create a new client stub
 	client = pb.NewUserServiceClient(conn)
 
+	// Post
 	postConn, err := grpc.Dial("post-service:9001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to post-service: %v", err)
@@ -41,6 +44,16 @@ func main() {
 	defer postConn.Close()
 	postClient = postPb.NewPostServiceClient(postConn)
 	log.Println("Successfully connected to post-service")
+
+	// Story
+	storyConn, err := grpc.Dial("story-service:9002", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to story-service: %v", err)
+	}
+	defer storyConn.Close()
+	storyClient = storyPb.NewStoryServiceClient(storyConn)
+	log.Println("Successfully connected to story-service")
+
 
 	// Your existing health check
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -63,6 +76,9 @@ func main() {
 	http.HandleFunc("/auth/password-reset/request", handleSendPasswordReset)
 	http.HandleFunc("/auth/password-reset/submit", handleResetPassword)
 	http.HandleFunc("/posts", handleCreatePost)
+
+	// Story 
+	http.HandleFunc("/stories", handleCreateStory)
 
 
 	log.Println("API Gateway starting on port 8000...")
@@ -368,4 +384,38 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(grpcRes.Post)
+}
+
+func handleCreateStory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// TODO: Get author_id from a real JWT
+	var authorID int64 = 1 
+
+	var req struct {
+		MediaURL string `json:"media_url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	grpcReq := &storyPb.CreateStoryRequest{
+		AuthorId: authorID,
+		MediaUrl: req.MediaURL,
+	}
+
+	grpcRes, err := storyClient.CreateStory(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to story-service failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(grpcRes.Story)
 }

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package story;
+
+option go_package = "github.com/hoshibmatchi/story-service/proto";
+
+// Import user.proto to get user data
+import "user.proto";
+
+service StoryService {
+  rpc CreateStory (CreateStoryRequest) returns (CreateStoryResponse);
+}
+
+// Data from the API Gateway
+message CreateStoryRequest {
+  int64 author_id = 1; // From the JWT
+  string media_url = 2; // Stories are usually a single media item
+  // Add other fields later if needed, like "close_friends_only"
+}
+
+// The created Story
+message Story {
+  string id = 1;
+  string media_url = 2;
+  
+  // Denormalized data from user-service
+  string author_username = 3;
+  string author_profile_url = 4;
+  
+  string created_at = 5;
+}
+
+message CreateStoryResponse {
+  Story story = 1;
+}

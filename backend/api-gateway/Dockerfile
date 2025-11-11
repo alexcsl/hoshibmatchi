@@ -8,6 +8,7 @@ COPY backend/api-gateway/go.mod backend/api-gateway/go.sum ./
 # 2. Copy mod files for ALL local dependencies
 COPY backend/user-service/go.mod backend/user-service/go.sum ../user-service/
 COPY backend/post-service/go.mod backend/post-service/go.sum ../post-service/
+COPY backend/story-service/go.mod backend/story-service/go.sum ../story-service/
 
 # 3. Download dependencies
 RUN go mod download

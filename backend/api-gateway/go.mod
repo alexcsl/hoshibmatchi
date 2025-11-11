@@ -4,6 +4,7 @@ go 1.25.3
 
 require (
 	github.com/hoshibmatchi/post-service v0.0.0
+	github.com/hoshibmatchi/story-service v0.0.0
 	github.com/hoshibmatchi/user-service v0.0.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10 // indirect
@@ -20,3 +21,5 @@ require (
 replace github.com/hoshibmatchi/user-service => ../user-service
 
 replace github.com/hoshibmatchi/post-service => ../post-service
+
+replace github.com/hoshibmatchi/story-service => ../story-service
