@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
+	"strconv"
 
 	// Import the gRPC client connection library
 	"google.golang.org/grpc"
@@ -75,10 +77,15 @@ func main() {
 	// Post & PW Reset 
 	http.HandleFunc("/auth/password-reset/request", handleSendPasswordReset)
 	http.HandleFunc("/auth/password-reset/submit", handleResetPassword)
+
 	http.HandleFunc("/posts", handleCreatePost)
+	http.HandleFunc("/posts/{id}/like", handlePostLike)
+	http.HandleFunc("/comments", handleCreateComment)
+	http.HandleFunc("/comments/{id}", handleDeleteComment)
 
 	// Story 
 	http.HandleFunc("/stories", handleCreateStory)
+	http.HandleFunc("/stories/{id}/like", handleStoryLike)
 
 
 	log.Println("API Gateway starting on port 8000...")
@@ -418,4 +425,164 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(grpcRes.Story)
+}
+
+// --- HANDLER: handlePostLike (Handles POST for Like, DELETE for Unlike) ---
+func handlePostLike(w http.ResponseWriter, r *http.Request) {
+	// TODO: Get author_id from a real JWT
+	var userID int64 = 1
+
+	postIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/posts/"), "/like")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+	
+	if r.Method == http.MethodPost {
+		// --- Like Post ---
+		// FIX: Was pb.LikePostRequest, now postPb.LikePostRequest
+		req := &postPb.LikePostRequest{UserId: userID, PostId: postID} 
+		res, err := postClient.LikePost(r.Context(), req)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+
+	} else if r.Method == http.MethodDelete {
+		// --- Unlike Post ---
+		// FIX: Was pb.LikePostRequest, now postPb.LikePostRequest
+		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
+		res, err := postClient.UnlikePost(r.Context(), req)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+		
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
+}
+
+// --- HANDLER: handleCreateComment ---
+func handleCreateComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var userID int64 = 1 // TODO: Get from JWT
+
+	var req struct {
+		PostID          int64  `json:"post_id"`
+		Content         string `json:"content"`
+		ParentCommentID int64  `json:"parent_comment_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// FIX: Was pb.CommentOnPostRequest, now postPb.CommentOnPostRequest
+	grpcReq := &postPb.CommentOnPostRequest{
+		UserId:          userID,
+		PostId:          req.PostID,
+		Content:         req.Content,
+		ParentCommentId: req.ParentCommentID,
+	}
+	
+	grpcRes, err := postClient.CommentOnPost(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(grpcRes)
+}
+
+// --- HANDLER: handleDeleteComment ---
+func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	var userID int64 = 1 // TODO: Get from JWT
+
+	commentIDStr := strings.TrimPrefix(r.URL.Path, "/comments/")
+	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+		return
+	}
+	
+	// FIX: Was pb.DeleteCommentRequest, now postPb.DeleteCommentRequest
+	grpcReq := &postPb.DeleteCommentRequest{
+		UserId:    userID,
+		CommentId: commentID,
+	}
+	
+	grpcRes, err := postClient.DeleteComment(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(grpcRes)
+}
+
+// --- HANDLER: handleStoryLike (Handles POST for Like, DELETE for Unlike) ---
+func handleStoryLike(w http.ResponseWriter, r *http.Request) {
+	var userID int64 = 1 // TODO: Get from JWT
+
+	storyIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/stories/"), "/like")
+	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid story ID", http.StatusBadRequest)
+		return
+	}
+	
+	if r.Method == http.MethodPost {
+		// --- Like Story ---
+		// This one was already correct, using storyPb
+		req := &storyPb.LikeStoryRequest{UserId: userID, StoryId: storyID}
+		res, err := storyClient.LikeStory(r.Context(), req)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+
+	} else if r.Method == http.MethodDelete {
+		// --- Unlike Story ---
+		// This one was also correct, using storyPb
+		req := &storyPb.UnlikeStoryRequest{UserId: userID, StoryId: storyID}
+		res, err := storyClient.UnlikeStory(r.Context(), req)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(res)
+		
+	} else {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	}
 }

@@ -10,6 +10,11 @@ import "user.proto";
 
 service PostService {
   rpc CreatePost (CreatePostRequest) returns (CreatePostResponse);
+
+  rpc LikePost (LikePostRequest) returns (LikePostResponse);
+  rpc UnlikePost (LikePostRequest) returns (UnlikePostResponse);
+  rpc CommentOnPost (CommentOnPostRequest) returns (CommentResponse);
+  rpc DeleteComment (DeleteCommentRequest) returns (DeleteCommentResponse);
 }
 
 // Data from the API Gateway
@@ -36,4 +41,47 @@ message Post {
 
 message CreatePostResponse {
   Post post = 1;
+}
+
+// --- Like / Unlike a Post ---
+message LikePostRequest {
+  int64 user_id = 1; // From JWT
+  int64 post_id = 2; // From URL
+}
+message LikePostResponse {
+  string message = 1; // "Post liked"
+}
+message UnlikePostRequest {
+  int64 user_id = 1; // From JWT
+  int64 post_id = 2; // From URL
+}
+message UnlikePostResponse {
+  string message = 1; // "Post unliked"
+}
+
+// --- Comment on a Post ---
+message CommentOnPostRequest {
+  int64 user_id = 1; // From JWT
+  int64 post_id = 2; // From URL
+  string content = 3; // Text or GIF URL
+  int64 parent_comment_id = 4; // 0 for a top-level comment
+}
+// Response for a comment includes denormalized data
+message CommentResponse {
+  string id = 1;
+  string content = 2;
+  string author_username = 3;
+  string author_profile_url = 4;
+  string created_at = 5;
+  int64 post_id = 6;
+  int64 parent_comment_id = 7;
+}
+
+// --- Delete a Comment ---
+message DeleteCommentRequest {
+  int64 user_id = 1; // From JWT (to verify ownership)
+  int64 comment_id = 2; // From URL
+}
+message DeleteCommentResponse {
+  string message = 1; // "Comment deleted"
 }

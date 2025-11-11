@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"time"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,6 +33,29 @@ type Post struct {
 	AuthorIsVerified bool
 }
 
+// PostLike defines the GORM model for a like on a post
+type PostLike struct {
+	// Composite primary key (user_id, post_id)
+	UserID int64 `gorm:"primaryKey"`
+	PostID int64 `gorm:"primaryKey"`
+	CreatedAt time.Time
+}
+
+// Comment defines the GORM model for a comment
+type Comment struct {
+	gorm.Model
+	UserID   int64
+	PostID   int64
+	Content  string // This can be text or a GIF URL
+	
+	// For nested replies
+	ParentCommentID uint // GORM's Model.ID is uint
+
+	// Denormalized data from user-service
+	AuthorUsername   string
+	AuthorProfileURL string
+}
+
 type server struct {
 	pb.UnimplementedPostServiceServer
 	db         *gorm.DB
@@ -46,6 +70,9 @@ func main() {
 		log.Fatalf("Failed to connect to post-db: %v", err)
 	}
 	db.AutoMigrate(&Post{})
+
+	db.AutoMigrate(&PostLike{})
+	db.AutoMigrate(&Comment{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -109,4 +136,99 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 			CreatedAt:          newPost.CreatedAt.Format(time.RFC3339),
 		},
 	}, nil
+}
+
+// --- Implement LikePost ---
+func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.LikePostResponse, error) {
+	like := PostLike{
+		UserID: req.UserId,
+		PostID: req.PostId,
+	}
+	
+	// GORM's Create will fail if the composite primary key already exists
+	if result := s.db.Create(&like); result.Error != nil {
+		if strings.Contains(result.Error.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "Post already liked")
+		}
+		return nil, status.Error(codes.Internal, "Failed to like post")
+	}
+	
+	// TODO: Send a "post.liked" event to RabbitMQ for notifications
+	return &pb.LikePostResponse{Message: "Post liked"}, nil
+}
+
+// --- Implement UnlikePost ---
+func (s *server) UnlikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.UnlikePostResponse, error) {
+	like := PostLike{
+		UserID: req.UserId,
+		PostID: req.PostId,
+	}
+	
+	if result := s.db.Delete(&like); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to unlike post")
+	} else if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "Post was not liked")
+	}
+	
+	return &pb.UnlikePostResponse{Message: "Post unliked"}, nil
+}
+
+// --- Implement CommentOnPost ---
+func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest) (*pb.CommentResponse, error) {
+	// --- Step 1: Call User Service for Denormalization (like in CreatePost) ---
+	userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.UserId})
+	if err != nil {
+		log.Printf("Failed to get user data from user-service: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve author details")
+	}
+
+	// --- Step 2: Create the Comment in our DB ---
+	newComment := Comment{
+		UserID:           req.UserId,
+		PostID:           req.PostId,
+		Content:          req.Content,
+		ParentCommentID:  uint(req.ParentCommentId), // 0 is fine
+		AuthorUsername:   userData.Username,
+		AuthorProfileURL: userData.ProfilePictureUrl,
+	}
+
+	if result := s.db.Create(&newComment); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to save comment")
+	}
+	
+	// TODO: Send "post.commented" event to RabbitMQ
+
+	// --- Step 3: Return the created comment ---
+	return &pb.CommentResponse{
+		Id:               strconv.FormatUint(uint64(newComment.ID), 10),
+		Content:          newComment.Content,
+		AuthorUsername:   newComment.AuthorUsername,
+		AuthorProfileUrl: newComment.AuthorProfileURL,
+		CreatedAt:        newComment.CreatedAt.Format(time.RFC3339),
+		PostId:           newComment.PostID,
+		ParentCommentId:  int64(newComment.ParentCommentID),
+	}, nil
+}
+
+// --- Implement DeleteComment ---
+func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest) (*pb.DeleteCommentResponse, error) {
+	var comment Comment
+	
+	// Find the comment first
+	if err := s.db.First(&comment, req.CommentId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Comment not found")
+	}
+	
+	// PDF Requirement: "Users can delete the replies they have posted"
+	// This means we must check ownership
+	if comment.UserID != req.UserId {
+		// TODO: Also allow post author to delete comments
+		return nil, status.Error(codes.PermissionDenied, "You do not have permission to delete this comment")
+	}
+
+	if result := s.db.Delete(&comment); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to delete comment")
+	}
+	
+	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
 }

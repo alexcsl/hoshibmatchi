@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"time"
+    "strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -31,6 +32,12 @@ type Story struct {
 	AuthorProfileURL string
 }
 
+type StoryLike struct {
+	UserID int64 `gorm:"primaryKey"`
+	StoryID int64 `gorm:"primaryKey"`
+	CreatedAt time.Time
+}
+
 // server struct holds its DB and the user-service client
 type server struct {
 	pb.UnimplementedStoryServiceServer
@@ -46,6 +53,7 @@ func main() {
 		log.Fatalf("Failed to connect to story-db: %v", err)
 	}
 	db.AutoMigrate(&Story{})
+    db.AutoMigrate(&StoryLike{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -108,4 +116,33 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 			CreatedAt:        newStory.CreatedAt.Format(time.RFC3339),
 		},
 	}, nil
+}
+
+func (s *server) LikeStory(ctx context.Context, req *pb.LikeStoryRequest) (*pb.LikeStoryResponse, error) {
+	like := StoryLike{
+		UserID:  req.UserId,
+		StoryID: req.StoryId,
+	}
+	if result := s.db.Create(&like); result.Error != nil {
+		if strings.Contains(result.Error.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "Story already liked")
+		}
+		return nil, status.Error(codes.Internal, "Failed to like story")
+	}
+	// TODO: Send "story.liked" event to RabbitMQ
+	return &pb.LikeStoryResponse{Message: "Story liked"}, nil
+}
+
+// --- Implement UnlikeStory ---
+func (s *server) UnlikeStory(ctx context.Context, req *pb.UnlikeStoryRequest) (*pb.UnlikeStoryResponse, error) {
+	like := StoryLike{
+		UserID:  req.UserId,
+		StoryID: req.StoryId,
+	}
+	if result := s.db.Delete(&like); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to unlike story")
+	} else if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "Story was not liked")
+	}
+	return &pb.UnlikeStoryResponse{Message: "Story unliked"}, nil
 }

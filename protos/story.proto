@@ -9,6 +9,9 @@ import "user.proto";
 
 service StoryService {
   rpc CreateStory (CreateStoryRequest) returns (CreateStoryResponse);
+
+  rpc LikeStory (LikeStoryRequest) returns (LikeStoryResponse);
+  rpc UnlikeStory (UnlikeStoryRequest) returns (UnlikeStoryResponse);
 }
 
 // Data from the API Gateway
@@ -32,4 +35,19 @@ message Story {
 
 message CreateStoryResponse {
   Story story = 1;
+}
+
+message LikeStoryRequest {
+  int64 user_id = 1; // From JWT
+  int64 story_id = 2; // From URL
+}
+message LikeStoryResponse {
+  string message = 1; // "Story liked"
+}
+message UnlikeStoryRequest {
+  int64 user_id = 1; // From JWT
+  int64 story_id = 2; // From URL
+}
+message UnlikeStoryResponse {
+  string message = 1; // "Story unliked"
 }

@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	StoryService_CreateStory_FullMethodName = "/story.StoryService/CreateStory"
+	StoryService_LikeStory_FullMethodName   = "/story.StoryService/LikeStory"
+	StoryService_UnlikeStory_FullMethodName = "/story.StoryService/UnlikeStory"
 )
 
 // StoryServiceClient is the client API for StoryService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StoryServiceClient interface {
 	CreateStory(ctx context.Context, in *CreateStoryRequest, opts ...grpc.CallOption) (*CreateStoryResponse, error)
+	LikeStory(ctx context.Context, in *LikeStoryRequest, opts ...grpc.CallOption) (*LikeStoryResponse, error)
+	UnlikeStory(ctx context.Context, in *UnlikeStoryRequest, opts ...grpc.CallOption) (*UnlikeStoryResponse, error)
 }
 
 type storyServiceClient struct {
@@ -47,11 +51,33 @@ func (c *storyServiceClient) CreateStory(ctx context.Context, in *CreateStoryReq
 	return out, nil
 }
 
+func (c *storyServiceClient) LikeStory(ctx context.Context, in *LikeStoryRequest, opts ...grpc.CallOption) (*LikeStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeStoryResponse)
+	err := c.cc.Invoke(ctx, StoryService_LikeStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storyServiceClient) UnlikeStory(ctx context.Context, in *UnlikeStoryRequest, opts ...grpc.CallOption) (*UnlikeStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlikeStoryResponse)
+	err := c.cc.Invoke(ctx, StoryService_UnlikeStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoryServiceServer is the server API for StoryService service.
 // All implementations must embed UnimplementedStoryServiceServer
 // for forward compatibility.
 type StoryServiceServer interface {
 	CreateStory(context.Context, *CreateStoryRequest) (*CreateStoryResponse, error)
+	LikeStory(context.Context, *LikeStoryRequest) (*LikeStoryResponse, error)
+	UnlikeStory(context.Context, *UnlikeStoryRequest) (*UnlikeStoryResponse, error)
 	mustEmbedUnimplementedStoryServiceServer()
 }
 
@@ -64,6 +90,12 @@ type UnimplementedStoryServiceServer struct{}
 
 func (UnimplementedStoryServiceServer) CreateStory(context.Context, *CreateStoryRequest) (*CreateStoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateStory not implemented")
+}
+func (UnimplementedStoryServiceServer) LikeStory(context.Context, *LikeStoryRequest) (*LikeStoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LikeStory not implemented")
+}
+func (UnimplementedStoryServiceServer) UnlikeStory(context.Context, *UnlikeStoryRequest) (*UnlikeStoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnlikeStory not implemented")
 }
 func (UnimplementedStoryServiceServer) mustEmbedUnimplementedStoryServiceServer() {}
 func (UnimplementedStoryServiceServer) testEmbeddedByValue()                      {}
@@ -104,6 +136,42 @@ func _StoryService_CreateStory_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoryService_LikeStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoryServiceServer).LikeStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoryService_LikeStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoryServiceServer).LikeStory(ctx, req.(*LikeStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StoryService_UnlikeStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoryServiceServer).UnlikeStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoryService_UnlikeStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoryServiceServer).UnlikeStory(ctx, req.(*UnlikeStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoryService_ServiceDesc is the grpc.ServiceDesc for StoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +182,14 @@ var StoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateStory",
 			Handler:    _StoryService_CreateStory_Handler,
+		},
+		{
+			MethodName: "LikeStory",
+			Handler:    _StoryService_LikeStory_Handler,
+		},
+		{
+			MethodName: "UnlikeStory",
+			Handler:    _StoryService_UnlikeStory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
