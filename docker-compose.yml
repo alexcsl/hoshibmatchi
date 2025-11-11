@@ -206,6 +206,8 @@ services:
         condition: service_healthy
       redis: # Added for Redis connection in main.go
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks: [hoshi-net]
 
   post-service:

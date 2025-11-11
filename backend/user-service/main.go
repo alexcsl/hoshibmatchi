@@ -12,6 +12,7 @@ import (
 	"math/rand"
 
 	"encoding/hex"
+	"encoding/json"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,6 +26,7 @@ import (
 	"github.com/go-redis/redis/v8"
 
 	pb "github.com/hoshibmatchi/user-service/proto"
+	amqp "github.com/rabbitmq/amqp091-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -50,6 +52,7 @@ type server struct {
 	pb.UnimplementedUserServiceServer
 	db  *gorm.DB
 	rdb *redis.Client // Redis client
+	amqpCh *amqp.Channel
 }
 
 // Not secure
@@ -65,10 +68,6 @@ func generateOtp() string {
 
 func main() {
 	// --- Step 1: Connect to PostgreSQL ---
-	//
-	// THIS IS THE FIXED LINE (Line 51):
-	// It now correctly declares the 'dsn' variable and uses 'UTC'.
-	//
 	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=UTC"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -90,14 +89,54 @@ func main() {
 	}
 	log.Println("Successfully connected to Redis.")
 
-	// --- Step 3: Set up and start the gRPC server ---
+	// --- Step 3: Connect to RabbitMQ (with retries) ---
+	var amqpConn *amqp.Connection
+	maxRetries := 10
+	retryDelay := 2 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		if err == nil {
+			log.Println("Successfully connected to RabbitMQ")
+			break
+		}
+		log.Printf("Failed to connect to RabbitMQ: %v", err)
+		log.Printf("Retrying in %v... (%d/%d)", retryDelay, i+1, maxRetries)
+		time.Sleep(retryDelay)
+	}
+	if amqpConn == nil {
+		log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries)
+	}
+	defer amqpConn.Close()
+
+	amqpCh, err := amqpConn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
+	}
+	defer amqpCh.Close()
+
+	_, err = amqpCh.QueueDeclare(
+		"email_queue", // queue name
+		true,          // durable
+		false,         // delete when unused
+		false,         // exclusive
+		false,         // no-wait
+		nil,           // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare email_queue: %v", err)
+	}
+	log.Println("RabbitMQ email_queue declared")
+
+
+	// --- Step 4: Set up and start the gRPC server ---
 	lis, err := net.Listen("tcp", ":9000")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9000: %v", err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterUserServiceServer(s, &server{db: db, rdb: rdb})
+	pb.RegisterUserServiceServer(s, &server{db: db, rdb: rdb, amqpCh: amqpCh})
 
 	log.Println("User gRPC server is listening on port 9000...")
 	if err := s.Serve(lis); err != nil {
@@ -302,11 +341,16 @@ func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest
 		log.Printf("Failed to set rate limit key for %s", req.Email)
 	}
 
-	// --- SIMULATE SENDING EMAIL ---
-	// Later, this will be a RabbitMQ message
-	log.Printf("***********************************")
-	log.Printf("OTP for %s: %s", req.Email, otpCode)
-	log.Printf("***********************************")
+	// --- Step 6: Publish to RabbitMQ for email-service ---
+	emailBody, _ := json.Marshal(map[string]string{
+		"to":      req.Email,
+		"type":    "registration_otp",
+		"otpCode": otpCode,
+	})
+	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
+		log.Printf("Failed to publish OTP email to queue: %v", err)
+		// Don't fail the request, just log it
+	}
 
 	return &pb.SendOtpResponse{
 		Message:          "OTP sent successfully. Please check your email (and the console).",
@@ -371,6 +415,21 @@ func generateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
+func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
+	return s.amqpCh.PublishWithContext(
+		ctx,
+		"",          // exchange (default)
+		queueName,   // routing key (queue name)
+		false,       // mandatory
+		false,       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent, // Make message durable
+			Body:         body,
+		},
+	)
+}
+
 // --- ADD GPRC FUNCTION 1: SendPasswordReset ---
 func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordResetRequest) (*pb.SendPasswordResetResponse, error) {
 	var user User
@@ -397,10 +456,16 @@ func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordRese
 		return nil, status.Error(codes.Internal, "Failed to store reset token")
 	}
 	
-	// --- SIMULATE SENDING RESET EMAIL ---
-	log.Printf("***********************************")
-	log.Printf("Password Reset Token for %s: %s", req.Email, token)
-	log.Printf("***********************************")
+	// --- Step 4: Publish to RabbitMQ for email-service ---
+	emailBody, _ := json.Marshal(map[string]string{
+		"to":    req.Email,
+		"type":  "password_reset",
+		"token": token,
+	})
+	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
+		log.Printf("Failed to publish reset email to queue: %v", err)
+		// Don't fail the request, just log it
+	}
 	
 	return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
 }

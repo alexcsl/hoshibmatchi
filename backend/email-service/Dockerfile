@@ -5,8 +5,7 @@ WORKDIR /app/backend/email-service
 # 1. Copy this service's mod files
 COPY backend/email-service/go.mod backend/email-service/go.sum ./
 
-# 2. Copy mod files for dependencies
-COPY backend/user-service/go.mod backend/user-service/go.sum ../user-service/
+# 2. (No local dependencies)
 
 # 3. Download dependencies
 RUN go mod download
@@ -21,5 +20,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/main .
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/main .
-EXPOSE 9006
+
+# This is a gRPC service, but it's a *worker*, not a server.
+# It doesn't need to EXPOSE any port.
+# We remove the EXPOSE line.
+
 CMD ["/app/main"]

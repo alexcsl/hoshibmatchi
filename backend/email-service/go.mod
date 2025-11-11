@@ -1,3 +1,5 @@
 module github.com/hoshibmatchi/email-service
 
-go 1.25.3
+go 1.25
+
+require github.com/rabbitmq/amqp091-go v1.10.0
