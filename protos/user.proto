@@ -20,6 +20,9 @@ service UserService {
 
   // From Post Service integration
   rpc GetUserData (GetUserDataRequest) returns (GetUserDataResponse);
+
+  rpc FollowUser (FollowUserRequest) returns (FollowUserResponse);
+  rpc UnfollowUser (UnfollowUserRequest) returns (UnfollowUserResponse);
 }
 
 // --- Register ---
@@ -103,4 +106,23 @@ message GetUserDataResponse {
   string username = 1;
   string profile_picture_url = 2;
   bool is_verified = 3;
+}
+
+// --- Follow / Unfollow User ---
+message FollowUserRequest {
+  int64 follower_id = 1; // The user initiating the follow (from JWT)
+  int64 following_id = 2; // The user to be followed (from URL)
+}
+
+message FollowUserResponse {
+  string message = 1; // "Successfully followed user"
+}
+
+message UnfollowUserRequest {
+  int64 follower_id = 1; // The user initiating the unfollow
+  int64 following_id = 2; // The user to be unfollowed
+}
+
+message UnfollowUserResponse {
+  string message = 1; // "Successfully unfollowed user"
 }

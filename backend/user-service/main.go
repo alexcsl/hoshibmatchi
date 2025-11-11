@@ -47,6 +47,14 @@ type User struct {
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
 }
 
+// Follow defines the relationship between two users
+type Follow struct {
+	// Composite primary key (follower_id, following_id)
+	FollowerID  int64 `gorm:"primaryKey"` // The user doing the following
+	FollowingID int64 `gorm:"primaryKey"` // The user being followed
+	CreatedAt   time.Time
+}
+
 // server struct holds our database and cache connections
 type server struct {
 	pb.UnimplementedUserServiceServer
@@ -76,6 +84,7 @@ func main() {
 
 	log.Println("Running database migrations...")
 	db.AutoMigrate(&User{})
+	db.AutoMigrate(&Follow{})
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -532,6 +541,56 @@ func (s *server) GetUserData(ctx context.Context, req *pb.GetUserDataRequest) (*
 	}, nil
 }
 
+// --- GPRC: FollowUser ---
+func (s *server) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb.FollowUserResponse, error) {
+	// 1. Prevent user from following themselves
+	if req.FollowerId == req.FollowingId {
+		return nil, status.Error(codes.InvalidArgument, "You cannot follow yourself")
+	}
+
+	// 2. Check if the user to be followed exists
+	var userToFollow User
+	if err := s.db.First(&userToFollow, req.FollowingId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "The user you are trying to follow does not exist")
+	}
+
+	// 3. Create the follow relationship
+	follow := Follow{
+		FollowerID:  req.FollowerId,
+		FollowingID: req.FollowingId,
+	}
+
+	if result := s.db.Create(&follow); result.Error != nil {
+		if strings.Contains(result.Error.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "You are already following this user")
+		}
+		return nil, status.Error(codes.Internal, "Failed to follow user")
+	}
+
+	// TODO: Send "user.followed" event to RabbitMQ for notification
+	log.Printf("User %d is now following User %d", req.FollowerId, req.FollowingId)
+	
+	return &pb.FollowUserResponse{Message: "Successfully followed user"}, nil
+}
+
+// --- GPRC: UnfollowUser ---
+func (s *server) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) (*pb.UnfollowUserResponse, error) {
+	follow := Follow{
+		FollowerID:  req.FollowerId,
+		FollowingID: req.FollowingId,
+	}
+
+	if result := s.db.Delete(&follow); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to unfollow user")
+	} else if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "You are not following this user")
+	}
+
+	log.Printf("User %d has unfollowed User %d", req.FollowerId, req.FollowingId)
+
+	return &pb.UnfollowUserResponse{Message: "Successfully unfollowed user"}, nil
+}
+
 // Helper function for age validation
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()
@@ -541,3 +600,5 @@ func isAgeValid(birthDate time.Time, minAge int) bool {
 	}
 	return age >= minAge
 }
+
+
