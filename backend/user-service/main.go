@@ -40,6 +40,7 @@ type User struct {
 	ProfilePictureURL string    `gorm:"type:varchar(255)"`
 	DateOfBirth       time.Time `gorm:"not null"`
 	Gender            string    `gorm:"type:varchar(10);not null"`
+	Bio               string    `gorm:"type:varchar(255)"`
 
 	IsActive     bool `gorm:"default:true"`  // For account deactivation
 	IsBanned     bool `gorm:"default:false"` // For admin to ban users
@@ -624,4 +625,50 @@ func isAgeValid(birthDate time.Time, minAge int) bool {
 	return age >= minAge
 }
 
+// --- GPRC: GetUserProfile ---
+func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileRequest) (*pb.GetUserProfileResponse, error) {
+	var user User
+	
+	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "User not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Database error")
+	}
+
+	var followerCount int64
+	var followingCount int64
+	var mutualFollowerCount int64
+	var isFollowedBySelf bool
+
+	// 2. Get follower count
+	s.db.Model(&Follow{}).Where("following_id = ?", user.ID).Count(&followerCount)
+
+	// 3. Get following count
+	s.db.Model(&Follow{}).Where("follower_id = ?", user.ID).Count(&followingCount)
+
+	// 4. Check if the requestor is following this user
+	// --- THIS IS THE FIX ---
+	if req.SelfUserId != int64(user.ID) { // Cast user.ID to int64
+		var followCheck int64
+		// And cast here as well
+		s.db.Model(&Follow{}).Where("follower_id = ? AND following_id = ?", req.SelfUserId, int64(user.ID)).Count(&followCheck)
+		isFollowedBySelf = (followCheck > 0)
+	}
+	// --- END FIX ---
+	
+	mutualFollowerCount = 0 
+
+	return &pb.GetUserProfileResponse{
+		UserId:                int64(user.ID), // Also cast here
+		Name:                  user.Name,
+		Username:              user.Username,
+		Bio:                   user.Bio,
+		ProfilePictureUrl:     user.ProfilePictureURL,
+		IsVerified:            false, 
+		FollowerCount:         followerCount,
+		FollowingCount:        followingCount,
+		IsFollowedBySelf:      isFollowedBySelf,
+		MutualFollowerCount:   mutualFollowerCount,
+	}, nil
+}
 

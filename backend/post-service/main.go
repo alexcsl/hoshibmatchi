@@ -339,3 +339,82 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
+
+// --- Implement GetUserPosts ---
+func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
+	var posts []Post
+	
+	// Query for posts by author_id, filtering OUT reels
+	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, false).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
+		})
+	}
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- Implement GetUserReels ---
+func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
+	var posts []Post
+	
+	// Query for posts by author_id, filtering FOR reels
+	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, true).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve reels")
+	}
+
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
+		})
+	}
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- Implement GetUserContentCount ---
+func (s *server) GetUserContentCount(ctx context.Context, req *pb.GetUserContentCountRequest) (*pb.GetUserContentCountResponse, error) {
+	var postCount int64
+	var reelCount int64
+
+	// 1. Get count of regular posts
+	s.db.Model(&Post{}).
+		Where("author_id = ? AND is_reel = ?", req.UserId, false).
+		Count(&postCount)
+
+	// 2. Get count of reels
+	s.db.Model(&Post{}).
+		Where("author_id = ? AND is_reel = ?", req.UserId, true).
+		Count(&reelCount)
+
+	return &pb.GetUserContentCountResponse{
+		PostCount: postCount,
+		ReelCount: reelCount,
+	}, nil
+}

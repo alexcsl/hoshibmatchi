@@ -19,14 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName     = "/post.PostService/CreatePost"
-	PostService_LikePost_FullMethodName       = "/post.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName     = "/post.PostService/UnlikePost"
-	PostService_CommentOnPost_FullMethodName  = "/post.PostService/CommentOnPost"
-	PostService_DeleteComment_FullMethodName  = "/post.PostService/DeleteComment"
-	PostService_GetHomeFeed_FullMethodName    = "/post.PostService/GetHomeFeed"
-	PostService_GetExploreFeed_FullMethodName = "/post.PostService/GetExploreFeed"
-	PostService_GetReelsFeed_FullMethodName   = "/post.PostService/GetReelsFeed"
+	PostService_CreatePost_FullMethodName          = "/post.PostService/CreatePost"
+	PostService_LikePost_FullMethodName            = "/post.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName          = "/post.PostService/UnlikePost"
+	PostService_CommentOnPost_FullMethodName       = "/post.PostService/CommentOnPost"
+	PostService_DeleteComment_FullMethodName       = "/post.PostService/DeleteComment"
+	PostService_GetHomeFeed_FullMethodName         = "/post.PostService/GetHomeFeed"
+	PostService_GetExploreFeed_FullMethodName      = "/post.PostService/GetExploreFeed"
+	PostService_GetReelsFeed_FullMethodName        = "/post.PostService/GetReelsFeed"
+	PostService_GetUserPosts_FullMethodName        = "/post.PostService/GetUserPosts"
+	PostService_GetUserReels_FullMethodName        = "/post.PostService/GetUserReels"
+	PostService_GetUserContentCount_FullMethodName = "/post.PostService/GetUserContentCount"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -41,6 +44,9 @@ type PostServiceClient interface {
 	GetHomeFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetExploreFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetReelsFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetUserPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetUserReels(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetUserContentCount(ctx context.Context, in *GetUserContentCountRequest, opts ...grpc.CallOption) (*GetUserContentCountResponse, error)
 }
 
 type postServiceClient struct {
@@ -131,6 +137,36 @@ func (c *postServiceClient) GetReelsFeed(ctx context.Context, in *GetHomeFeedReq
 	return out, nil
 }
 
+func (c *postServiceClient) GetUserPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetUserReels(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserReels_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetUserContentCount(ctx context.Context, in *GetUserContentCountRequest, opts ...grpc.CallOption) (*GetUserContentCountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserContentCountResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserContentCount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -143,6 +179,9 @@ type PostServiceServer interface {
 	GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	GetExploreFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	GetReelsFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
+	GetUserPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
+	GetUserReels(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
+	GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -176,6 +215,15 @@ func (UnimplementedPostServiceServer) GetExploreFeed(context.Context, *GetHomeFe
 }
 func (UnimplementedPostServiceServer) GetReelsFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetReelsFeed not implemented")
+}
+func (UnimplementedPostServiceServer) GetUserPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserPosts not implemented")
+}
+func (UnimplementedPostServiceServer) GetUserReels(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserReels not implemented")
+}
+func (UnimplementedPostServiceServer) GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserContentCount not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -342,6 +390,60 @@ func _PostService_GetReelsFeed_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetUserPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserPosts(ctx, req.(*GetUserContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetUserReels_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserReels(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserReels_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserReels(ctx, req.(*GetUserContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetUserContentCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserContentCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserContentCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserContentCount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserContentCount(ctx, req.(*GetUserContentCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -380,6 +482,18 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetReelsFeed",
 			Handler:    _PostService_GetReelsFeed_Handler,
+		},
+		{
+			MethodName: "GetUserPosts",
+			Handler:    _PostService_GetUserPosts_Handler,
+		},
+		{
+			MethodName: "GetUserReels",
+			Handler:    _PostService_GetUserReels_Handler,
+		},
+		{
+			MethodName: "GetUserContentCount",
+			Handler:    _PostService_GetUserContentCount_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

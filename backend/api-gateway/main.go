@@ -98,6 +98,11 @@ func main() {
 		
 		// Media
 		protected.GET("/media/upload-url", handleGetUploadURL_Gin)
+
+		// Profile
+		protected.GET("/users/:username", handleGetUserProfile_Gin)
+		protected.GET("/users/:username/posts", handleGetUserPosts_Gin)
+		protected.GET("/users/:username/reels", handleGetUserReels_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -753,6 +758,119 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		log.Printf("gRPC call to GetReelsFeed failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetUserProfile ---
+// This is a complex aggregator handler
+func handleGetUserProfile_Gin(c *gin.Context) {
+	selfUserID := c.MustGet("userID").(int64) // Get ID of user making the request
+	usernameToFind := c.Param("username")    // Get username from URL
+
+	// --- 1. Get Profile Data from User-Service ---
+	userReq := &pb.GetUserProfileRequest{
+		Username:   usernameToFind,
+		SelfUserId: selfUserID,
+	}
+	userRes, err := client.GetUserProfile(c.Request.Context(), userReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	// --- 2. Get Post/Reel Counts from Post-Service (THIS IS THE FIX) ---
+	countReq := &postPb.GetUserContentCountRequest{UserId: userRes.UserId}
+	countRes, err := postClient.GetUserContentCount(c.Request.Context(), countReq)
+	if err != nil {
+		// Don't fail the whole request if this fails, just log it
+		log.Printf("Failed to get post counts: %v", err)
+	}
+
+	// --- 3. Aggregate the response ---
+	type ProfileResponse struct {
+		User          *pb.GetUserProfileResponse `json:"user"`
+		PostCount     int64                      `json:"post_count"`
+		ReelCount     int64                      `json:"reel_count"`
+	}
+
+	var postCount int64 = 0
+	var reelCount int64 = 0
+	if countRes != nil {
+		postCount = countRes.PostCount
+		reelCount = countRes.ReelCount
+	}
+
+	res := ProfileResponse{
+		User:      userRes,
+		PostCount: postCount,
+		ReelCount: reelCount,
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetUserPosts ---
+func handleGetUserPosts_Gin(c *gin.Context) {
+	usernameToFind := c.Param("username")
+	
+	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
+	offset := (page - 1) * limit
+
+	// --- THIS IS THE FIX ---
+	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
+		UserId:      userRes.UserId,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
+	}
+	// --- END FIX ---
+
+	grpcRes, err := postClient.GetUserPosts(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetUserReels ---
+func handleGetUserReels_Gin(c *gin.Context) {
+	usernameToFind := c.Param("username")
+	
+	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
+	offset := (page - 1) * limit
+
+	// --- THIS IS THE FIX ---
+	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
+		UserId:      userRes.UserId,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
+	}
+	// --- END FIX ---
+
+	grpcRes, err := postClient.GetUserReels(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}

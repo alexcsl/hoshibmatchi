@@ -18,6 +18,9 @@ service PostService {
   rpc GetHomeFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
   rpc GetExploreFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
   rpc GetReelsFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
+  rpc GetUserPosts (GetUserContentRequest) returns (GetHomeFeedResponse);
+  rpc GetUserReels (GetUserContentRequest) returns (GetHomeFeedResponse);
+  rpc GetUserContentCount (GetUserContentCountRequest) returns (GetUserContentCountResponse);
 }
 
 // Data from the API Gateway
@@ -102,4 +105,20 @@ message GetHomeFeedRequest {
 // We can re-use the Post message we already defined
 message GetHomeFeedResponse {
   repeated Post posts = 1;
+}
+
+// --- Get User's Posts/Reels ---
+message GetUserContentRequest {
+  int64 user_id = 1;
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+message GetUserContentCountRequest {
+  int64 user_id = 1;
+}
+
+message GetUserContentCountResponse {
+  int64 post_count = 1;
+  int64 reel_count = 2;
 }
