@@ -70,26 +70,34 @@ func main() {
 	protected := router.Group("/")
 	protected.Use(GinAuthMiddleware())
 	{
-		// These handlers ALSO don't need URL params, gin.WrapF is fine.
-		protected.POST("/posts", gin.WrapF(handleCreatePost))
-		protected.POST("/stories", gin.WrapF(handleCreateStory))
-		protected.POST("/comments", gin.WrapF(handleCreateComment))
-		protected.GET("/media/upload-url", gin.WrapF(handleGetUploadURL))
-
 		// --- THIS IS THE FIX ---
-		// These routes NEED URL params, so they get native Gin handlers.
-		protected.POST("/users/:id/follow", handleFollowUser_Gin)
-		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
+		// We are now calling the Gin-native handlers directly
 
+		// Feeds
+		protected.GET("/feed/home", handleGetHomeFeed_Gin)
+		protected.GET("/feed/explore", handleGetExploreFeed_Gin)
+		protected.GET("/feed/reels", handleGetReelsFeed_Gin)
+
+		// Posts
+		protected.POST("/posts", handleCreatePost_Gin)
 		protected.POST("/posts/:id/like", handlePostLike_Gin)
 		protected.DELETE("/posts/:id/like", handlePostLike_Gin)
-
+		
+		// Stories
+		protected.POST("/stories", handleCreateStory_Gin)
 		protected.POST("/stories/:id/like", handleStoryLike_Gin)
 		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
 
+		// Comments
+		protected.POST("/comments", handleCreateComment_Gin)
 		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
 
-		protected.GET("/feed/home", handleGetHomeFeed_Gin)
+		// Users
+		protected.POST("/users/:id/follow", handleFollowUser_Gin)
+		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
+		
+		// Media
+		protected.GET("/media/upload-url", handleGetUploadURL_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -424,22 +432,19 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- HANDLER 3: handleCreatePost ---
-func handleCreatePost(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := r.Context().Value(userIDKey).(int64)
+// --- GIN-NATIVE HANDLER: handleCreatePost ---
+func handleCreatePost_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
 
 	var req struct {
 		Caption          string   `json:"caption"`
 		MediaURLs        []string `json:"media_urls"`
 		CommentsDisabled bool     `json:"comments_disabled"`
+		IsReel           bool     `json:"is_reel"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	// Use ShouldBindJSON for Gin
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -448,33 +453,28 @@ func handleCreatePost(w http.ResponseWriter, r *http.Request) {
 		Caption:          req.Caption,
 		MediaUrls:        req.MediaURLs,
 		CommentsDisabled: req.CommentsDisabled,
+		IsReel:           req.IsReel,
 	}
 
-	grpcRes, err := postClient.CreatePost(r.Context(), grpcReq)
+	grpcRes, err := postClient.CreatePost(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
-		log.Printf("gRPC call to post-service failed (%s): %v", grpcErr.Code(), grpcErr.Message())
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		log.Printf("gRPC call to CreatePost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(grpcRes.Post)
+	c.JSON(http.StatusCreated, grpcRes.Post)
 }
 
-func handleCreateStory(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := r.Context().Value(userIDKey).(int64)
+// --- GIN-NATIVE HANDLER: handleCreateStory ---
+func handleCreateStory_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
 
 	var req struct {
 		MediaURL string `json:"media_url"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -483,38 +483,30 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 		MediaUrl: req.MediaURL,
 	}
 
-	grpcRes, err := storyClient.CreateStory(r.Context(), grpcReq)
+	grpcRes, err := storyClient.CreateStory(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		log.Printf("gRPC call to story-service failed (%s): %v", grpcErr.Code(), grpcErr.Message())
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(grpcRes.Story)
+	c.JSON(http.StatusCreated, grpcRes.Story)
 }
 
-// --- HANDLER: handleCreateComment ---
-func handleCreateComment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	
-	userID := r.Context().Value(userIDKey).(int64)
+// --- GIN-NATIVE HANDLER: handleCreateComment ---
+func handleCreateComment_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
 
 	var req struct {
 		PostID          int64  `json:"post_id"`
 		Content         string `json:"content"`
 		ParentCommentID int64  `json:"parent_comment_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// FIX: Was pb.CommentOnPostRequest, now postPb.CommentOnPostRequest
 	grpcReq := &postPb.CommentOnPostRequest{
 		UserId:          userID,
 		PostId:          req.PostID,
@@ -522,15 +514,13 @@ func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 		ParentCommentId: req.ParentCommentID,
 	}
 	
-	grpcRes, err := postClient.CommentOnPost(r.Context(), grpcReq)
+	grpcRes, err := postClient.CommentOnPost(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(grpcRes)
+	c.JSON(http.StatusCreated, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLERS (FOR URL PARAMS) ---
@@ -658,20 +648,16 @@ func handleDeleteComment_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-func handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := r.Context().Value(userIDKey).(int64) // Get from JWT
-
+// --- GIN-NATIVE HANDLER: handleGetUploadURL ---
+func handleGetUploadURL_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	
 	// Get query params, e.g., /media/upload-url?filename=foo.jpg&type=image/jpeg
-	filename := r.URL.Query().Get("filename")
-	contentType := r.URL.Query().Get("type")
+	filename := c.Query("filename")
+	contentType := c.Query("type")
 
 	if filename == "" || contentType == "" {
-		http.Error(w, "Missing 'filename' or 'type' query parameters", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'filename' or 'type' query parameters"})
 		return
 	}
 
@@ -681,15 +667,13 @@ func handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
 		UserId:      userID,
 	}
 
-	grpcRes, err := mediaClient.GetUploadURL(r.Context(), grpcReq)
+	grpcRes, err := mediaClient.GetUploadURL(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(grpcRes)
+	c.JSON(http.StatusOK, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
@@ -720,5 +704,57 @@ func handleGetHomeFeed_Gin(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetExploreFeed ---
+func handleGetExploreFeed_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64) // We still need this for context, even if not used in query
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 { page = 1 }
+	if limit < 1 || limit > 100 { limit = 20 }
+	offset := (page - 1) * limit
+
+	grpcReq := &postPb.GetHomeFeedRequest{
+		UserId:      userID,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
+	}
+
+	grpcRes, err := postClient.GetExploreFeed(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetExploreFeed failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetReelsFeed ---
+func handleGetReelsFeed_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 { page = 1 }
+	if limit < 1 || limit > 100 { limit = 20 }
+	offset := (page - 1) * limit
+
+	grpcReq := &postPb.GetHomeFeedRequest{
+		UserId:      userID,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
+	}
+
+	grpcRes, err := postClient.GetReelsFeed(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetReelsFeed failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes.Posts)
 }

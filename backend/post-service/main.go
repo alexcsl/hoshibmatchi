@@ -31,6 +31,7 @@ type Post struct {
 	AuthorUsername   string
 	AuthorProfileURL string
 	AuthorIsVerified bool
+	IsReel           bool `gorm:"default:false"`
 }
 
 // PostLike defines the GORM model for a like on a post
@@ -70,7 +71,6 @@ func main() {
 		log.Fatalf("Failed to connect to post-db: %v", err)
 	}
 	db.AutoMigrate(&Post{})
-
 	db.AutoMigrate(&PostLike{})
 	db.AutoMigrate(&Comment{})
 
@@ -118,6 +118,7 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 		AuthorIsVerified: userData.IsVerified,
+		IsReel:           req.IsReel,
 	}
 
 	if result := s.db.Create(&newPost); result.Error != nil {
@@ -134,6 +135,7 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 			AuthorIsVerified:   newPost.AuthorIsVerified,
 			MediaUrls:          newPost.MediaURLs,
 			CreatedAt:          newPost.CreatedAt.Format(time.RFC3339),
+			IsReel:             newPost.IsReel,
 		},
 	}, nil
 }
@@ -267,6 +269,71 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 			AuthorIsVerified:   post.AuthorIsVerified,
 			MediaUrls:          post.MediaURLs,
 			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- Implement GetExploreFeed ---
+func (s *server) GetExploreFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
+	log.Println("GetExploreFeed request received")
+
+	var posts []Post
+	// This feed gets ALL posts (not just from followed users)
+	// and filters out Reels
+	if err := s.db.Where("is_reel = ?", false).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	// Convert GORM models to gRPC responses
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
+		})
+	}
+
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- Implement GetReelsFeed ---
+func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
+	log.Println("GetReelsFeed request received")
+
+	var posts []Post
+	// This feed gets ONLY posts that are Reels
+	if err := s.db.Where("is_reel = ?", true).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	// Convert GORM models to gRPC responses
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
 		})
 	}
 

@@ -16,6 +16,8 @@ service PostService {
   rpc CommentOnPost (CommentOnPostRequest) returns (CommentResponse);
   rpc DeleteComment (DeleteCommentRequest) returns (DeleteCommentResponse);
   rpc GetHomeFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
+  rpc GetExploreFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
+  rpc GetReelsFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
 }
 
 // Data from the API Gateway
@@ -24,6 +26,7 @@ message CreatePostRequest {
   string caption = 2;
   repeated string media_urls = 3;
   bool comments_disabled = 4;
+  bool is_reel = 5;
 }
 
 // The created Post
@@ -38,6 +41,8 @@ message Post {
   
   repeated string media_urls = 6;
   string created_at = 7;
+
+  bool is_reel = 8;
 }
 
 message CreatePostResponse {

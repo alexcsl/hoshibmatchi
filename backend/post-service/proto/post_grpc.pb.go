@@ -19,12 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName    = "/post.PostService/CreatePost"
-	PostService_LikePost_FullMethodName      = "/post.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName    = "/post.PostService/UnlikePost"
-	PostService_CommentOnPost_FullMethodName = "/post.PostService/CommentOnPost"
-	PostService_DeleteComment_FullMethodName = "/post.PostService/DeleteComment"
-	PostService_GetHomeFeed_FullMethodName   = "/post.PostService/GetHomeFeed"
+	PostService_CreatePost_FullMethodName     = "/post.PostService/CreatePost"
+	PostService_LikePost_FullMethodName       = "/post.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName     = "/post.PostService/UnlikePost"
+	PostService_CommentOnPost_FullMethodName  = "/post.PostService/CommentOnPost"
+	PostService_DeleteComment_FullMethodName  = "/post.PostService/DeleteComment"
+	PostService_GetHomeFeed_FullMethodName    = "/post.PostService/GetHomeFeed"
+	PostService_GetExploreFeed_FullMethodName = "/post.PostService/GetExploreFeed"
+	PostService_GetReelsFeed_FullMethodName   = "/post.PostService/GetReelsFeed"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -37,6 +39,8 @@ type PostServiceClient interface {
 	CommentOnPost(ctx context.Context, in *CommentOnPostRequest, opts ...grpc.CallOption) (*CommentResponse, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*DeleteCommentResponse, error)
 	GetHomeFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetExploreFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetReelsFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 }
 
 type postServiceClient struct {
@@ -107,6 +111,26 @@ func (c *postServiceClient) GetHomeFeed(ctx context.Context, in *GetHomeFeedRequ
 	return out, nil
 }
 
+func (c *postServiceClient) GetExploreFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetExploreFeed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetReelsFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetReelsFeed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type PostServiceServer interface {
 	CommentOnPost(context.Context, *CommentOnPostRequest) (*CommentResponse, error)
 	DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error)
 	GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
+	GetExploreFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
+	GetReelsFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedPostServiceServer) DeleteComment(context.Context, *DeleteComm
 }
 func (UnimplementedPostServiceServer) GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHomeFeed not implemented")
+}
+func (UnimplementedPostServiceServer) GetExploreFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetExploreFeed not implemented")
+}
+func (UnimplementedPostServiceServer) GetReelsFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetReelsFeed not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -274,6 +306,42 @@ func _PostService_GetHomeFeed_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetExploreFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHomeFeedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetExploreFeed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetExploreFeed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetExploreFeed(ctx, req.(*GetHomeFeedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetReelsFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHomeFeedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetReelsFeed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetReelsFeed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetReelsFeed(ctx, req.(*GetHomeFeedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +372,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetHomeFeed",
 			Handler:    _PostService_GetHomeFeed_Handler,
+		},
+		{
+			MethodName: "GetExploreFeed",
+			Handler:    _PostService_GetExploreFeed_Handler,
+		},
+		{
+			MethodName: "GetReelsFeed",
+			Handler:    _PostService_GetReelsFeed_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

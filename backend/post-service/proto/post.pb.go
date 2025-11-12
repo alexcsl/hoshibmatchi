@@ -29,6 +29,7 @@ type CreatePostRequest struct {
 	Caption          string                 `protobuf:"bytes,2,opt,name=caption,proto3" json:"caption,omitempty"`
 	MediaUrls        []string               `protobuf:"bytes,3,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`
 	CommentsDisabled bool                   `protobuf:"varint,4,opt,name=comments_disabled,json=commentsDisabled,proto3" json:"comments_disabled,omitempty"`
+	IsReel           bool                   `protobuf:"varint,5,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -91,6 +92,13 @@ func (x *CreatePostRequest) GetCommentsDisabled() bool {
 	return false
 }
 
+func (x *CreatePostRequest) GetIsReel() bool {
+	if x != nil {
+		return x.IsReel
+	}
+	return false
+}
+
 // The created Post
 type Post struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
@@ -102,6 +110,7 @@ type Post struct {
 	AuthorIsVerified bool     `protobuf:"varint,5,opt,name=author_is_verified,json=authorIsVerified,proto3" json:"author_is_verified,omitempty"`
 	MediaUrls        []string `protobuf:"bytes,6,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`
 	CreatedAt        string   `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	IsReel           bool     `protobuf:"varint,8,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -183,6 +192,13 @@ func (x *Post) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *Post) GetIsReel() bool {
+	if x != nil {
+		return x.IsReel
+	}
+	return false
 }
 
 type CreatePostResponse struct {
@@ -793,13 +809,14 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
 	"post.proto\x12\x04post\x1a\n" +
-	"user.proto\"\x96\x01\n" +
+	"user.proto\"\xaf\x01\n" +
 	"\x11CreatePostRequest\x12\x1b\n" +
 	"\tauthor_id\x18\x01 \x01(\x03R\bauthorId\x12\x18\n" +
 	"\acaption\x18\x02 \x01(\tR\acaption\x12\x1d\n" +
 	"\n" +
 	"media_urls\x18\x03 \x03(\tR\tmediaUrls\x12+\n" +
-	"\x11comments_disabled\x18\x04 \x01(\bR\x10commentsDisabled\"\xf3\x01\n" +
+	"\x11comments_disabled\x18\x04 \x01(\bR\x10commentsDisabled\x12\x17\n" +
+	"\ais_reel\x18\x05 \x01(\bR\x06isReel\"\x8c\x02\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acaption\x18\x02 \x01(\tR\acaption\x12'\n" +
@@ -809,7 +826,8 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"media_urls\x18\x06 \x03(\tR\tmediaUrls\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\a \x01(\tR\tcreatedAt\"4\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\ais_reel\x18\b \x01(\bR\x06isReel\"4\n" +
 	"\x12CreatePostResponse\x12\x1e\n" +
 	"\x04post\x18\x01 \x01(\v2\n" +
 	".post.PostR\x04post\"C\n" +
@@ -850,7 +868,7 @@ const file_post_proto_rawDesc = "" +
 	"pageOffset\"7\n" +
 	"\x13GetHomeFeedResponse\x12 \n" +
 	"\x05posts\x18\x01 \x03(\v2\n" +
-	".post.PostR\x05posts2\x9a\x03\n" +
+	".post.PostR\x05posts2\xa6\x04\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -859,7 +877,9 @@ const file_post_proto_rawDesc = "" +
 	"UnlikePost\x12\x15.post.LikePostRequest\x1a\x18.post.UnlikePostResponse\x12B\n" +
 	"\rCommentOnPost\x12\x1a.post.CommentOnPostRequest\x1a\x15.post.CommentResponse\x12H\n" +
 	"\rDeleteComment\x12\x1a.post.DeleteCommentRequest\x1a\x1b.post.DeleteCommentResponse\x12B\n" +
-	"\vGetHomeFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"\vGetHomeFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12E\n" +
+	"\x0eGetExploreFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12C\n" +
+	"\fGetReelsFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -898,14 +918,18 @@ var file_post_proto_depIdxs = []int32{
 	7,  // 5: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
 	9,  // 6: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
 	11, // 7: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
-	2,  // 8: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 9: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 10: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 11: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 12: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 13: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	8,  // [8:14] is the sub-list for method output_type
-	2,  // [2:8] is the sub-list for method input_type
+	11, // 8: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
+	11, // 9: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
+	2,  // 10: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 11: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 12: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 13: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 14: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 15: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	12, // 16: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	12, // 17: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	10, // [10:18] is the sub-list for method output_type
+	2,  // [2:10] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
