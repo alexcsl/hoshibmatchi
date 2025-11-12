@@ -803,6 +803,67 @@ func (x *GetHomeFeedResponse) GetPosts() []*Post {
 	return nil
 }
 
+// --- Get User's Posts/Reels ---
+type GetUserContentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageOffset    int32                  `protobuf:"varint,3,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserContentRequest) Reset() {
+	*x = GetUserContentRequest{}
+	mi := &file_post_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserContentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserContentRequest) ProtoMessage() {}
+
+func (x *GetUserContentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserContentRequest.ProtoReflect.Descriptor instead.
+func (*GetUserContentRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetUserContentRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetUserContentRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetUserContentRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -868,7 +929,12 @@ const file_post_proto_rawDesc = "" +
 	"pageOffset\"7\n" +
 	"\x13GetHomeFeedResponse\x12 \n" +
 	"\x05posts\x18\x01 \x03(\v2\n" +
-	".post.PostR\x05posts2\xa6\x04\n" +
+	".post.PostR\x05posts\"n\n" +
+	"\x15GetUserContentRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x03 \x01(\x05R\n" +
+	"pageOffset2\xb6\x05\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -879,7 +945,9 @@ const file_post_proto_rawDesc = "" +
 	"\rDeleteComment\x12\x1a.post.DeleteCommentRequest\x1a\x1b.post.DeleteCommentResponse\x12B\n" +
 	"\vGetHomeFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12E\n" +
 	"\x0eGetExploreFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12C\n" +
-	"\fGetReelsFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"\fGetReelsFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
+	"\fGetUserPosts\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
+	"\fGetUserReels\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -893,7 +961,7 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),     // 0: post.CreatePostRequest
 	(*Post)(nil),                  // 1: post.Post
@@ -908,6 +976,7 @@ var file_post_proto_goTypes = []any{
 	(*DeleteCommentResponse)(nil), // 10: post.DeleteCommentResponse
 	(*GetHomeFeedRequest)(nil),    // 11: post.GetHomeFeedRequest
 	(*GetHomeFeedResponse)(nil),   // 12: post.GetHomeFeedResponse
+	(*GetUserContentRequest)(nil), // 13: post.GetUserContentRequest
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
@@ -920,16 +989,20 @@ var file_post_proto_depIdxs = []int32{
 	11, // 7: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
 	11, // 8: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
 	11, // 9: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
-	2,  // 10: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 11: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 12: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 13: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 14: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 15: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	12, // 16: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	12, // 17: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	10, // [10:18] is the sub-list for method output_type
-	2,  // [2:10] is the sub-list for method input_type
+	13, // 10: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
+	13, // 11: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
+	2,  // 12: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 13: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 14: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 15: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 16: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 17: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	12, // 18: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	12, // 19: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	12, // 20: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	12, // 21: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	12, // [12:22] is the sub-list for method output_type
+	2,  // [2:12] is the sub-list for method input_type
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -946,7 +1019,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

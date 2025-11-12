@@ -339,3 +339,61 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
+
+// --- Implement GetUserPosts ---
+func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
+	var posts []Post
+	
+	// Query for posts by author_id, filtering OUT reels
+	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, false).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
+		})
+	}
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- Implement GetUserReels ---
+func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
+	var posts []Post
+	
+	// Query for posts by author_id, filtering FOR reels
+	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, true).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve reels")
+	}
+
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			IsReel:             post.IsReel,
+		})
+	}
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}

@@ -25,6 +25,7 @@ service UserService {
   rpc UnfollowUser (UnfollowUserRequest) returns (UnfollowUserResponse);
 
   rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
+  rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
 }
 
 // --- Register ---
@@ -135,4 +136,23 @@ message GetFollowingListRequest {
 
 message GetFollowingListResponse {
   repeated int64 following_user_ids = 1; // A list of user IDs
+}
+
+// --- Get User Profile ---
+message GetUserProfileRequest {
+  string username = 1; // The username of the profile we want to view
+  int64 self_user_id = 2; // The ID of the user making the request (from JWT)
+}
+
+message GetUserProfileResponse {
+  int64 user_id = 1;
+  string name = 2;
+  string username = 3;
+  string bio = 4; // We need to add this to our GORM model
+  string profile_picture_url = 5;
+  bool is_verified = 6;
+  int64 follower_count = 7;
+  int64 following_count = 8;
+  bool is_followed_by_self = 9; // Does the person viewing follow this profile?
+  int64 mutual_follower_count = 10;
 }
