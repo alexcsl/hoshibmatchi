@@ -9,6 +9,7 @@ import (
 	"context"
 
 	// Import the gRPC client connection library
+	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -83,82 +84,122 @@ func authMiddleware(next http.Handler) http.Handler {
 }
 
 func main() {
-	// Connect to the gRPC user-service
-	// "user-service:9000" works because Docker Compose provides DNS [cite: 531]
-	// We use insecure credentials because it's internal Docker traffic
-	conn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect to user-service: %v", err)
-	}
-	defer conn.Close()
+	// --- Connect to all gRPC Services ---
+	mustConnect(&client, "user-service:9000")
+	mustConnect(&postClient, "post-service:9001")
+	mustConnect(&storyClient, "story-service:9002")
+	mustConnect(&mediaClient, "media-service:9005")
+	
+	// --- Set up Gin Router ---
+	router := gin.Default()
+	router.Use(gin.Logger())   // Add default logger
+	router.Use(gin.Recovery()) // Add default panic recovery
 
-	// Create a new client stub
-	client = pb.NewUserServiceClient(conn)
-
-	// Post
-	postConn, err := grpc.Dial("post-service:9001", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect to post-service: %v", err)
-	}
-	defer postConn.Close()
-	postClient = postPb.NewPostServiceClient(postConn)
-	log.Println("Successfully connected to post-service")
-
-	// Story
-	storyConn, err := grpc.Dial("story-service:9002", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect to story-service: %v", err)
-	}
-	defer storyConn.Close()
-	storyClient = storyPb.NewStoryServiceClient(storyConn)
-	log.Println("Successfully connected to story-service")
-
-	// Media
-	mediaConn, err := grpc.Dial("media-service:9005", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Failed to connect to media-service: %v", err)
-	}
-	defer mediaConn.Close()
-	mediaClient = mediaPb.NewMediaServiceClient(mediaConn)
-	log.Println("Successfully connected to media-service")
-
-
-	// Your existing health check
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("API Gateway is running"))
+	// Public routes (no auth required)
+	router.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "API Gateway is running")
 	})
+	
+	authRoutes := router.Group("/auth")
+	{
+		// These handlers don't need params, so gin.WrapF is fine.
+		authRoutes.POST("/register", gin.WrapF(handleRegister))
+		authRoutes.POST("/send-otp", gin.WrapF(handleSendOtp))
+		authRoutes.POST("/login", gin.WrapF(handleLogin))
+		authRoutes.POST("/login/verify-2fa", gin.WrapF(handleVerify2FA))
+		authRoutes.POST("/password-reset/request", gin.WrapF(handleSendPasswordReset))
+		authRoutes.POST("/password-reset/submit", gin.WrapF(handleResetPassword))
+	}
 
-	// NEW: Register handler
-	http.HandleFunc("/auth/register", handleRegister)
-	http.HandleFunc("/auth/send-otp", handleSendOtp)
-	// TODO: Add /auth/login, /auth/reset routes as per Phase 1
+	// Protected routes (JWT auth required)
+	protected := router.Group("/")
+	protected.Use(GinAuthMiddleware())
+	{
+		// These handlers ALSO don't need URL params, gin.WrapF is fine.
+		protected.POST("/posts", gin.WrapF(handleCreatePost))
+		protected.POST("/stories", gin.WrapF(handleCreateStory))
+		protected.POST("/comments", gin.WrapF(handleCreateComment))
+		protected.GET("/media/upload-url", gin.WrapF(handleGetUploadURL))
 
-	// Login
-	http.HandleFunc("/auth/login", handleLogin)
+		// --- THIS IS THE FIX ---
+		// These routes NEED URL params, so they get native Gin handlers.
+		protected.POST("/users/:id/follow", handleFollowUser_Gin)
+		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
 
-	// 2FA
-	http.HandleFunc("/auth/login/verify-2fa", handleVerify2FA)
+		protected.POST("/posts/:id/like", handlePostLike_Gin)
+		protected.DELETE("/posts/:id/like", handlePostLike_Gin)
 
-	// Post & PW Reset 
-	http.HandleFunc("/auth/password-reset/request", handleSendPasswordReset)
-	http.HandleFunc("/auth/password-reset/submit", handleResetPassword)
+		protected.POST("/stories/:id/like", handleStoryLike_Gin)
+		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
 
-	http.Handle("/posts", authMiddleware(http.HandlerFunc(handleCreatePost)))
-	http.Handle("/stories", authMiddleware(http.HandlerFunc(handleCreateStory)))
-	http.Handle("/posts/{id}/like", authMiddleware(http.HandlerFunc(handlePostLike)))
-	http.Handle("/comments", authMiddleware(http.HandlerFunc(handleCreateComment)))
-	http.Handle("/comments/{id}", authMiddleware(http.HandlerFunc(handleDeleteComment)))
-	http.Handle("/stories/{id}/like", authMiddleware(http.HandlerFunc(handleStoryLike)))
-
-	// Media
-	http.Handle("/media/upload-url", authMiddleware(http.HandlerFunc(handleGetUploadURL)))
-
+		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
+	}
 
 	log.Println("API Gateway starting on port 8000...")
-	if err := http.ListenAndServe(":8000", nil); err != nil {
+	if err := router.Run(":8000"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func GinAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			return
+		}
+		tokenString := parts[1]
+
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil
+		})
+
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
+		
+		// Add the userID to the request context
+		ctx := context.WithValue(c.Request.Context(), userIDKey, int64(userIDFloat))
+		c.Request = c.Request.WithContext(ctx)
+		
+		c.Next()
+	}
+}
+
+// --- gRPC Connection Helper ---
+func mustConnect(client interface{}, target string) {
+	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to %s: %v", target, err)
+	}
+	
+	switch c := client.(type) {
+	case *pb.UserServiceClient:
+		*c = pb.NewUserServiceClient(conn)
+	case *postPb.PostServiceClient:
+		*c = postPb.NewPostServiceClient(conn)
+	case *storyPb.StoryServiceClient:
+		*c = storyPb.NewStoryServiceClient(conn)
+	case *mediaPb.MediaServiceClient:
+		*c = mediaPb.NewMediaServiceClient(conn)
+	default:
+		log.Fatalf("Unknown client type")
+	}
+	log.Printf("Successfully connected to %s", target)
 }
 
 // handleRegister translates the HTTP request to a gRPC call
@@ -492,48 +533,6 @@ func handleCreateStory(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes.Story)
 }
 
-// --- HANDLER: handlePostLike (Handles POST for Like, DELETE for Unlike) ---
-func handlePostLike(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(int64)
-
-	postIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/posts/"), "/like")
-	postID, err := strconv.ParseInt(postIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
-		return
-	}
-	
-	if r.Method == http.MethodPost {
-		// --- Like Post ---
-		req := &postPb.LikePostRequest{UserId: userID, PostId: postID} 
-		res, err := postClient.LikePost(r.Context(), req)
-		if err != nil {
-			grpcErr, _ := status.FromError(err)
-			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
-
-	} else if r.Method == http.MethodDelete {
-		// --- Unlike Post ---
-		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
-		res, err := postClient.UnlikePost(r.Context(), req)
-		if err != nil {
-			grpcErr, _ := status.FromError(err)
-			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
-		
-	} else {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-	}
-}
-
 // --- HANDLER: handleCreateComment ---
 func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -572,81 +571,129 @@ func handleCreateComment(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- HANDLER: handleDeleteComment ---
-func handleDeleteComment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
-	
-	userID := r.Context().Value(userIDKey).(int64)
+// --- GIN-NATIVE HANDLERS (FOR URL PARAMS) ---
 
-	commentIDStr := strings.TrimPrefix(r.URL.Path, "/comments/")
-	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid comment ID", http.StatusBadRequest)
+func handleFollowUser_Gin(c *gin.Context) {
+	// --- THIS IS THE FIX ---
+	// Read from the request's context, not Gin's context
+	followerID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
 		return
 	}
-	
-	// FIX: Was pb.DeleteCommentRequest, now postPb.DeleteCommentRequest
-	grpcReq := &postPb.DeleteCommentRequest{
-		UserId:    userID,
-		CommentId: commentID,
-	}
-	
-	grpcRes, err := postClient.DeleteComment(r.Context(), grpcReq)
+	// --- END FIX ---
+
+	followingIDStr := c.Param("id")
+	followingID, err := strconv.ParseInt(followingIDStr, 10, 64)
 	if err != nil {
-		grpcErr, _ := status.FromError(err)
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(grpcRes)
+
+	if c.Request.Method == http.MethodPost {
+		// ... (rest of the function is the same)
+		grpcReq := &pb.FollowUserRequest{FollowerId: followerID, FollowingId: followingID}
+		grpcRes, err := client.FollowUser(c.Request.Context(), grpcReq)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
+		c.JSON(http.StatusOK, grpcRes)
+
+	} else if c.Request.Method == http.MethodDelete {
+		// ... (rest of the function is the same)
+		grpcReq := &pb.UnfollowUserRequest{FollowerId: followerID, FollowingId: followingID}
+		grpcRes, err := client.UnfollowUser(c.Request.Context(), grpcReq)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
+		c.JSON(http.StatusOK, grpcRes)
+	}
 }
 
-// --- HANDLER: handleStoryLike (Handles POST for Like, DELETE for Unlike) ---
-func handleStoryLike(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value(userIDKey).(int64)
+func handlePostLike_Gin(c *gin.Context) {
+	// --- THIS IS THE FIX ---
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	// --- END FIX ---
 
-	storyIDStr := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/stories/"), "/like")
-	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid story ID", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
 	
-	if r.Method == http.MethodPost {
-		// --- Like Story ---
-		// This one was already correct, using storyPb
-		req := &storyPb.LikeStoryRequest{UserId: userID, StoryId: storyID}
-		res, err := storyClient.LikeStory(r.Context(), req)
-		if err != nil {
-			grpcErr, _ := status.FromError(err)
-			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
+	if c.Request.Method == http.MethodPost {
+		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
+		res, err := postClient.LikePost(c.Request.Context(), req)
+		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		c.JSON(http.StatusOK, res)
 
-	} else if r.Method == http.MethodDelete {
-		// --- Unlike Story ---
-		// This one was also correct, using storyPb
-		req := &storyPb.UnlikeStoryRequest{UserId: userID, StoryId: storyID}
-		res, err := storyClient.UnlikeStory(r.Context(), req)
-		if err != nil {
-			grpcErr, _ := status.FromError(err)
-			http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(res)
-		
-	} else {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	} else if c.Request.Method == http.MethodDelete {
+		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
+		res, err := postClient.UnlikePost(c.Request.Context(), req)
+		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		c.JSON(http.StatusOK, res)
 	}
+}
+
+func handleStoryLike_Gin(c *gin.Context) {
+	// --- THIS IS THE FIX ---
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	// --- END FIX ---
+	
+	storyIDStr := c.Param("id")
+	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story ID"})
+		return
+	}
+	
+	if c.Request.Method == http.MethodPost {
+		req := &storyPb.LikeStoryRequest{UserId: userID, StoryId: storyID}
+		res, err := storyClient.LikeStory(c.Request.Context(), req)
+		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		c.JSON(http.StatusOK, res)
+
+	} else if c.Request.Method == http.MethodDelete {
+		req := &storyPb.UnlikeStoryRequest{UserId: userID, StoryId: storyID}
+		res, err := storyClient.UnlikeStory(c.Request.Context(), req)
+		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+func handleDeleteComment_Gin(c *gin.Context) {
+	// --- THIS IS THE FIX ---
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	// --- END FIX ---
+
+	commentIDStr := c.Param("id")
+	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+		return
+	}
+	
+	grpcReq := &postPb.DeleteCommentRequest{UserId: userID, CommentId: commentID}
+	grpcRes, err := postClient.DeleteComment(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes)
 }
 
 func handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
