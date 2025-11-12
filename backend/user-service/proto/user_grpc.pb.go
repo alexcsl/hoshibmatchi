@@ -28,6 +28,7 @@ const (
 	UserService_GetUserData_FullMethodName         = "/user.UserService/GetUserData"
 	UserService_FollowUser_FullMethodName          = "/user.UserService/FollowUser"
 	UserService_UnfollowUser_FullMethodName        = "/user.UserService/UnfollowUser"
+	UserService_GetFollowingList_FullMethodName    = "/user.UserService/GetFollowingList"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -47,6 +48,7 @@ type UserServiceClient interface {
 	GetUserData(ctx context.Context, in *GetUserDataRequest, opts ...grpc.CallOption) (*GetUserDataResponse, error)
 	FollowUser(ctx context.Context, in *FollowUserRequest, opts ...grpc.CallOption) (*FollowUserResponse, error)
 	UnfollowUser(ctx context.Context, in *UnfollowUserRequest, opts ...grpc.CallOption) (*UnfollowUserResponse, error)
+	GetFollowingList(ctx context.Context, in *GetFollowingListRequest, opts ...grpc.CallOption) (*GetFollowingListResponse, error)
 }
 
 type userServiceClient struct {
@@ -147,6 +149,16 @@ func (c *userServiceClient) UnfollowUser(ctx context.Context, in *UnfollowUserRe
 	return out, nil
 }
 
+func (c *userServiceClient) GetFollowingList(ctx context.Context, in *GetFollowingListRequest, opts ...grpc.CallOption) (*GetFollowingListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFollowingListResponse)
+	err := c.cc.Invoke(ctx, UserService_GetFollowingList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -164,6 +176,7 @@ type UserServiceServer interface {
 	GetUserData(context.Context, *GetUserDataRequest) (*GetUserDataResponse, error)
 	FollowUser(context.Context, *FollowUserRequest) (*FollowUserResponse, error)
 	UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error)
+	GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -200,6 +213,9 @@ func (UnimplementedUserServiceServer) FollowUser(context.Context, *FollowUserReq
 }
 func (UnimplementedUserServiceServer) UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnfollowUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFollowingList not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -384,6 +400,24 @@ func _UserService_UnfollowUser_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetFollowingList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFollowingListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFollowingList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetFollowingList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFollowingList(ctx, req.(*GetFollowingListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -426,6 +460,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnfollowUser",
 			Handler:    _UserService_UnfollowUser_Handler,
+		},
+		{
+			MethodName: "GetFollowingList",
+			Handler:    _UserService_GetFollowingList_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

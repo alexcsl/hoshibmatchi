@@ -23,6 +23,8 @@ service UserService {
 
   rpc FollowUser (FollowUserRequest) returns (FollowUserResponse);
   rpc UnfollowUser (UnfollowUserRequest) returns (UnfollowUserResponse);
+
+  rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
 }
 
 // --- Register ---
@@ -125,4 +127,12 @@ message UnfollowUserRequest {
 
 message UnfollowUserResponse {
   string message = 1; // "Successfully unfollowed user"
+}
+
+message GetFollowingListRequest {
+  int64 user_id = 1; // The user who is asking
+}
+
+message GetFollowingListResponse {
+  repeated int64 following_user_ids = 1; // A list of user IDs
 }

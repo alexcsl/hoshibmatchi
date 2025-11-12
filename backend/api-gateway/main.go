@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
-	"context"
+	// "context"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -37,51 +37,6 @@ var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
 
 type contextKey string
 const userIDKey contextKey = "userID"
-
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Get the Authorization header
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
-			return
-		}
-
-		// 2. The header should be in the format "Bearer <token>"
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
-			return
-		}
-		tokenString := parts[1]
-
-		// 3. Parse and validate the token
-		claims := jwt.MapClaims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil // Use our shared secret
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-			return
-		}
-
-		// 4. Extract the user_id from the token's "claims"
-		// We must convert it from float64 (default for JSON numbers) to int64
-		userIDFloat, ok := claims["user_id"].(float64)
-		if !ok {
-			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-			return
-		}
-		userID := int64(userIDFloat)
-
-		// 5. Add the userID to the request's context
-		ctx := context.WithValue(r.Context(), userIDKey, userID)
-
-		// 6. Call the *next* handler (e.g., handleCreatePost) with the new context
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
 
 func main() {
 	// --- Connect to all gRPC Services ---
@@ -133,6 +88,8 @@ func main() {
 		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
 
 		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
+
+		protected.GET("/feed/home", handleGetHomeFeed_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -141,6 +98,7 @@ func main() {
 	}
 }
 
+// --- Gin-native Auth Middleware ---
 func GinAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -172,9 +130,13 @@ func GinAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		
-		// Add the userID to the request context
-		ctx := context.WithValue(c.Request.Context(), userIDKey, int64(userIDFloat))
-		c.Request = c.Request.WithContext(ctx)
+		userID := int64(userIDFloat)
+
+		// --- THIS IS THE FIX ---
+		// We set the userID directly into Gin's context.
+		// All handlers using c.MustGet("userID") will now work.
+		c.Set("userID", userID)
+		// --- END FIX ---
 		
 		c.Next()
 	}
@@ -728,4 +690,35 @@ func handleGetUploadURL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
+func handleGetHomeFeed_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64) // From JWT
+
+	// Get pagination query params, e.g., /feed/home?page=1&limit=20
+	// We'll default to page 1, limit 20
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if page < 1 { page = 1 }
+	if limit < 1 || limit > 100 { limit = 20 }
+
+	offset := (page - 1) * limit
+
+	grpcReq := &postPb.GetHomeFeedRequest{
+		UserId:      userID,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
+	}
+
+	grpcRes, err := postClient.GetHomeFeed(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetHomeFeed failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Posts)
 }

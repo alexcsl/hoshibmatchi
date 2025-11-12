@@ -232,3 +232,43 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 	
 	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
 }
+
+// --- Implement GetHomeFeed ---
+func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
+	log.Println("GetHomeFeed request received")
+
+	// --- Step 1: Call User Service to get the list of followed users ---
+	followingRes, err := s.userClient.GetFollowingList(ctx, &userPb.GetFollowingListRequest{UserId: req.UserId})
+	if err != nil {
+		log.Printf("Failed to get following list from user-service: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve user feed")
+	}
+
+	followingIDs := followingRes.FollowingUserIds
+
+	// --- Step 2: Query our DB for posts *only* from those users ---
+	var posts []Post
+	if err := s.db.Where("author_id IN ?", followingIDs).
+		Order("created_at DESC"). // PDF: "starting from the most recent posts"
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	// --- Step 3: Convert GORM models to gRPC responses ---
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, &pb.Post{
+			Id:                 strconv.FormatUint(uint64(post.ID), 10),
+			Caption:            post.Caption,
+			AuthorUsername:     post.AuthorUsername,
+			AuthorProfileUrl:   post.AuthorProfileURL,
+			AuthorIsVerified:   post.AuthorIsVerified,
+			MediaUrls:          post.MediaURLs,
+			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}

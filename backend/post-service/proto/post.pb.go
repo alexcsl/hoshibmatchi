@@ -681,6 +681,112 @@ func (x *DeleteCommentResponse) GetMessage() string {
 	return ""
 }
 
+// --- Get Home Feed ---
+type GetHomeFeedRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`             // From JWT
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`       // For pagination
+	PageOffset    int32                  `protobuf:"varint,3,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"` // For pagination
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetHomeFeedRequest) Reset() {
+	*x = GetHomeFeedRequest{}
+	mi := &file_post_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetHomeFeedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetHomeFeedRequest) ProtoMessage() {}
+
+func (x *GetHomeFeedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetHomeFeedRequest.ProtoReflect.Descriptor instead.
+func (*GetHomeFeedRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetHomeFeedRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetHomeFeedRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetHomeFeedRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
+// We can re-use the Post message we already defined
+type GetHomeFeedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Posts         []*Post                `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetHomeFeedResponse) Reset() {
+	*x = GetHomeFeedResponse{}
+	mi := &file_post_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetHomeFeedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetHomeFeedResponse) ProtoMessage() {}
+
+func (x *GetHomeFeedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetHomeFeedResponse.ProtoReflect.Descriptor instead.
+func (*GetHomeFeedResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetHomeFeedResponse) GetPosts() []*Post {
+	if x != nil {
+		return x.Posts
+	}
+	return nil
+}
+
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -736,7 +842,15 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"comment_id\x18\x02 \x01(\x03R\tcommentId\"1\n" +
 	"\x15DeleteCommentResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xd6\x02\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"k\n" +
+	"\x12GetHomeFeedRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x03 \x01(\x05R\n" +
+	"pageOffset\"7\n" +
+	"\x13GetHomeFeedResponse\x12 \n" +
+	"\x05posts\x18\x01 \x03(\v2\n" +
+	".post.PostR\x05posts2\x9a\x03\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -744,7 +858,8 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"UnlikePost\x12\x15.post.LikePostRequest\x1a\x18.post.UnlikePostResponse\x12B\n" +
 	"\rCommentOnPost\x12\x1a.post.CommentOnPostRequest\x1a\x15.post.CommentResponse\x12H\n" +
-	"\rDeleteComment\x12\x1a.post.DeleteCommentRequest\x1a\x1b.post.DeleteCommentResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"\rDeleteComment\x12\x1a.post.DeleteCommentRequest\x1a\x1b.post.DeleteCommentResponse\x12B\n" +
+	"\vGetHomeFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -758,7 +873,7 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),     // 0: post.CreatePostRequest
 	(*Post)(nil),                  // 1: post.Post
@@ -771,24 +886,29 @@ var file_post_proto_goTypes = []any{
 	(*CommentResponse)(nil),       // 8: post.CommentResponse
 	(*DeleteCommentRequest)(nil),  // 9: post.DeleteCommentRequest
 	(*DeleteCommentResponse)(nil), // 10: post.DeleteCommentResponse
+	(*GetHomeFeedRequest)(nil),    // 11: post.GetHomeFeedRequest
+	(*GetHomeFeedResponse)(nil),   // 12: post.GetHomeFeedResponse
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
-	0,  // 1: post.PostService.CreatePost:input_type -> post.CreatePostRequest
-	3,  // 2: post.PostService.LikePost:input_type -> post.LikePostRequest
-	3,  // 3: post.PostService.UnlikePost:input_type -> post.LikePostRequest
-	7,  // 4: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
-	9,  // 5: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
-	2,  // 6: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 7: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 8: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 9: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 10: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	6,  // [6:11] is the sub-list for method output_type
-	1,  // [1:6] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	1,  // 1: post.GetHomeFeedResponse.posts:type_name -> post.Post
+	0,  // 2: post.PostService.CreatePost:input_type -> post.CreatePostRequest
+	3,  // 3: post.PostService.LikePost:input_type -> post.LikePostRequest
+	3,  // 4: post.PostService.UnlikePost:input_type -> post.LikePostRequest
+	7,  // 5: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
+	9,  // 6: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
+	11, // 7: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
+	2,  // 8: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 9: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 10: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 11: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 12: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 13: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	8,  // [8:14] is the sub-list for method output_type
+	2,  // [2:8] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_post_proto_init() }
@@ -802,7 +922,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

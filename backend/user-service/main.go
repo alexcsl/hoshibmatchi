@@ -591,6 +591,29 @@ func (s *server) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) 
 	return &pb.UnfollowUserResponse{Message: "Successfully unfollowed user"}, nil
 }
 
+// --- GPRC: GetFollowingList ---
+func (s *server) GetFollowingList(ctx context.Context, req *pb.GetFollowingListRequest) (*pb.GetFollowingListResponse, error) {
+	var followingIDs []int64
+	
+	// Find all 'Follow' records where the follower_id is our user
+	// Then, select only the 'following_id' column
+	err := s.db.Model(&Follow{}).
+		Where("follower_id = ?", req.UserId).
+		Pluck("following_id", &followingIDs).Error
+		
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve following list")
+	}
+
+	// Also add the user's own ID to the list
+	// This ensures a user always sees their *own* posts in their feed
+	followingIDs = append(followingIDs, req.UserId)
+
+	return &pb.GetFollowingListResponse{
+		FollowingUserIds: followingIDs,
+	}, nil
+}
+
 // Helper function for age validation
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()

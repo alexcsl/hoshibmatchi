@@ -15,6 +15,7 @@ service PostService {
   rpc UnlikePost (LikePostRequest) returns (UnlikePostResponse);
   rpc CommentOnPost (CommentOnPostRequest) returns (CommentResponse);
   rpc DeleteComment (DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc GetHomeFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
 }
 
 // Data from the API Gateway
@@ -84,4 +85,16 @@ message DeleteCommentRequest {
 }
 message DeleteCommentResponse {
   string message = 1; // "Comment deleted"
+}
+
+// --- Get Home Feed ---
+message GetHomeFeedRequest {
+  int64 user_id = 1; // From JWT
+  int32 page_size = 2; // For pagination
+  int32 page_offset = 3; // For pagination
+}
+
+// We can re-use the Post message we already defined
+message GetHomeFeedResponse {
+  repeated Post posts = 1;
 }

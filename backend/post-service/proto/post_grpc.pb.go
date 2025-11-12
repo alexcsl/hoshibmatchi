@@ -24,6 +24,7 @@ const (
 	PostService_UnlikePost_FullMethodName    = "/post.PostService/UnlikePost"
 	PostService_CommentOnPost_FullMethodName = "/post.PostService/CommentOnPost"
 	PostService_DeleteComment_FullMethodName = "/post.PostService/DeleteComment"
+	PostService_GetHomeFeed_FullMethodName   = "/post.PostService/GetHomeFeed"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -35,6 +36,7 @@ type PostServiceClient interface {
 	UnlikePost(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*UnlikePostResponse, error)
 	CommentOnPost(ctx context.Context, in *CommentOnPostRequest, opts ...grpc.CallOption) (*CommentResponse, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*DeleteCommentResponse, error)
+	GetHomeFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 }
 
 type postServiceClient struct {
@@ -95,6 +97,16 @@ func (c *postServiceClient) DeleteComment(ctx context.Context, in *DeleteComment
 	return out, nil
 }
 
+func (c *postServiceClient) GetHomeFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetHomeFeed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -104,6 +116,7 @@ type PostServiceServer interface {
 	UnlikePost(context.Context, *LikePostRequest) (*UnlikePostResponse, error)
 	CommentOnPost(context.Context, *CommentOnPostRequest) (*CommentResponse, error)
 	DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error)
+	GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -128,6 +141,9 @@ func (UnimplementedPostServiceServer) CommentOnPost(context.Context, *CommentOnP
 }
 func (UnimplementedPostServiceServer) DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteComment not implemented")
+}
+func (UnimplementedPostServiceServer) GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHomeFeed not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -240,6 +256,24 @@ func _PostService_DeleteComment_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetHomeFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHomeFeedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetHomeFeed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetHomeFeed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetHomeFeed(ctx, req.(*GetHomeFeedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -266,6 +300,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteComment",
 			Handler:    _PostService_DeleteComment_Handler,
+		},
+		{
+			MethodName: "GetHomeFeed",
+			Handler:    _PostService_GetHomeFeed_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
