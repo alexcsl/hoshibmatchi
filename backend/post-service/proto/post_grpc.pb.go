@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+<<<<<<< HEAD
 	PostService_CreatePost_FullMethodName     = "/post.PostService/CreatePost"
 	PostService_LikePost_FullMethodName       = "/post.PostService/LikePost"
 	PostService_UnlikePost_FullMethodName     = "/post.PostService/UnlikePost"
@@ -29,6 +30,19 @@ const (
 	PostService_GetReelsFeed_FullMethodName   = "/post.PostService/GetReelsFeed"
 	PostService_GetUserPosts_FullMethodName   = "/post.PostService/GetUserPosts"
 	PostService_GetUserReels_FullMethodName   = "/post.PostService/GetUserReels"
+=======
+	PostService_CreatePost_FullMethodName          = "/post.PostService/CreatePost"
+	PostService_LikePost_FullMethodName            = "/post.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName          = "/post.PostService/UnlikePost"
+	PostService_CommentOnPost_FullMethodName       = "/post.PostService/CommentOnPost"
+	PostService_DeleteComment_FullMethodName       = "/post.PostService/DeleteComment"
+	PostService_GetHomeFeed_FullMethodName         = "/post.PostService/GetHomeFeed"
+	PostService_GetExploreFeed_FullMethodName      = "/post.PostService/GetExploreFeed"
+	PostService_GetReelsFeed_FullMethodName        = "/post.PostService/GetReelsFeed"
+	PostService_GetUserPosts_FullMethodName        = "/post.PostService/GetUserPosts"
+	PostService_GetUserReels_FullMethodName        = "/post.PostService/GetUserReels"
+	PostService_GetUserContentCount_FullMethodName = "/post.PostService/GetUserContentCount"
+>>>>>>> feat/feature-get-profile
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -45,6 +59,10 @@ type PostServiceClient interface {
 	GetReelsFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetUserPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetUserReels(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+<<<<<<< HEAD
+=======
+	GetUserContentCount(ctx context.Context, in *GetUserContentCountRequest, opts ...grpc.CallOption) (*GetUserContentCountResponse, error)
+>>>>>>> feat/feature-get-profile
 }
 
 type postServiceClient struct {
@@ -155,6 +173,19 @@ func (c *postServiceClient) GetUserReels(ctx context.Context, in *GetUserContent
 	return out, nil
 }
 
+<<<<<<< HEAD
+=======
+func (c *postServiceClient) GetUserContentCount(ctx context.Context, in *GetUserContentCountRequest, opts ...grpc.CallOption) (*GetUserContentCountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserContentCountResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserContentCount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+>>>>>>> feat/feature-get-profile
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -169,6 +200,10 @@ type PostServiceServer interface {
 	GetReelsFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	GetUserPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
 	GetUserReels(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
+<<<<<<< HEAD
+=======
+	GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error)
+>>>>>>> feat/feature-get-profile
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -209,6 +244,12 @@ func (UnimplementedPostServiceServer) GetUserPosts(context.Context, *GetUserCont
 func (UnimplementedPostServiceServer) GetUserReels(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserReels not implemented")
 }
+<<<<<<< HEAD
+=======
+func (UnimplementedPostServiceServer) GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserContentCount not implemented")
+}
+>>>>>>> feat/feature-get-profile
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
 
@@ -410,6 +451,27 @@ func _PostService_GetUserReels_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+<<<<<<< HEAD
+=======
+func _PostService_GetUserContentCount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserContentCountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserContentCount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserContentCount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserContentCount(ctx, req.(*GetUserContentCountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+>>>>>>> feat/feature-get-profile
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -457,6 +519,13 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetUserReels",
 			Handler:    _PostService_GetUserReels_Handler,
 		},
+<<<<<<< HEAD
+=======
+		{
+			MethodName: "GetUserContentCount",
+			Handler:    _PostService_GetUserContentCount_Handler,
+		},
+>>>>>>> feat/feature-get-profile
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "post.proto",

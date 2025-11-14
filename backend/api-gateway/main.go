@@ -772,7 +772,7 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 
 	// --- 1. Get Profile Data from User-Service ---
 	userReq := &pb.GetUserProfileRequest{
-		Username:    usernameToFind,
+		Username:   usernameToFind,
 		SelfUserId: selfUserID,
 	}
 	userRes, err := client.GetUserProfile(c.Request.Context(), userReq)
@@ -782,23 +782,32 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 		return
 	}
 
-	// --- 2. Get Post/Reel Counts from Post-Service ---
-	// We can use the GetUserPosts/Reels functions with a limit of 0
-	// to *just* get the counts (a future optimization)
-	// For now, let's just return the user data.
+	// --- 2. Get Post/Reel Counts from Post-Service (THIS IS THE FIX) ---
+	countReq := &postPb.GetUserContentCountRequest{UserId: userRes.UserId}
+	countRes, err := postClient.GetUserContentCount(c.Request.Context(), countReq)
+	if err != nil {
+		// Don't fail the whole request if this fails, just log it
+		log.Printf("Failed to get post counts: %v", err)
+	}
 
-	// TODO: Add Post/Reel counts from post-service
-
+	// --- 3. Aggregate the response ---
 	type ProfileResponse struct {
-		User *pb.GetUserProfileResponse `json:"user"`
-		PostCount int `json:"post_count"`
-		ReelCount int `json:"reel_count"`
+		User          *pb.GetUserProfileResponse `json:"user"`
+		PostCount     int64                      `json:"post_count"`
+		ReelCount     int64                      `json:"reel_count"`
+	}
+
+	var postCount int64 = 0
+	var reelCount int64 = 0
+	if countRes != nil {
+		postCount = countRes.PostCount
+		reelCount = countRes.ReelCount
 	}
 
 	res := ProfileResponse{
-		User: userRes,
-		PostCount: 0, // Placeholder
-		ReelCount: 0, // Placeholder
+		User:      userRes,
+		PostCount: postCount,
+		ReelCount: reelCount,
 	}
 
 	c.JSON(http.StatusOK, res)

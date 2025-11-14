@@ -397,3 +397,24 @@ func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest
 	}
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
+
+// --- Implement GetUserContentCount ---
+func (s *server) GetUserContentCount(ctx context.Context, req *pb.GetUserContentCountRequest) (*pb.GetUserContentCountResponse, error) {
+	var postCount int64
+	var reelCount int64
+
+	// 1. Get count of regular posts
+	s.db.Model(&Post{}).
+		Where("author_id = ? AND is_reel = ?", req.UserId, false).
+		Count(&postCount)
+
+	// 2. Get count of reels
+	s.db.Model(&Post{}).
+		Where("author_id = ? AND is_reel = ?", req.UserId, true).
+		Count(&reelCount)
+
+	return &pb.GetUserContentCountResponse{
+		PostCount: postCount,
+		ReelCount: reelCount,
+	}, nil
+}
