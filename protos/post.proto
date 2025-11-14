@@ -20,10 +20,7 @@ service PostService {
   rpc GetReelsFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
   rpc GetUserPosts (GetUserContentRequest) returns (GetHomeFeedResponse);
   rpc GetUserReels (GetUserContentRequest) returns (GetHomeFeedResponse);
-<<<<<<< HEAD
-=======
   rpc GetUserContentCount (GetUserContentCountRequest) returns (GetUserContentCountResponse);
->>>>>>> feat/feature-get-profile
 }
 
 // Data from the API Gateway
@@ -116,8 +113,6 @@ message GetUserContentRequest {
   int32 page_size = 2;
   int32 page_offset = 3;
 }
-<<<<<<< HEAD
-=======
 
 message GetUserContentCountRequest {
   int64 user_id = 1;
@@ -127,4 +122,3 @@ message GetUserContentCountResponse {
   int64 post_count = 1;
   int64 reel_count = 2;
 }
->>>>>>> feat/feature-get-profile

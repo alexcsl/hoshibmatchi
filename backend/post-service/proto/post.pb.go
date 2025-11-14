@@ -864,8 +864,6 @@ func (x *GetUserContentRequest) GetPageOffset() int32 {
 	return 0
 }
 
-<<<<<<< HEAD
-=======
 type GetUserContentCountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -962,7 +960,6 @@ func (x *GetUserContentCountResponse) GetReelCount() int64 {
 	return 0
 }
 
->>>>>>> feat/feature-get-profile
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -1033,9 +1030,6 @@ const file_post_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
 	"\vpage_offset\x18\x03 \x01(\x05R\n" +
-<<<<<<< HEAD
-	"pageOffset2\xb6\x05\n" +
-=======
 	"pageOffset\"5\n" +
 	"\x1aGetUserContentCountRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\"[\n" +
@@ -1044,7 +1038,6 @@ const file_post_proto_rawDesc = "" +
 	"post_count\x18\x01 \x01(\x03R\tpostCount\x12\x1d\n" +
 	"\n" +
 	"reel_count\x18\x02 \x01(\x03R\treelCount2\x92\x06\n" +
->>>>>>> feat/feature-get-profile
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -1057,12 +1050,8 @@ const file_post_proto_rawDesc = "" +
 	"\x0eGetExploreFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12C\n" +
 	"\fGetReelsFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
 	"\fGetUserPosts\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
-<<<<<<< HEAD
-	"\fGetUserReels\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
-=======
 	"\fGetUserReels\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponse\x12Z\n" +
 	"\x13GetUserContentCount\x12 .post.GetUserContentCountRequest\x1a!.post.GetUserContentCountResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
->>>>>>> feat/feature-get-profile
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -1076,24 +1065,6 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-<<<<<<< HEAD
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
-var file_post_proto_goTypes = []any{
-	(*CreatePostRequest)(nil),     // 0: post.CreatePostRequest
-	(*Post)(nil),                  // 1: post.Post
-	(*CreatePostResponse)(nil),    // 2: post.CreatePostResponse
-	(*LikePostRequest)(nil),       // 3: post.LikePostRequest
-	(*LikePostResponse)(nil),      // 4: post.LikePostResponse
-	(*UnlikePostRequest)(nil),     // 5: post.UnlikePostRequest
-	(*UnlikePostResponse)(nil),    // 6: post.UnlikePostResponse
-	(*CommentOnPostRequest)(nil),  // 7: post.CommentOnPostRequest
-	(*CommentResponse)(nil),       // 8: post.CommentResponse
-	(*DeleteCommentRequest)(nil),  // 9: post.DeleteCommentRequest
-	(*DeleteCommentResponse)(nil), // 10: post.DeleteCommentResponse
-	(*GetHomeFeedRequest)(nil),    // 11: post.GetHomeFeedRequest
-	(*GetHomeFeedResponse)(nil),   // 12: post.GetHomeFeedResponse
-	(*GetUserContentRequest)(nil), // 13: post.GetUserContentRequest
-=======
 var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),           // 0: post.CreatePostRequest
@@ -1112,7 +1083,6 @@ var file_post_proto_goTypes = []any{
 	(*GetUserContentRequest)(nil),       // 13: post.GetUserContentRequest
 	(*GetUserContentCountRequest)(nil),  // 14: post.GetUserContentCountRequest
 	(*GetUserContentCountResponse)(nil), // 15: post.GetUserContentCountResponse
->>>>>>> feat/feature-get-profile
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
@@ -1127,20 +1097,6 @@ var file_post_proto_depIdxs = []int32{
 	11, // 9: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
 	13, // 10: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
 	13, // 11: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
-<<<<<<< HEAD
-	2,  // 12: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 13: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 14: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 15: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 16: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 17: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	12, // 18: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	12, // 19: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	12, // 20: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	12, // 21: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	12, // [12:22] is the sub-list for method output_type
-	2,  // [2:12] is the sub-list for method input_type
-=======
 	14, // 12: post.PostService.GetUserContentCount:input_type -> post.GetUserContentCountRequest
 	2,  // 13: post.PostService.CreatePost:output_type -> post.CreatePostResponse
 	4,  // 14: post.PostService.LikePost:output_type -> post.LikePostResponse
@@ -1155,7 +1111,6 @@ var file_post_proto_depIdxs = []int32{
 	15, // 23: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
 	13, // [13:24] is the sub-list for method output_type
 	2,  // [2:13] is the sub-list for method input_type
->>>>>>> feat/feature-get-profile
 	2,  // [2:2] is the sub-list for extension type_name
 	2,  // [2:2] is the sub-list for extension extendee
 	0,  // [0:2] is the sub-list for field type_name
@@ -1172,11 +1127,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-<<<<<<< HEAD
-			NumMessages:   14,
-=======
 			NumMessages:   16,
->>>>>>> feat/feature-get-profile
 			NumExtensions: 0,
 			NumServices:   1,
 		},

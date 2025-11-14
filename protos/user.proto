@@ -26,6 +26,9 @@ service UserService {
 
   rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
+
+  rpc UpdateUserProfile (UpdateUserProfileRequest) returns (GetUserProfileResponse);
+  rpc SetAccountPrivacy (SetAccountPrivacyRequest) returns (SetAccountPrivacyResponse);
 }
 
 // --- Register ---
@@ -155,4 +158,24 @@ message GetUserProfileResponse {
   int64 following_count = 8;
   bool is_followed_by_self = 9; // Does the person viewing follow this profile?
   int64 mutual_follower_count = 10;
+  string gender = 11;
+}
+
+// --- Edit User Profile ---
+message UpdateUserProfileRequest {
+  int64 user_id = 1; // From JWT
+  string name = 2;
+  string bio = 3;
+  string gender = 4;
+  // We'll add ProfilePictureURL later
+}
+
+// --- Set Account Privacy ---
+message SetAccountPrivacyRequest {
+  int64 user_id = 1; // From JWT
+  bool is_private = 2;
+}
+
+message SetAccountPrivacyResponse {
+  string message = 1;
 }

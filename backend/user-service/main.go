@@ -46,6 +46,7 @@ type User struct {
 	IsBanned     bool `gorm:"default:false"` // For admin to ban users
 	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
+	IsPrivate    bool `gorm:"default:false"` // For private accounts
 }
 
 // Follow defines the relationship between two users
@@ -669,6 +670,53 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 		FollowingCount:        followingCount,
 		IsFollowedBySelf:      isFollowedBySelf,
 		MutualFollowerCount:   mutualFollowerCount,
+		Gender:                user.Gender,
 	}, nil
 }
 
+// --- GPRC: UpdateUserProfile ---
+func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfileRequest) (*pb.GetUserProfileResponse, error) {
+	// 1. Find the user
+	var user User
+	if err := s.db.First(&user, req.UserId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+
+	// 2. Validate new data (as per PDF)
+	if len(req.Name) <= 4 {
+		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
+	}
+	if req.Gender != "male" && req.Gender != "female" {
+		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
+	}
+	
+	// 3. Update the fields
+	user.Name = req.Name
+	user.Bio = req.Bio
+	user.Gender = req.Gender
+	
+	if err := s.db.Save(&user).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update profile")
+	}
+	
+	log.Printf("User profile updated for user_id: %d", req.UserId)
+
+	// 4. Return the new, updated profile data (by calling our other function)
+	// This is good practice to avoid duplicating logic
+	return s.GetUserProfile(ctx, &pb.GetUserProfileRequest{
+		Username:    user.Username,
+		SelfUserId: req.UserId,
+	})
+}
+
+// --- GPRC: SetAccountPrivacy ---
+func (s *server) SetAccountPrivacy(ctx context.Context, req *pb.SetAccountPrivacyRequest) (*pb.SetAccountPrivacyResponse, error) {
+	// We can use a simple 'Update' for this one field
+	if err := s.db.Model(&User{}).Where("id = ?", req.UserId).Update("is_private", req.IsPrivate).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update account privacy")
+	}
+
+	log.Printf("Account privacy set to %t for user_id: %d", req.IsPrivate, req.UserId)
+
+	return &pb.SetAccountPrivacyResponse{Message: "Account privacy updated successfully"}, nil
+}

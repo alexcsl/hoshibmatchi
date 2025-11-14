@@ -103,6 +103,10 @@ func main() {
 		protected.GET("/users/:username", handleGetUserProfile_Gin)
 		protected.GET("/users/:username/posts", handleGetUserPosts_Gin)
 		protected.GET("/users/:username/reels", handleGetUserReels_Gin)
+
+		// Edit Profiel
+		protected.PUT("/profile/edit", handleUpdateProfile_Gin)
+		protected.PUT("/settings/privacy", handleSetPrivacy_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -875,4 +879,64 @@ func handleGetUserReels_Gin(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleUpdateProfile ---
+func handleUpdateProfile_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64) // From JWT
+
+	var req struct {
+		Name   string `json:"name"`
+		Bio    string `json:"bio"`
+		Gender string `json:"gender"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	grpcReq := &pb.UpdateUserProfileRequest{
+		UserId: userID,
+		Name:   req.Name,
+		Bio:    req.Bio,
+		Gender: req.Gender,
+	}
+
+	grpcRes, err := client.UpdateUserProfile(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes) // Return the full updated profile
+}
+
+// --- GIN-NATIVE HANDLER: handleSetPrivacy ---
+func handleSetPrivacy_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+
+	var req struct {
+		IsPrivate bool `json:"is_private"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	grpcReq := &pb.SetAccountPrivacyRequest{
+		UserId:    userID,
+		IsPrivate: req.IsPrivate,
+	}
+
+	grpcRes, err := client.SetAccountPrivacy(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
 }
