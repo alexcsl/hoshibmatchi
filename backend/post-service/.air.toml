@@ -5,6 +5,11 @@
 root = "."
 tmp_dir = "tmp"
 
+[watch]
+# This enables polling, which is required for Docker on many systems
+poll = true
+poll_interval = "1000ms" # Poll every 1 second
+
 [build]
 # Command to build the binary
 cmd = "go build -o ./tmp/main ."

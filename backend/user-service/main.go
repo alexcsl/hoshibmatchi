@@ -42,7 +42,7 @@ type User struct {
 	Gender            string    `gorm:"type:varchar(10);not null"`
 	Bio               string    `gorm:"type:varchar(255)"`
 
-	IsActive     bool `gorm:"default:false"`  // For account deactivation
+	IsActive     bool `gorm:"default:false"` // For account deactivation
 	IsBanned     bool `gorm:"default:false"` // For admin to ban users
 	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
@@ -60,8 +60,8 @@ type Follow struct {
 // server struct holds our database and cache connections
 type server struct {
 	pb.UnimplementedUserServiceServer
-	db  *gorm.DB
-	rdb *redis.Client // Redis client
+	db     *gorm.DB
+	rdb    *redis.Client // Redis client
 	amqpCh *amqp.Channel
 }
 
@@ -109,6 +109,8 @@ func main() {
 	}
 	log.Println("Successfully connected to Redis.")
 
+	log.Println("HEE HEE HOT RELOADDDaadw")
+
 	// --- Step 3: Connect to RabbitMQ (with retries) ---
 	var amqpConn *amqp.Connection
 	maxRetries := 10
@@ -148,7 +150,6 @@ func main() {
 	}
 	log.Println("RabbitMQ email_queue declared")
 
-
 	// --- Step 4: Set up and start the gRPC server ---
 	lis, err := net.Listen("tcp", ":9000")
 	if err != nil {
@@ -166,111 +167,121 @@ func main() {
 
 // RegisterUser is the implementation of our gRPC service function
 func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
-    log.Println("RegisterUser request received for username:", req.Username)
+	log.Println("RegisterUser request received for username:", req.Username)
 
-    // --- Step 1: Validate Business Logic (as per PDF) ---
-    if req.Password != req.ConfirmPassword {
-        return nil, status.Error(codes.InvalidArgument, "Passwords do not match")
-    }
-    if len(req.Name) <= 4 { 
-        return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
-    }
-    if !emailRegex.MatchString(req.Email) { 
-        return nil, status.Error(codes.InvalidArgument, "Invalid email format")
-    }
-    if err := validatePassword(req.Password); err != nil {
-        return nil, err
-    }
-    if req.Gender != "male" && req.Gender != "female" { 
-        return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
-    }
+	// --- Step 1: Validate Business Logic (as per PDF) ---
+	if req.Password != req.ConfirmPassword {
+		return nil, status.Error(codes.InvalidArgument, "Passwords do not match")
+	}
+	if len(req.Name) <= 4 {
+		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
+	}
+	if !emailRegex.MatchString(req.Email) {
+		return nil, status.Error(codes.InvalidArgument, "Invalid email format")
+	}
+	if err := validatePassword(req.Password); err != nil {
+		return nil, err
+	}
+	if req.Gender != "male" && req.Gender != "female" {
+		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
+	}
 
-    dob, err := time.Parse("2006-01-02", req.DateOfBirth)
-    if err != nil {
-        return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
-    }
-    if !isAgeValid(dob, 13) { 
-        return nil, status.Error(codes.InvalidArgument, "You must be at least 13 years old to register")
-    }
+	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
+	}
+	if !isAgeValid(dob, 13) {
+		return nil, status.Error(codes.InvalidArgument, "You must be at least 13 years old to register")
+	}
 
-    // --- Step 2: Check for unique constraints *before* sending OTP ---
-    var existingUser int64
-    s.db.Model(&User{}).Where("username = ?", req.Username).Count(&existingUser)
-    if existingUser > 0 { 
-        return nil, status.Error(codes.AlreadyExists, "Username already exists")
-    }
-    s.db.Model(&User{}).Where("email = ?", req.Email).Count(&existingUser)
-    if existingUser > 0 { 
-        return nil, status.Error(codes.AlreadyExists, "Email already exists")
-    }
+	// --- Step 2: Check for unique constraints *before* sending OTP ---
+	var existingUser int64
+	s.db.Model(&User{}).Where("username = ?", req.Username).Count(&existingUser)
+	if existingUser > 0 {
+		return nil, status.Error(codes.AlreadyExists, "Username already exists")
+	}
+	s.db.Model(&User{}).Where("email = ?", req.Email).Count(&existingUser)
+	if existingUser > 0 {
+		return nil, status.Error(codes.AlreadyExists, "Email already exists")
+	}
 
-    // --- Step 3: Hash Password ---
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-    if err != nil {
-        log.Printf("Failed to hash password: %v", err)
-        return nil, status.Error(codes.Internal, "Failed to process password")
-    }
+	// --- Step 3: Hash Password ---
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Failed to hash password: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to process password")
+	}
 
-    // --- Step 4: Create User in Database (as INACTIVE) ---
-    newUser := User{
-        Name:        req.Name,
-        Username:    req.Username,
-        Email:       req.Email,
-        Password:    string(hashedPassword),
-        DateOfBirth: dob,
-        Gender:      req.Gender,
-        IsActive:    false, // User is inactive until OTP is verified
-    }
+	// --- Step 4: Create User in Database (as INACTIVE) ---
+	newUser := User{
+		Name:        req.Name,
+		Username:    req.Username,
+		Email:       req.Email,
+		Password:    string(hashedPassword),
+		DateOfBirth: dob,
+		Gender:      req.Gender,
+		IsActive:    false, // User is inactive until OTP is verified
+	}
 
-    result := s.db.Create(&newUser)
-    if result.Error != nil {
-        log.Printf("Failed to create user in database: %v", result.Error)
-        return nil, status.Error(codes.Internal, "Failed to create account")
-    }
+	result := s.db.Create(&newUser)
+	if result.Error != nil {
+		log.Printf("Failed to create user in database: %v", result.Error)
+		return nil, status.Error(codes.Internal, "Failed to create account")
+	}
 
-    // --- Step 5: Send the OTP ---
-    // We can just call our other gRPC function internally.
-    // It already has the rate-limiting and email-sending logic.
-    _, err = s.SendRegistrationOtp(ctx, &pb.SendOtpRequest{Email: req.Email})
-    if err != nil {
-        // If OTP fails, we don't need to roll back the user creation,
-        // they can just request another one.
-        log.Printf("Failed to send initial OTP for %s: %v", req.Email, err)
-    }
+	// --- Step 5: Send the OTP ---
+	// We can just call our other gRPC function internally.
+	// It already has the rate-limiting and email-sending logic.
+	_, err = s.SendRegistrationOtp(ctx, &pb.SendOtpRequest{Email: req.Email})
+	if err != nil {
+		// If OTP fails, we don't need to roll back the user creation,
+		// they can just request another one.
+		log.Printf("Failed to send initial OTP for %s: %v", req.Email, err)
+	}
 
-    // --- Step 6: Success ---
-    log.Println("Successfully created inactive user with ID:", newUser.ID)
-    return &pb.RegisterUserResponse{
-        Id:       int64(newUser.ID),
-        Username: newUser.Username,
-        Email:    newUser.Email,
-        Message:  "Registration successful. Please check your email for an OTP code.",
-    }, nil
+	// --- Step 6: Success ---
+	log.Println("Successfully created inactive user with ID:", newUser.ID)
+	return &pb.RegisterUserResponse{
+		Id:       int64(newUser.ID),
+		Username: newUser.Username,
+		Email:    newUser.Email,
+		Message:  "Registration successful. Please check your email for an OTP code.",
+	}, nil
 }
 
 // validatePassword checks for at least 4 rules
 func validatePassword(password string) error {
-    var (
-        hasMinLen  = len(password) >= 8
-        hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString(password)
-        hasLower   = regexp.MustCompile(`[a-z]`).MatchString(password)
-        hasNumber  = regexp.MustCompile(`[0-9]`).MatchString(password)
-        hasSpecial = regexp.MustCompile(`[\W_]`).MatchString(password)
-    )
+	var (
+		hasMinLen  = len(password) >= 8
+		hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString(password)
+		hasLower   = regexp.MustCompile(`[a-z]`).MatchString(password)
+		hasNumber  = regexp.MustCompile(`[0-9]`).MatchString(password)
+		hasSpecial = regexp.MustCompile(`[\W_]`).MatchString(password)
+	)
 
-    rulesMet := 0
-    if hasMinLen { rulesMet++ }
-    if hasUpper { rulesMet++ }
-    if hasLower { rulesMet++ }
-    if hasNumber { rulesMet++ }
-    if hasSpecial { rulesMet++ }
+	rulesMet := 0
+	if hasMinLen {
+		rulesMet++
+	}
+	if hasUpper {
+		rulesMet++
+	}
+	if hasLower {
+		rulesMet++
+	}
+	if hasNumber {
+		rulesMet++
+	}
+	if hasSpecial {
+		rulesMet++
+	}
 
-    // PDF requires "at least 4 (four) different validations"
-    if rulesMet >= 4 {
-        return nil
-    }
+	// PDF requires "at least 4 (four) different validations"
+	if rulesMet >= 4 {
+		return nil
+	}
 
-    return status.Error(codes.InvalidArgument, "Password must meet at least 4 of the following rules: minimum 8 characters, one uppercase, one lowercase, one number, one special character")
+	return status.Error(codes.InvalidArgument, "Password must meet at least 4 of the following rules: minimum 8 characters, one uppercase, one lowercase, one number, one special character")
 }
 
 func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
@@ -357,55 +368,55 @@ func createToken(user User, duration time.Duration) (string, error) {
 }
 
 func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest) (*pb.SendOtpResponse, error) {
-    // --- Step 1: Check if user exists and is *not* active ---
-    var user User
-    if err := s.db.Where("email = ?", req.Email).First(&user).Error; err == gorm.ErrRecordNotFound {
-        // Don't reveal if user exists
-        return nil, status.Error(codes.NotFound, "Cannot send OTP to this email.")
-    }
-    if user.IsActive {
-        return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
-    }
+	// --- Step 1: Check if user exists and is *not* active ---
+	var user User
+	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err == gorm.ErrRecordNotFound {
+		// Don't reveal if user exists
+		return nil, status.Error(codes.NotFound, "Cannot send OTP to this email.")
+	}
+	if user.IsActive {
+		return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
+	}
 
-    // --- Step 2: Rate Limit Check ---
-    rateLimitKey := "rate_limit:otp:" + req.Email
-    err := s.rdb.Get(ctx, rateLimitKey).Err()
-    if err != redis.Nil {
-        // Key exists, user is rate limited
-        ttl, _ := s.rdb.TTL(ctx, rateLimitKey).Result()
-        return nil, status.Error(codes.ResourceExhausted, fmt.Sprintf("Please wait %d seconds before resending", int(ttl.Seconds())))
-    }
+	// --- Step 2: Rate Limit Check ---
+	rateLimitKey := "rate_limit:otp:" + req.Email
+	err := s.rdb.Get(ctx, rateLimitKey).Err()
+	if err != redis.Nil {
+		// Key exists, user is rate limited
+		ttl, _ := s.rdb.TTL(ctx, rateLimitKey).Result()
+		return nil, status.Error(codes.ResourceExhausted, fmt.Sprintf("Please wait %d seconds before resending", int(ttl.Seconds())))
+	}
 
-    // --- Step 3: Generate, store, and publish OTP ---
-    otpKey := "otp:" + req.Email
-    otpCode := generateOtp()
+	// --- Step 3: Generate, store, and publish OTP ---
+	otpKey := "otp:" + req.Email
+	otpCode := generateOtp()
 
-    // Code is valid for 5 minutes [cite: 550]
-    err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
-    if err != nil {
-        return nil, status.Error(codes.Internal, "Failed to store OTP")
-    }
+	// Code is valid for 5 minutes [cite: 550]
+	err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to store OTP")
+	}
 
-    // Set the 60-second rate limit [cite: 552]
-    err = s.rdb.Set(ctx, rateLimitKey, "1", 1*time.Minute).Err()
-    if err != nil {
-        log.Printf("Failed to set rate limit key for %s", req.Email)
-    }
+	// Set the 60-second rate limit [cite: 552]
+	err = s.rdb.Set(ctx, rateLimitKey, "1", 1*time.Minute).Err()
+	if err != nil {
+		log.Printf("Failed to set rate limit key for %s", req.Email)
+	}
 
-    // Publish to RabbitMQ for email-service
-    emailBody, _ := json.Marshal(map[string]string{
-        "to":      req.Email,
-        "type":    "registration_otp",
-        "otpCode": otpCode,
-    })
-    if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil { 
-        log.Printf("Failed to publish OTP email to queue: %v", err)
-    }
+	// Publish to RabbitMQ for email-service
+	emailBody, _ := json.Marshal(map[string]string{
+		"to":      req.Email,
+		"type":    "registration_otp",
+		"otpCode": otpCode,
+	})
+	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
+		log.Printf("Failed to publish OTP email to queue: %v", err)
+	}
 
-    return &pb.SendOtpResponse{
-        Message:          "OTP sent successfully. Please check your email.",
-        RateLimitSeconds: 60,
-    }, nil
+	return &pb.SendOtpResponse{
+		Message:          "OTP sent successfully. Please check your email.",
+		RateLimitSeconds: 60,
+	}, nil
 }
 
 func (s *server) Verify2FA(ctx context.Context, req *pb.Verify2FARequest) (*pb.Verify2FAResponse, error) {
@@ -468,10 +479,10 @@ func generateSecureToken(length int) (string, error) {
 func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
 	return s.amqpCh.PublishWithContext(
 		ctx,
-		"",          // exchange (default)
-		queueName,   // routing key (queue name)
-		false,       // mandatory
-		false,       // immediate
+		"",        // exchange (default)
+		queueName, // routing key (queue name)
+		false,     // mandatory
+		false,     // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent, // Make message durable
@@ -483,7 +494,7 @@ func (s *server) publishToQueue(ctx context.Context, queueName string, body []by
 // --- ADD GPRC FUNCTION 1: SendPasswordReset ---
 func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordResetRequest) (*pb.SendPasswordResetResponse, error) {
 	var user User
-	
+
 	// PDF Requirement: "Only registered emails that are not banned can be used"
 	err := s.db.Where("email = ?", req.Email).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
@@ -505,7 +516,7 @@ func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordRese
 	if err := s.rdb.Set(ctx, tokenKey, token, 15*time.Minute).Err(); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to store reset token")
 	}
-	
+
 	// --- Step 4: Publish to RabbitMQ for email-service ---
 	emailBody, _ := json.Marshal(map[string]string{
 		"to":    req.Email,
@@ -516,7 +527,7 @@ func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordRese
 		log.Printf("Failed to publish reset email to queue: %v", err)
 		// Don't fail the request, just log it
 	}
-	
+
 	return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
 }
 
@@ -612,12 +623,12 @@ func (s *server) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb
 		"type":      "user.followed",
 		"actor_id":  req.FollowerId,
 		"user_id":   req.FollowingId, // The user to be notified
-		"entity_id": req.FollowerId, // The entity is the follower
+		"entity_id": req.FollowerId,  // The entity is the follower
 	})
 	s.publishToQueue(ctx, "notification_queue", msgBody)
-	
+
 	log.Printf("User %d is now following User %d", req.FollowerId, req.FollowingId)
-	
+
 	return &pb.FollowUserResponse{Message: "Successfully followed user"}, nil
 }
 
@@ -642,13 +653,13 @@ func (s *server) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) 
 // --- GPRC: GetFollowingList ---
 func (s *server) GetFollowingList(ctx context.Context, req *pb.GetFollowingListRequest) (*pb.GetFollowingListResponse, error) {
 	var followingIDs []int64
-	
+
 	// Find all 'Follow' records where the follower_id is our user
 	// Then, select only the 'following_id' column
 	err := s.db.Model(&Follow{}).
 		Where("follower_id = ?", req.UserId).
 		Pluck("following_id", &followingIDs).Error
-		
+
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to retrieve following list")
 	}
@@ -675,7 +686,7 @@ func isAgeValid(birthDate time.Time, minAge int) bool {
 // --- GPRC: GetUserProfile ---
 func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileRequest) (*pb.GetUserProfileResponse, error) {
 	var user User
-	
+
 	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "User not found")
 	} else if err != nil {
@@ -702,21 +713,21 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 		isFollowedBySelf = (followCheck > 0)
 	}
 	// --- END FIX ---
-	
-	mutualFollowerCount = 0 
+
+	mutualFollowerCount = 0
 
 	return &pb.GetUserProfileResponse{
-		UserId:                int64(user.ID), // Also cast here
-		Name:                  user.Name,
-		Username:              user.Username,
-		Bio:                   user.Bio,
-		ProfilePictureUrl:     user.ProfilePictureURL,
-		IsVerified:            false, 
-		FollowerCount:         followerCount,
-		FollowingCount:        followingCount,
-		IsFollowedBySelf:      isFollowedBySelf,
-		MutualFollowerCount:   mutualFollowerCount,
-		Gender:                user.Gender,
+		UserId:              int64(user.ID), // Also cast here
+		Name:                user.Name,
+		Username:            user.Username,
+		Bio:                 user.Bio,
+		ProfilePictureUrl:   user.ProfilePictureURL,
+		IsVerified:          false,
+		FollowerCount:       followerCount,
+		FollowingCount:      followingCount,
+		IsFollowedBySelf:    isFollowedBySelf,
+		MutualFollowerCount: mutualFollowerCount,
+		Gender:              user.Gender,
 	}, nil
 }
 
@@ -735,22 +746,22 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 	if req.Gender != "male" && req.Gender != "female" {
 		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
 	}
-	
+
 	// 3. Update the fields
 	user.Name = req.Name
 	user.Bio = req.Bio
 	user.Gender = req.Gender
-	
+
 	if err := s.db.Save(&user).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update profile")
 	}
-	
+
 	log.Printf("User profile updated for user_id: %d", req.UserId)
 
 	// 4. Return the new, updated profile data (by calling our other function)
 	// This is good practice to avoid duplicating logic
 	return s.GetUserProfile(ctx, &pb.GetUserProfileRequest{
-		Username:    user.Username,
+		Username:   user.Username,
 		SelfUserId: req.UserId,
 	})
 }
@@ -794,23 +805,23 @@ func (s *server) BlockUser(ctx context.Context, req *pb.BlockUserRequest) (*pb.B
 			}
 			return status.Error(codes.Internal, "Failed to block user")
 		}
-		
+
 		// 2. The blocker unfollows the blocked user
 		tx.Delete(&Follow{}, "follower_id = ? AND following_id = ?", req.BlockerId, req.BlockedId)
-		
+
 		// 3. The blocked user unfollows the blocker
 		tx.Delete(&Follow{}, "follower_id = ? AND following_id = ?", req.BlockedId, req.BlockerId)
-		
+
 		return nil // Commit
 	})
-	
+
 	if err != nil {
 		// Transaction failed
 		return nil, err
 	}
 
 	log.Printf("User %d is now blocking User %d", req.BlockerId, req.BlockedId)
-	
+
 	return &pb.BlockUserResponse{Message: "Successfully blocked user"}, nil
 }
 
@@ -834,59 +845,58 @@ func (s *server) UnblockUser(ctx context.Context, req *pb.UnblockUserRequest) (*
 
 // --- ADD NEW GRPC FUNCTION: VerifyRegistrationOtp ---
 func (s *server) VerifyRegistrationOtp(ctx context.Context, req *pb.VerifyRegistrationOtpRequest) (*pb.VerifyRegistrationOtpResponse, error) {
-    log.Printf("VerifyRegistrationOtp request received for: %s", req.Email)
+	log.Printf("VerifyRegistrationOtp request received for: %s", req.Email)
 
-    // --- Step 1: Validate OTP ---
-    otpKey := "otp:" + req.Email
-    storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
-    if err == redis.Nil {
-        log.Printf("OTP not found or expired for: %s", req.Email)
-        return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
-    } else if err != nil {
-        log.Printf("Redis error checking OTP: %v", err)
-        return nil, status.Error(codes.Internal, "Failed to verify OTP")
-    }
+	// --- Step 1: Validate OTP ---
+	otpKey := "otp:" + req.Email
+	storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
+	if err == redis.Nil {
+		log.Printf("OTP not found or expired for: %s", req.Email)
+		return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
+	} else if err != nil {
+		log.Printf("Redis error checking OTP: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to verify OTP")
+	}
 
-    if storedOtp != req.OtpCode {
-        log.Printf("Invalid OTP for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
-        return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
-    }
+	if storedOtp != req.OtpCode {
+		log.Printf("Invalid OTP for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
+		return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
+	}
 
-    // --- Step 2: Code is valid, get user and activate them ---
-    var user User
-    if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
-        return nil, status.Error(codes.Internal, "Failed to retrieve user data")
-    }
+	// --- Step 2: Code is valid, get user and activate them ---
+	var user User
+	if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve user data")
+	}
 
-    if user.IsActive {
-        return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
-    }
+	if user.IsActive {
+		return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
+	}
 
-    // Activate the user
-    if err := s.db.Model(&user).Update("is_active", true).Error; err != nil {
-        log.Printf("Failed to activate user %s: %v", req.Email, err)
-        return nil, status.Error(codes.Internal, "Failed to activate account")
-    }
+	// Activate the user
+	if err := s.db.Model(&user).Update("is_active", true).Error; err != nil {
+		log.Printf("Failed to activate user %s: %v", req.Email, err)
+		return nil, status.Error(codes.Internal, "Failed to activate account")
+	}
 
-    // Code is correct, delete it from Redis so it can't be reused
-    s.rdb.Del(ctx, otpKey)
+	// Code is correct, delete it from Redis so it can't be reused
+	s.rdb.Del(ctx, otpKey)
 
-    // --- Step 3: Create tokens (as per blueprint) ---
-    accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
-    if err != nil {
-        return nil, status.Error(codes.Internal, "Failed to create access token")
-    }
+	// --- Step 3: Create tokens (as per blueprint) ---
+	accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create access token")
+	}
 
-    refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
-    if err != nil {
-        return nil, status.Error(codes.Internal, "Failed to create refresh token")
-    }
+	refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create refresh token")
+	}
 
-    log.Printf("OTP verification successful for: %s", req.Email)
+	log.Printf("OTP verification successful for: %s", req.Email)
 
-    return &pb.VerifyRegistrationOtpResponse{
-        AccessToken:  accessToken,
-        RefreshToken: refreshToken,
-    }, nil
+	return &pb.VerifyRegistrationOtpResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
-

@@ -85,6 +85,42 @@ func main() {
 	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
 	defer amqpCh.Close()
 
+	// --- ADDED: Declare queues for 24h story deletion ---
+
+	// 1. This is the FINAL queue the worker will listen to.
+	_, err = amqpCh.QueueDeclare(
+		"story_deletion_queue",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare story_deletion_queue: %v", err)
+	}
+
+	// 2. This is the "wait" queue. Messages sit here for 24h.
+	_, err = amqpCh.QueueDeclare(
+		"story_wait_24h",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		amqp.Table{
+			// Set message Time-To-Live to 24 hours (in milliseconds)
+			"x-message-ttl": int32(24 * 60 * 60 * 1000),
+			// When message expires, send it to the default exchange
+			"x-dead-letter-exchange": "",
+			// Route it to the "story_deletion_queue"
+			"x-dead-letter-routing-key": "story_deletion_queue",
+		},
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare story_wait_24h queue: %v", err)
+	}
+	log.Println("RabbitMQ story deletion queues declared")
+
 	_, err = amqpCh.QueueDeclare(
 		"notification_queue", true, false, false, false, nil,
 	)
@@ -148,9 +184,33 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to save story to database")
 	}
 
-	// TODO: As per blueprint,
-	// publish a "story.created" message to RabbitMQ with a 24-hour delay
-	// for asynchronous deletion. We will add this in the RabbitMQ phase.
+	// --- ADDED: Publish 24-hour delayed deletion job ---
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	msgBody, _ := json.Marshal(map[string]uint{
+		"story_id": newStory.ID,
+	})
+
+	// Publish to the "wait" queue, NOT the final queue
+	err = s.amqpCh.PublishWithContext(
+		ctxTimeout,
+		"",                 // exchange (default)
+		"story_wait_24h", // routing key (the "wait" queue)
+		false,              // mandatory
+		false,              // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent, // Make message durable
+			Body:         msgBody,
+		},
+	)
+	if err != nil {
+		// Log the error, but don't fail the user's request
+		log.Printf("Failed to publish story deletion job for story %d: %v", newStory.ID, err)
+	} else {
+		log.Printf("Published 24h deletion job for story %d", newStory.ID)
+	}
 
 	// --- Step 3: Return the created story ---
 	return &pb.CreateStoryResponse{

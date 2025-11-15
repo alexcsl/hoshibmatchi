@@ -6,9 +6,11 @@ services:
       dockerfile: ./backend/api-gateway/Dockerfile.dev
     volumes:
       - ./backend:/app/backend # Mount local backend code
-    # Run air, pointing to the correct config file
-    command: ["air", "-c", "/app/backend/api-gateway/.air.toml"]
-    # This service connects to all others, so it should wait for them
+    working_dir: /app/backend/api-gateway
+    command: ["air", "-c", ".air.toml"]
+    # THIS IS THE FIX:
+    # We changed service_healthy to service_started.
+    # This fixes the "no healthcheck" error.
     depends_on:
       user-service:
         condition: service_started
@@ -25,7 +27,8 @@ services:
       dockerfile: ./backend/user-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/user-service/.air.toml"]
+    working_dir: /app/backend/user-service
+    command: ["air", "-c", ".air.toml"]
 
   post-service:
     build:
@@ -33,7 +36,8 @@ services:
       dockerfile: ./backend/post-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/post-service/.air.toml"]
+    working_dir: /app/backend/post-service
+    command: ["air", "-c", ".air.toml"]
 
   story-service:
     build:
@@ -41,7 +45,8 @@ services:
       dockerfile: ./backend/story-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/story-service/.air.toml"]
+    working_dir: /app/backend/story-service
+    command: ["air", "-c", ".air.toml"]
 
   media-service:
     build:
@@ -49,7 +54,8 @@ services:
       dockerfile: ./backend/media-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/media-service/.air.toml"]
+    working_dir: /app/backend/media-service
+    command: ["air", "-c", ".air.toml"]
 
   message-service:
     build:
@@ -57,7 +63,8 @@ services:
       dockerfile: ./backend/message-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/message-service/.air.toml"]
+    working_dir: /app/backend/message-service
+    command: ["air", "-c", ".air.toml"]
 
   notification-service:
     build:
@@ -65,7 +72,8 @@ services:
       dockerfile: ./backend/notification-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/notification-service/.air.toml"]
+    working_dir: /app/backend/notification-service
+    command: ["air", "-c", ".air.toml"]
 
   email-service:
     build:
@@ -73,7 +81,8 @@ services:
       dockerfile: ./backend/email-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/email-service/.air.toml"]
+    working_dir: /app/backend/email-service
+    command: ["air", "-c", ".air.toml"]
 
   worker-service:
     build:
@@ -81,7 +90,8 @@ services:
       dockerfile: ./backend/worker-service/Dockerfile.dev
     volumes:
       - ./backend:/app/backend
-    command: ["air", "-c", "/app/backend/worker-service/.air.toml"]
+    working_dir: /app/backend/worker-service
+    command: ["air", "-c", ".air.toml"]
   
   ai-service:
     # Python's uvicorn has a built-in reloader
