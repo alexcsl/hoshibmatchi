@@ -42,7 +42,7 @@ type User struct {
 	Gender            string    `gorm:"type:varchar(10);not null"`
 	Bio               string    `gorm:"type:varchar(255)"`
 
-	IsActive     bool `gorm:"default:true"`  // For account deactivation
+	IsActive     bool `gorm:"default:false"`  // For account deactivation
 	IsBanned     bool `gorm:"default:false"` // For admin to ban users
 	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
@@ -166,86 +166,111 @@ func main() {
 
 // RegisterUser is the implementation of our gRPC service function
 func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
-	log.Println("RegisterUser request received for username:", req.Username)
+    log.Println("RegisterUser request received for username:", req.Username)
 
-	// --- Step 1: Validate OTP ---
-	otpKey := "otp:" + req.Email
-	storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
-	if err == redis.Nil {
-		log.Printf("OTP not found or expired for: %s", req.Email)
-		return nil, status.Error(codes.InvalidArgument, "OTP expired or not requested")
-	} else if err != nil {
-		log.Printf("Redis error checking OTP: %v", err)
-		return nil, status.Error(codes.Internal, "Failed to verify OTP")
-	}
+    // --- Step 1: Validate Business Logic (as per PDF) ---
+    if req.Password != req.ConfirmPassword {
+        return nil, status.Error(codes.InvalidArgument, "Passwords do not match")
+    }
+    if len(req.Name) <= 4 { 
+        return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
+    }
+    if !emailRegex.MatchString(req.Email) { 
+        return nil, status.Error(codes.InvalidArgument, "Invalid email format")
+    }
+    if err := validatePassword(req.Password); err != nil {
+        return nil, err
+    }
+    if req.Gender != "male" && req.Gender != "female" { 
+        return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
+    }
 
-	if storedOtp != req.OtpCode {
-		log.Printf("Invalid OTP for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
-		return nil, status.Error(codes.InvalidArgument, "Invalid OTP code")
-	}
+    dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+    if err != nil {
+        return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
+    }
+    if !isAgeValid(dob, 13) { 
+        return nil, status.Error(codes.InvalidArgument, "You must be at least 13 years old to register")
+    }
 
-	// --- Step 2: Validate Business Logic (as per PDF) ---
-	if len(req.Name) <= 4 {
-		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
-	}
-	if !emailRegex.MatchString(req.Email) {
-		return nil, status.Error(codes.InvalidArgument, "Invalid email format")
-	}
-	if len(req.Password) < 8 { // Example validation
-		return nil, status.Error(codes.InvalidArgument, "Password must be at least 8 characters")
-	}
-	if req.Gender != "male" && req.Gender != "female" {
-		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
-	}
+    // --- Step 2: Check for unique constraints *before* sending OTP ---
+    var existingUser int64
+    s.db.Model(&User{}).Where("username = ?", req.Username).Count(&existingUser)
+    if existingUser > 0 { 
+        return nil, status.Error(codes.AlreadyExists, "Username already exists")
+    }
+    s.db.Model(&User{}).Where("email = ?", req.Email).Count(&existingUser)
+    if existingUser > 0 { 
+        return nil, status.Error(codes.AlreadyExists, "Email already exists")
+    }
 
-	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "Invalid date of birth format. Use YYYY-MM-DD")
-	}
-	if !isAgeValid(dob, 13) {
-		return nil, status.Error(codes.InvalidArgument, "You must be at least 13 years old to register")
-	}
+    // --- Step 3: Hash Password ---
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+    if err != nil {
+        log.Printf("Failed to hash password: %v", err)
+        return nil, status.Error(codes.Internal, "Failed to process password")
+    }
 
-	// --- Step 3: Hash Password ---
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Printf("Failed to hash password: %v", err)
-		return nil, status.Error(codes.Internal, "Failed to process password")
-	}
+    // --- Step 4: Create User in Database (as INACTIVE) ---
+    newUser := User{
+        Name:        req.Name,
+        Username:    req.Username,
+        Email:       req.Email,
+        Password:    string(hashedPassword),
+        DateOfBirth: dob,
+        Gender:      req.Gender,
+        IsActive:    false, // User is inactive until OTP is verified
+    }
 
-	// --- Step 4: Create User in Database ---
-	newUser := User{
-		Name:              req.Name,
-		Username:          req.Username,
-		Email:             req.Email,
-		Password:          string(hashedPassword),
-		DateOfBirth:       dob,
-		Gender:            req.Gender,
-		ProfilePictureURL: req.ProfilePictureUrl,
-	}
+    result := s.db.Create(&newUser)
+    if result.Error != nil {
+        log.Printf("Failed to create user in database: %v", result.Error)
+        return nil, status.Error(codes.Internal, "Failed to create account")
+    }
 
-	result := s.db.Create(&newUser)
-	if result.Error != nil {
-		log.Printf("Failed to create user in database: %v", result.Error)
-		if strings.Contains(result.Error.Error(), "unique constraint") {
-			if strings.Contains(result.Error.Error(), "username") {
-				return nil, status.Error(codes.AlreadyExists, "Username already exists")
-			}
-			if strings.Contains(result.Error.Error(), "email") {
-				return nil, status.Error(codes.AlreadyExists, "Email already exists")
-			}
-		}
-		return nil, status.Error(codes.Internal, "Failed to create account")
-	}
+    // --- Step 5: Send the OTP ---
+    // We can just call our other gRPC function internally.
+    // It already has the rate-limiting and email-sending logic.
+    _, err = s.SendRegistrationOtp(ctx, &pb.SendOtpRequest{Email: req.Email})
+    if err != nil {
+        // If OTP fails, we don't need to roll back the user creation,
+        // they can just request another one.
+        log.Printf("Failed to send initial OTP for %s: %v", req.Email, err)
+    }
 
-	// --- Step 5: Success ---
-	s.rdb.Del(ctx, otpKey)
-	log.Println("Successfully created user with ID:", newUser.ID)
-	return &pb.RegisterUserResponse{
-		Id:       int64(newUser.ID),
-		Username: newUser.Username,
-		Email:    newUser.Email,
-	}, nil
+    // --- Step 6: Success ---
+    log.Println("Successfully created inactive user with ID:", newUser.ID)
+    return &pb.RegisterUserResponse{
+        Id:       int64(newUser.ID),
+        Username: newUser.Username,
+        Email:    newUser.Email,
+        Message:  "Registration successful. Please check your email for an OTP code.",
+    }, nil
+}
+
+// validatePassword checks for at least 4 rules
+func validatePassword(password string) error {
+    var (
+        hasMinLen  = len(password) >= 8
+        hasUpper   = regexp.MustCompile(`[A-Z]`).MatchString(password)
+        hasLower   = regexp.MustCompile(`[a-z]`).MatchString(password)
+        hasNumber  = regexp.MustCompile(`[0-9]`).MatchString(password)
+        hasSpecial = regexp.MustCompile(`[\W_]`).MatchString(password)
+    )
+
+    rulesMet := 0
+    if hasMinLen { rulesMet++ }
+    if hasUpper { rulesMet++ }
+    if hasLower { rulesMet++ }
+    if hasNumber { rulesMet++ }
+    if hasSpecial { rulesMet++ }
+
+    // PDF requires "at least 4 (four) different validations"
+    if rulesMet >= 4 {
+        return nil
+    }
+
+    return status.Error(codes.InvalidArgument, "Password must meet at least 4 of the following rules: minimum 8 characters, one uppercase, one lowercase, one number, one special character")
 }
 
 func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
@@ -332,50 +357,55 @@ func createToken(user User, duration time.Duration) (string, error) {
 }
 
 func (s *server) SendRegistrationOtp(ctx context.Context, req *pb.SendOtpRequest) (*pb.SendOtpResponse, error) {
-	// PDF Requirement: "Rate limit OTP resend to 1 request every 60 seconds per email" [cite: 183]
-	rateLimitKey := "rate_limit:otp:" + req.Email
-	err := s.rdb.Get(ctx, rateLimitKey).Err()
-	if err != redis.Nil {
-		// Key exists, user is rate limited
-		ttl, _ := s.rdb.TTL(ctx, rateLimitKey).Result()
-		return nil, status.Error(codes.ResourceExhausted, fmt.Sprintf("Please wait %d seconds before resending", int(ttl.Seconds())))
-	}
+    // --- Step 1: Check if user exists and is *not* active ---
+    var user User
+    if err := s.db.Where("email = ?", req.Email).First(&user).Error; err == gorm.ErrRecordNotFound {
+        // Don't reveal if user exists
+        return nil, status.Error(codes.NotFound, "Cannot send OTP to this email.")
+    }
+    if user.IsActive {
+        return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
+    }
 
-	// TODO: Validate email format [cite: 174]
-	// TODO: Check if email is already in use [cite: 173]
+    // --- Step 2: Rate Limit Check ---
+    rateLimitKey := "rate_limit:otp:" + req.Email
+    err := s.rdb.Get(ctx, rateLimitKey).Err()
+    if err != redis.Nil {
+        // Key exists, user is rate limited
+        ttl, _ := s.rdb.TTL(ctx, rateLimitKey).Result()
+        return nil, status.Error(codes.ResourceExhausted, fmt.Sprintf("Please wait %d seconds before resending", int(ttl.Seconds())))
+    }
 
-	// Generate and store OTP
-	otpKey := "otp:" + req.Email
-	otpCode := generateOtp()
+    // --- Step 3: Generate, store, and publish OTP ---
+    otpKey := "otp:" + req.Email
+    otpCode := generateOtp()
 
-	// PDF Requirement: "The code is valid for 5 minutes"
-	err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
-	if err != nil {
-		return nil, status.Error(codes.Internal, "Failed to store OTP")
-	}
+    // Code is valid for 5 minutes [cite: 550]
+    err = s.rdb.Set(ctx, otpKey, otpCode, 5*time.Minute).Err()
+    if err != nil {
+        return nil, status.Error(codes.Internal, "Failed to store OTP")
+    }
 
-	// Set the 60-second rate limit [cite: 183]
-	err = s.rdb.Set(ctx, rateLimitKey, "1", 1*time.Minute).Err()
-	if err != nil {
-		// Not a fatal error, just log it
-		log.Printf("Failed to set rate limit key for %s", req.Email)
-	}
+    // Set the 60-second rate limit [cite: 552]
+    err = s.rdb.Set(ctx, rateLimitKey, "1", 1*time.Minute).Err()
+    if err != nil {
+        log.Printf("Failed to set rate limit key for %s", req.Email)
+    }
 
-	// --- Step 6: Publish to RabbitMQ for email-service ---
-	emailBody, _ := json.Marshal(map[string]string{
-		"to":      req.Email,
-		"type":    "registration_otp",
-		"otpCode": otpCode,
-	})
-	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
-		log.Printf("Failed to publish OTP email to queue: %v", err)
-		// Don't fail the request, just log it
-	}
+    // Publish to RabbitMQ for email-service
+    emailBody, _ := json.Marshal(map[string]string{
+        "to":      req.Email,
+        "type":    "registration_otp",
+        "otpCode": otpCode,
+    })
+    if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil { 
+        log.Printf("Failed to publish OTP email to queue: %v", err)
+    }
 
-	return &pb.SendOtpResponse{
-		Message:          "OTP sent successfully. Please check your email (and the console).",
-		RateLimitSeconds: 60,
-	}, nil
+    return &pb.SendOtpResponse{
+        Message:          "OTP sent successfully. Please check your email.",
+        RateLimitSeconds: 60,
+    }, nil
 }
 
 func (s *server) Verify2FA(ctx context.Context, req *pb.Verify2FARequest) (*pb.Verify2FAResponse, error) {
@@ -801,3 +831,62 @@ func (s *server) UnblockUser(ctx context.Context, req *pb.UnblockUserRequest) (*
 
 	return &pb.UnblockUserResponse{Message: "Successfully unblocked user"}, nil
 }
+
+// --- ADD NEW GRPC FUNCTION: VerifyRegistrationOtp ---
+func (s *server) VerifyRegistrationOtp(ctx context.Context, req *pb.VerifyRegistrationOtpRequest) (*pb.VerifyRegistrationOtpResponse, error) {
+    log.Printf("VerifyRegistrationOtp request received for: %s", req.Email)
+
+    // --- Step 1: Validate OTP ---
+    otpKey := "otp:" + req.Email
+    storedOtp, err := s.rdb.Get(ctx, otpKey).Result()
+    if err == redis.Nil {
+        log.Printf("OTP not found or expired for: %s", req.Email)
+        return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
+    } else if err != nil {
+        log.Printf("Redis error checking OTP: %v", err)
+        return nil, status.Error(codes.Internal, "Failed to verify OTP")
+    }
+
+    if storedOtp != req.OtpCode {
+        log.Printf("Invalid OTP for: %s. Expected %s, got %s", req.Email, storedOtp, req.OtpCode)
+        return nil, status.Error(codes.InvalidArgument, "Invalid or expired OTP code")
+    }
+
+    // --- Step 2: Code is valid, get user and activate them ---
+    var user User
+    if err := s.db.Where("email = ?", req.Email).First(&user).Error; err != nil {
+        return nil, status.Error(codes.Internal, "Failed to retrieve user data")
+    }
+
+    if user.IsActive {
+        return nil, status.Error(codes.AlreadyExists, "This account is already verified.")
+    }
+
+    // Activate the user
+    if err := s.db.Model(&user).Update("is_active", true).Error; err != nil {
+        log.Printf("Failed to activate user %s: %v", req.Email, err)
+        return nil, status.Error(codes.Internal, "Failed to activate account")
+    }
+
+    // Code is correct, delete it from Redis so it can't be reused
+    s.rdb.Del(ctx, otpKey)
+
+    // --- Step 3: Create tokens (as per blueprint) ---
+    accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
+    if err != nil {
+        return nil, status.Error(codes.Internal, "Failed to create access token")
+    }
+
+    refreshToken, err := createToken(user, 7*24*time.Hour) // 7 day expiry
+    if err != nil {
+        return nil, status.Error(codes.Internal, "Failed to create refresh token")
+    }
+
+    log.Printf("OTP verification successful for: %s", req.Email)
+
+    return &pb.VerifyRegistrationOtpResponse{
+        AccessToken:  accessToken,
+        RefreshToken: refreshToken,
+    }, nil
+}
+

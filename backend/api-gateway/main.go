@@ -60,6 +60,7 @@ func main() {
 		// These handlers don't need params, so gin.WrapF is fine.
 		authRoutes.POST("/register", gin.WrapF(handleRegister))
 		authRoutes.POST("/send-otp", gin.WrapF(handleSendOtp))
+		authRoutes.POST("/verify-otp", gin.WrapF(handleVerifyRegistrationOtp))
 		authRoutes.POST("/login", gin.WrapF(handleLogin))
 		authRoutes.POST("/login/verify-2fa", gin.WrapF(handleVerify2FA))
 		authRoutes.POST("/password-reset/request", gin.WrapF(handleSendPasswordReset))
@@ -192,56 +193,55 @@ func mustConnect(client interface{}, target string) {
 
 // handleRegister translates the HTTP request to a gRPC call
 func handleRegister(w http.ResponseWriter, r *http.Request) {
-	// 1. We only accept POST methods
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		return
-	}
+    // 1. We only accept POST methods
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
 
-	// 2. Decode the JSON body from the client
-	var req struct {
-		Name              string `json:"name"`
-		Username          string `json:"username"`
-		Email             string `json:"email"`
-		Password          string `json:"password"`
-		DateOfBirth       string `json:"date_of_birth"`
-		Gender            string `json:"gender"`
-		ProfilePictureURL string `json:"profile_picture_url"`
-		OtpCode           string `json:"otp_code"`
-	}
+    // 2. Decode the JSON body from the client
+    var req struct {
+        Name            string `json:"name"`
+        Username        string `json:"username"`
+        Email           string `json:"email"`
+        Password        string `json:"password"`
+        ConfirmPassword string `json:"confirm_password"` // ADDED
+        DateOfBirth     string `json:"date_of_birth"`
+        Gender          string `json:"gender"`
+        // ProfilePictureURL string `json:"profile_picture_url"` // REMOVED
+        // OtpCode           string `json:"otp_code"` // REMOVED
+    }
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
 
-	// 3. Call the gRPC service
-	grpcReq := &pb.RegisterUserRequest{
-		Name:              req.Name,
-		Username:          req.Username,
-		Email:             req.Email,
-		Password:          req.Password,
-		DateOfBirth:       req.DateOfBirth,
-		Gender:            req.Gender,
-		ProfilePictureUrl: req.ProfilePictureURL,
-		OtpCode:           req.OtpCode,
-	}
+    // 3. Call the gRPC service
+    grpcReq := &pb.RegisterUserRequest{
+        Name:            req.Name,
+        Username:        req.Username,
+        Email:           req.Email,
+        Password:        req.Password,
+        ConfirmPassword: req.ConfirmPassword, // ADDED
+        DateOfBirth:     req.DateOfBirth,
+        Gender:          req.Gender,
+        // ProfilePictureUrl: req.ProfilePictureURL, // REMOVED
+        // OtpCode:           req.OtpCode, // REMOVED
+    }
 
-	res, err := client.RegisterUser(r.Context(), grpcReq)
-	if err != nil {
-		// --- THIS IS THE FIX ---
-		// We now translate the gRPC error into a proper HTTP status
-		grpcErr, _ := status.FromError(err)
-		log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
-		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-		// --- END FIX ---
-		return
-	}
+    res, err := client.RegisterUser(r.Context(), grpcReq)
+    if err != nil {
+        grpcErr, _ := status.FromError(err)
+        log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+        http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+        return
+    }
 
-	// 4. Send the successful JSON response back to the client
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(res)
+    // 4. Send the successful JSON response back to the client
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(res)
 }
 
 func handleSendOtp(w http.ResponseWriter, r *http.Request) {
@@ -1128,4 +1128,38 @@ func handleRenameCollection_Gin(c *gin.Context) {
 	grpcRes, err := postClient.RenameCollection(c.Request.Context(), grpcReq)
 	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
 	c.JSON(http.StatusOK, grpcRes)
+}
+
+func handleVerifyRegistrationOtp(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+        return
+    }
+
+    var req struct {
+        Email   string `json:"email"`
+        OtpCode string `json:"otp_code"`
+    }
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    grpcReq := &pb.VerifyRegistrationOtpRequest{
+        Email:   req.Email,
+        OtpCode: req.OtpCode,
+    }
+
+    grpcRes, err := client.VerifyRegistrationOtp(r.Context(), grpcReq)
+    if err != nil {
+        grpcErr, _ := status.FromError(err)
+        log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+        http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+        return
+    }
+
+    // Return the tokens
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(grpcRes)
 }
