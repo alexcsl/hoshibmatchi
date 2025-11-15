@@ -14,6 +14,7 @@ require (
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/hoshibmatchi/message-service v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -58,3 +59,5 @@ replace github.com/hoshibmatchi/post-service => ../post-service
 replace github.com/hoshibmatchi/story-service => ../story-service
 
 replace github.com/hoshibmatchi/media-service => ../media-service
+
+replace github.com/hoshibmatchi/message-service => ../message-service

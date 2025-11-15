@@ -23,6 +23,7 @@ import (
 	postPb "github.com/hoshibmatchi/post-service/proto"
 	storyPb "github.com/hoshibmatchi/story-service/proto"
 	mediaPb "github.com/hoshibmatchi/media-service/proto"
+	messagePb "github.com/hoshibmatchi/message-service/proto"
 )
 
 // client will hold the persistent gRPC connection
@@ -30,6 +31,7 @@ var client pb.UserServiceClient
 var postClient postPb.PostServiceClient
 var storyClient storyPb.StoryServiceClient
 var mediaClient mediaPb.MediaServiceClient
+var messageClient messagePb.MessageServiceClient
 
 // ADD THIS (must match user-service)
 // TODO: Load this from an environment variable, not hardcoded
@@ -44,6 +46,7 @@ func main() {
 	mustConnect(&postClient, "post-service:9001")
 	mustConnect(&storyClient, "story-service:9002")
 	mustConnect(&mediaClient, "media-service:9005")
+	mustConnect(&messageClient, "message-service:9003")
 	
 	// --- Set up Gin Router ---
 	router := gin.Default()
@@ -119,6 +122,9 @@ func main() {
 		protected.DELETE("/collections/:id/posts/:post_id", handleUnsavePostFromCollection_Gin)
 		protected.DELETE("/collections/:id", handleDeleteCollection_Gin)
 		protected.PUT("/collections/:id", handleRenameCollection_Gin)
+
+		// Messsage
+		protected.POST("/conversations", handleCreateConversation_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -185,6 +191,8 @@ func mustConnect(client interface{}, target string) {
 		*c = storyPb.NewStoryServiceClient(conn)
 	case *mediaPb.MediaServiceClient:
 		*c = mediaPb.NewMediaServiceClient(conn)
+	case *messagePb.MessageServiceClient: 
+		*c = messagePb.NewMessageServiceClient(conn)
 	default:
 		log.Fatalf("Unknown client type")
 	}
@@ -1162,4 +1170,44 @@ func handleVerifyRegistrationOtp(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     json.NewEncoder(w).Encode(grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleCreateConversation ---
+func handleCreateConversation_Gin(c *gin.Context) {
+	creatorID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		ParticipantIDs []int64 `json:"participant_ids"`
+		GroupName      string  `json:"group_name"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.ParticipantIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "participant_ids must not be empty"})
+		return
+	}
+
+	grpcReq := &messagePb.CreateConversationRequest{
+		CreatorId:       creatorID,
+		ParticipantIds:  req.ParticipantIDs,
+		GroupName:       req.GroupName,
+	}
+
+	grpcRes, err := messageClient.CreateConversation(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to CreateConversation failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes)
 }

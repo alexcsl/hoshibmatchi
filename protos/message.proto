@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package message;
+
+option go_package = "github.com/hoshibmatchi/message-service/proto";
+
+// Import user.proto so we can get user data for conversations
+import "user.proto";
+
+service MessageService {
+  // Gets a list of the user's recent conversations
+  rpc GetConversations (GetConversationsRequest) returns (GetConversationsResponse);
+  
+  // Gets the message history for a specific conversation
+  rpc GetMessages (GetMessagesRequest) returns (GetMessagesResponse);
+  
+  // Sends a new message
+  rpc SendMessage (SendMessageRequest) returns (SendMessageResponse);
+  
+  // Creates a new conversation (either 1-on-1 or group)
+  rpc CreateConversation (CreateConversationRequest) returns (Conversation);
+}
+
+// Represents a single chat conversation
+message Conversation {
+  string id = 1;
+  // List of users in the chat
+  repeated user.GetUserDataResponse participants = 2;
+  // The last message sent
+  Message last_message = 3;
+  string created_at = 4;
+  bool is_group = 5;
+  string group_name = 6; // Empty if not a group
+}
+
+// Represents a single chat message
+message Message {
+  string id = 1;
+  string conversation_id = 2;
+  string sender_id = 3;
+  string content = 4; // Text, image URL, GIF URL, etc.
+  string sent_at = 5;
+  string sender_username = 6; // Denormalized
+}
+
+// --- GetConversations ---
+message GetConversationsRequest {
+  int64 user_id = 1; // From JWT
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+message GetConversationsResponse {
+  repeated Conversation conversations = 1;
+}
+
+// --- GetMessages ---
+message GetMessagesRequest {
+  int64 user_id = 1; // From JWT (for validation)
+  string conversation_id = 2; // From URL
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+
+message GetMessagesResponse {
+  repeated Message messages = 1;
+}
+
+// --- SendMessage ---
+message SendMessageRequest {
+  int64 sender_id = 1; // From JWT
+  string conversation_id = 2;
+  string content = 3;
+}
+
+message SendMessageResponse {
+  Message message = 1; // The newly created message
+}
+
+// --- CreateConversation ---
+message CreateConversationRequest {
+  int64 creator_id = 1; // From JWT
+  repeated int64 participant_ids = 2; // List of *other* user IDs
+  string group_name = 3; // If present, creates a group
+}

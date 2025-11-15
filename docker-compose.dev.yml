@@ -20,6 +20,8 @@ services:
         condition: service_started
       media-service:
         condition: service_started
+      message-service: # <-- ADD THIS
+            condition: service_started # <-- ADD THIS
 
   user-service:
     build:
