@@ -960,6 +960,644 @@ func (x *GetUserContentCountResponse) GetReelCount() int64 {
 	return 0
 }
 
+// --- Collection Messages ---
+type Collection struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // TODO: Add cover_image_urls from the 4 most recent posts
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Collection) Reset() {
+	*x = Collection{}
+	mi := &file_post_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Collection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Collection) ProtoMessage() {}
+
+func (x *Collection) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Collection.ProtoReflect.Descriptor instead.
+func (*Collection) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *Collection) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Collection) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *Collection) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// --- Create Collection ---
+type CreateCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCollectionRequest) Reset() {
+	*x = CreateCollectionRequest{}
+	mi := &file_post_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCollectionRequest) ProtoMessage() {}
+
+func (x *CreateCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCollectionRequest.ProtoReflect.Descriptor instead.
+func (*CreateCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *CreateCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *CreateCollectionRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// --- Get User Collections ---
+type GetUserCollectionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserCollectionsRequest) Reset() {
+	*x = GetUserCollectionsRequest{}
+	mi := &file_post_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserCollectionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserCollectionsRequest) ProtoMessage() {}
+
+func (x *GetUserCollectionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserCollectionsRequest.ProtoReflect.Descriptor instead.
+func (*GetUserCollectionsRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetUserCollectionsRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+type GetUserCollectionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Collections   []*Collection          `protobuf:"bytes,1,rep,name=collections,proto3" json:"collections,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserCollectionsResponse) Reset() {
+	*x = GetUserCollectionsResponse{}
+	mi := &file_post_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserCollectionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserCollectionsResponse) ProtoMessage() {}
+
+func (x *GetUserCollectionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserCollectionsResponse.ProtoReflect.Descriptor instead.
+func (*GetUserCollectionsResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetUserCollectionsResponse) GetCollections() []*Collection {
+	if x != nil {
+		return x.Collections
+	}
+	return nil
+}
+
+// --- Get Posts in Collection ---
+type GetPostsInCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // For validation
+	CollectionId  int64                  `protobuf:"varint,2,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	PageSize      int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageOffset    int32                  `protobuf:"varint,4,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPostsInCollectionRequest) Reset() {
+	*x = GetPostsInCollectionRequest{}
+	mi := &file_post_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPostsInCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPostsInCollectionRequest) ProtoMessage() {}
+
+func (x *GetPostsInCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPostsInCollectionRequest.ProtoReflect.Descriptor instead.
+func (*GetPostsInCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetPostsInCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetPostsInCollectionRequest) GetCollectionId() int64 {
+	if x != nil {
+		return x.CollectionId
+	}
+	return 0
+}
+
+func (x *GetPostsInCollectionRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetPostsInCollectionRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
+// --- Save/Unsave Post ---
+type SavePostToCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // For validation
+	CollectionId  int64                  `protobuf:"varint,2,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	PostId        int64                  `protobuf:"varint,3,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SavePostToCollectionRequest) Reset() {
+	*x = SavePostToCollectionRequest{}
+	mi := &file_post_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SavePostToCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SavePostToCollectionRequest) ProtoMessage() {}
+
+func (x *SavePostToCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SavePostToCollectionRequest.ProtoReflect.Descriptor instead.
+func (*SavePostToCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SavePostToCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *SavePostToCollectionRequest) GetCollectionId() int64 {
+	if x != nil {
+		return x.CollectionId
+	}
+	return 0
+}
+
+func (x *SavePostToCollectionRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+type SavePostToCollectionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SavePostToCollectionResponse) Reset() {
+	*x = SavePostToCollectionResponse{}
+	mi := &file_post_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SavePostToCollectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SavePostToCollectionResponse) ProtoMessage() {}
+
+func (x *SavePostToCollectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SavePostToCollectionResponse.ProtoReflect.Descriptor instead.
+func (*SavePostToCollectionResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SavePostToCollectionResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type UnsavePostFromCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // For validation
+	CollectionId  int64                  `protobuf:"varint,2,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	PostId        int64                  `protobuf:"varint,3,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsavePostFromCollectionRequest) Reset() {
+	*x = UnsavePostFromCollectionRequest{}
+	mi := &file_post_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsavePostFromCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsavePostFromCollectionRequest) ProtoMessage() {}
+
+func (x *UnsavePostFromCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsavePostFromCollectionRequest.ProtoReflect.Descriptor instead.
+func (*UnsavePostFromCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *UnsavePostFromCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UnsavePostFromCollectionRequest) GetCollectionId() int64 {
+	if x != nil {
+		return x.CollectionId
+	}
+	return 0
+}
+
+func (x *UnsavePostFromCollectionRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+type UnsavePostFromCollectionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsavePostFromCollectionResponse) Reset() {
+	*x = UnsavePostFromCollectionResponse{}
+	mi := &file_post_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsavePostFromCollectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsavePostFromCollectionResponse) ProtoMessage() {}
+
+func (x *UnsavePostFromCollectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsavePostFromCollectionResponse.ProtoReflect.Descriptor instead.
+func (*UnsavePostFromCollectionResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *UnsavePostFromCollectionResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// --- Delete/Rename Collection ---
+type DeleteCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	CollectionId  int64                  `protobuf:"varint,2,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCollectionRequest) Reset() {
+	*x = DeleteCollectionRequest{}
+	mi := &file_post_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCollectionRequest) ProtoMessage() {}
+
+func (x *DeleteCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCollectionRequest.ProtoReflect.Descriptor instead.
+func (*DeleteCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *DeleteCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *DeleteCollectionRequest) GetCollectionId() int64 {
+	if x != nil {
+		return x.CollectionId
+	}
+	return 0
+}
+
+type DeleteCollectionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteCollectionResponse) Reset() {
+	*x = DeleteCollectionResponse{}
+	mi := &file_post_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteCollectionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteCollectionResponse) ProtoMessage() {}
+
+func (x *DeleteCollectionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteCollectionResponse.ProtoReflect.Descriptor instead.
+func (*DeleteCollectionResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *DeleteCollectionResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type RenameCollectionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	CollectionId  int64                  `protobuf:"varint,2,opt,name=collection_id,json=collectionId,proto3" json:"collection_id,omitempty"`
+	NewName       string                 `protobuf:"bytes,3,opt,name=new_name,json=newName,proto3" json:"new_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenameCollectionRequest) Reset() {
+	*x = RenameCollectionRequest{}
+	mi := &file_post_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenameCollectionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenameCollectionRequest) ProtoMessage() {}
+
+func (x *RenameCollectionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenameCollectionRequest.ProtoReflect.Descriptor instead.
+func (*RenameCollectionRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *RenameCollectionRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *RenameCollectionRequest) GetCollectionId() int64 {
+	if x != nil {
+		return x.CollectionId
+	}
+	return 0
+}
+
+func (x *RenameCollectionRequest) GetNewName() string {
+	if x != nil {
+		return x.NewName
+	}
+	return ""
+}
+
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -1037,7 +1675,47 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"post_count\x18\x01 \x01(\x03R\tpostCount\x12\x1d\n" +
 	"\n" +
-	"reel_count\x18\x02 \x01(\x03R\treelCount2\x92\x06\n" +
+	"reel_count\x18\x02 \x01(\x03R\treelCount\"I\n" +
+	"\n" +
+	"Collection\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"F\n" +
+	"\x17CreateCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"4\n" +
+	"\x19GetUserCollectionsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\"P\n" +
+	"\x1aGetUserCollectionsResponse\x122\n" +
+	"\vcollections\x18\x01 \x03(\v2\x10.post.CollectionR\vcollections\"\x99\x01\n" +
+	"\x1bGetPostsInCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
+	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x04 \x01(\x05R\n" +
+	"pageOffset\"t\n" +
+	"\x1bSavePostToCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
+	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x17\n" +
+	"\apost_id\x18\x03 \x01(\x03R\x06postId\"8\n" +
+	"\x1cSavePostToCollectionResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"x\n" +
+	"\x1fUnsavePostFromCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
+	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x17\n" +
+	"\apost_id\x18\x03 \x01(\x03R\x06postId\"<\n" +
+	" UnsavePostFromCollectionResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"W\n" +
+	"\x17DeleteCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
+	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\"4\n" +
+	"\x18DeleteCollectionResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"r\n" +
+	"\x17RenameCollectionRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
+	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x19\n" +
+	"\bnew_name\x18\x03 \x01(\tR\anewName2\xe8\n" +
+	"\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -1051,7 +1729,14 @@ const file_post_proto_rawDesc = "" +
 	"\fGetReelsFeed\x12\x18.post.GetHomeFeedRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
 	"\fGetUserPosts\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponse\x12F\n" +
 	"\fGetUserReels\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponse\x12Z\n" +
-	"\x13GetUserContentCount\x12 .post.GetUserContentCountRequest\x1a!.post.GetUserContentCountResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"\x13GetUserContentCount\x12 .post.GetUserContentCountRequest\x1a!.post.GetUserContentCountResponse\x12C\n" +
+	"\x10CreateCollection\x12\x1d.post.CreateCollectionRequest\x1a\x10.post.Collection\x12W\n" +
+	"\x12GetUserCollections\x12\x1f.post.GetUserCollectionsRequest\x1a .post.GetUserCollectionsResponse\x12T\n" +
+	"\x14GetPostsInCollection\x12!.post.GetPostsInCollectionRequest\x1a\x19.post.GetHomeFeedResponse\x12]\n" +
+	"\x14SavePostToCollection\x12!.post.SavePostToCollectionRequest\x1a\".post.SavePostToCollectionResponse\x12i\n" +
+	"\x18UnsavePostFromCollection\x12%.post.UnsavePostFromCollectionRequest\x1a&.post.UnsavePostFromCollectionResponse\x12Q\n" +
+	"\x10DeleteCollection\x12\x1d.post.DeleteCollectionRequest\x1a\x1e.post.DeleteCollectionResponse\x12C\n" +
+	"\x10RenameCollection\x12\x1d.post.RenameCollectionRequest\x1a\x10.post.CollectionB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -1065,55 +1750,82 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_post_proto_goTypes = []any{
-	(*CreatePostRequest)(nil),           // 0: post.CreatePostRequest
-	(*Post)(nil),                        // 1: post.Post
-	(*CreatePostResponse)(nil),          // 2: post.CreatePostResponse
-	(*LikePostRequest)(nil),             // 3: post.LikePostRequest
-	(*LikePostResponse)(nil),            // 4: post.LikePostResponse
-	(*UnlikePostRequest)(nil),           // 5: post.UnlikePostRequest
-	(*UnlikePostResponse)(nil),          // 6: post.UnlikePostResponse
-	(*CommentOnPostRequest)(nil),        // 7: post.CommentOnPostRequest
-	(*CommentResponse)(nil),             // 8: post.CommentResponse
-	(*DeleteCommentRequest)(nil),        // 9: post.DeleteCommentRequest
-	(*DeleteCommentResponse)(nil),       // 10: post.DeleteCommentResponse
-	(*GetHomeFeedRequest)(nil),          // 11: post.GetHomeFeedRequest
-	(*GetHomeFeedResponse)(nil),         // 12: post.GetHomeFeedResponse
-	(*GetUserContentRequest)(nil),       // 13: post.GetUserContentRequest
-	(*GetUserContentCountRequest)(nil),  // 14: post.GetUserContentCountRequest
-	(*GetUserContentCountResponse)(nil), // 15: post.GetUserContentCountResponse
+	(*CreatePostRequest)(nil),                // 0: post.CreatePostRequest
+	(*Post)(nil),                             // 1: post.Post
+	(*CreatePostResponse)(nil),               // 2: post.CreatePostResponse
+	(*LikePostRequest)(nil),                  // 3: post.LikePostRequest
+	(*LikePostResponse)(nil),                 // 4: post.LikePostResponse
+	(*UnlikePostRequest)(nil),                // 5: post.UnlikePostRequest
+	(*UnlikePostResponse)(nil),               // 6: post.UnlikePostResponse
+	(*CommentOnPostRequest)(nil),             // 7: post.CommentOnPostRequest
+	(*CommentResponse)(nil),                  // 8: post.CommentResponse
+	(*DeleteCommentRequest)(nil),             // 9: post.DeleteCommentRequest
+	(*DeleteCommentResponse)(nil),            // 10: post.DeleteCommentResponse
+	(*GetHomeFeedRequest)(nil),               // 11: post.GetHomeFeedRequest
+	(*GetHomeFeedResponse)(nil),              // 12: post.GetHomeFeedResponse
+	(*GetUserContentRequest)(nil),            // 13: post.GetUserContentRequest
+	(*GetUserContentCountRequest)(nil),       // 14: post.GetUserContentCountRequest
+	(*GetUserContentCountResponse)(nil),      // 15: post.GetUserContentCountResponse
+	(*Collection)(nil),                       // 16: post.Collection
+	(*CreateCollectionRequest)(nil),          // 17: post.CreateCollectionRequest
+	(*GetUserCollectionsRequest)(nil),        // 18: post.GetUserCollectionsRequest
+	(*GetUserCollectionsResponse)(nil),       // 19: post.GetUserCollectionsResponse
+	(*GetPostsInCollectionRequest)(nil),      // 20: post.GetPostsInCollectionRequest
+	(*SavePostToCollectionRequest)(nil),      // 21: post.SavePostToCollectionRequest
+	(*SavePostToCollectionResponse)(nil),     // 22: post.SavePostToCollectionResponse
+	(*UnsavePostFromCollectionRequest)(nil),  // 23: post.UnsavePostFromCollectionRequest
+	(*UnsavePostFromCollectionResponse)(nil), // 24: post.UnsavePostFromCollectionResponse
+	(*DeleteCollectionRequest)(nil),          // 25: post.DeleteCollectionRequest
+	(*DeleteCollectionResponse)(nil),         // 26: post.DeleteCollectionResponse
+	(*RenameCollectionRequest)(nil),          // 27: post.RenameCollectionRequest
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
 	1,  // 1: post.GetHomeFeedResponse.posts:type_name -> post.Post
-	0,  // 2: post.PostService.CreatePost:input_type -> post.CreatePostRequest
-	3,  // 3: post.PostService.LikePost:input_type -> post.LikePostRequest
-	3,  // 4: post.PostService.UnlikePost:input_type -> post.LikePostRequest
-	7,  // 5: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
-	9,  // 6: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
-	11, // 7: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
-	11, // 8: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
-	11, // 9: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
-	13, // 10: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
-	13, // 11: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
-	14, // 12: post.PostService.GetUserContentCount:input_type -> post.GetUserContentCountRequest
-	2,  // 13: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 14: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 15: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 16: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 17: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 18: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	12, // 19: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	12, // 20: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	12, // 21: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	12, // 22: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	15, // 23: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
-	13, // [13:24] is the sub-list for method output_type
-	2,  // [2:13] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	16, // 2: post.GetUserCollectionsResponse.collections:type_name -> post.Collection
+	0,  // 3: post.PostService.CreatePost:input_type -> post.CreatePostRequest
+	3,  // 4: post.PostService.LikePost:input_type -> post.LikePostRequest
+	3,  // 5: post.PostService.UnlikePost:input_type -> post.LikePostRequest
+	7,  // 6: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
+	9,  // 7: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
+	11, // 8: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
+	11, // 9: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
+	11, // 10: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
+	13, // 11: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
+	13, // 12: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
+	14, // 13: post.PostService.GetUserContentCount:input_type -> post.GetUserContentCountRequest
+	17, // 14: post.PostService.CreateCollection:input_type -> post.CreateCollectionRequest
+	18, // 15: post.PostService.GetUserCollections:input_type -> post.GetUserCollectionsRequest
+	20, // 16: post.PostService.GetPostsInCollection:input_type -> post.GetPostsInCollectionRequest
+	21, // 17: post.PostService.SavePostToCollection:input_type -> post.SavePostToCollectionRequest
+	23, // 18: post.PostService.UnsavePostFromCollection:input_type -> post.UnsavePostFromCollectionRequest
+	25, // 19: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
+	27, // 20: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
+	2,  // 21: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 22: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 23: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 24: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 25: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 26: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	12, // 27: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	12, // 28: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	12, // 29: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	12, // 30: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	15, // 31: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
+	16, // 32: post.PostService.CreateCollection:output_type -> post.Collection
+	19, // 33: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
+	12, // 34: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
+	22, // 35: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
+	24, // 36: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
+	26, // 37: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
+	16, // 38: post.PostService.RenameCollection:output_type -> post.Collection
+	21, // [21:39] is the sub-list for method output_type
+	3,  // [3:21] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_post_proto_init() }
@@ -1127,7 +1839,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

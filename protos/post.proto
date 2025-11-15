@@ -21,6 +21,14 @@ service PostService {
   rpc GetUserPosts (GetUserContentRequest) returns (GetHomeFeedResponse);
   rpc GetUserReels (GetUserContentRequest) returns (GetHomeFeedResponse);
   rpc GetUserContentCount (GetUserContentCountRequest) returns (GetUserContentCountResponse);
+
+  rpc CreateCollection (CreateCollectionRequest) returns (Collection);
+  rpc GetUserCollections (GetUserCollectionsRequest) returns (GetUserCollectionsResponse);
+  rpc GetPostsInCollection (GetPostsInCollectionRequest) returns (GetHomeFeedResponse);
+  rpc SavePostToCollection (SavePostToCollectionRequest) returns (SavePostToCollectionResponse);
+  rpc UnsavePostFromCollection (UnsavePostFromCollectionRequest) returns (UnsavePostFromCollectionResponse);
+  rpc DeleteCollection (DeleteCollectionRequest) returns (DeleteCollectionResponse);
+  rpc RenameCollection (RenameCollectionRequest) returns (Collection);
 }
 
 // Data from the API Gateway
@@ -122,3 +130,70 @@ message GetUserContentCountResponse {
   int64 post_count = 1;
   int64 reel_count = 2;
 }
+
+// --- Collection Messages ---
+message Collection {
+  string id = 1;
+  string user_id = 2;
+  string name = 3;
+  // TODO: Add cover_image_urls from the 4 most recent posts
+}
+
+// --- Create Collection ---
+message CreateCollectionRequest {
+  int64 user_id = 1;
+  string name = 2;
+}
+// Returns a 'Collection' message
+
+// --- Get User Collections ---
+message GetUserCollectionsRequest {
+  int64 user_id = 1;
+}
+message GetUserCollectionsResponse {
+  repeated Collection collections = 1;
+}
+
+// --- Get Posts in Collection ---
+message GetPostsInCollectionRequest {
+  int64 user_id = 1; // For validation
+  int64 collection_id = 2;
+  int32 page_size = 3;
+  int32 page_offset = 4;
+}
+// Returns a 'GetHomeFeedResponse' (which is just a list of posts)
+
+// --- Save/Unsave Post ---
+message SavePostToCollectionRequest {
+  int64 user_id = 1; // For validation
+  int64 collection_id = 2;
+  int64 post_id = 3;
+}
+message SavePostToCollectionResponse {
+  string message = 1;
+}
+
+message UnsavePostFromCollectionRequest {
+  int64 user_id = 1; // For validation
+  int64 collection_id = 2;
+  int64 post_id = 3;
+}
+message UnsavePostFromCollectionResponse {
+  string message = 1;
+}
+
+// --- Delete/Rename Collection ---
+message DeleteCollectionRequest {
+  int64 user_id = 1;
+  int64 collection_id = 2;
+}
+message DeleteCollectionResponse {
+  string message = 1;
+}
+
+message RenameCollectionRequest {
+  int64 user_id = 1;
+  int64 collection_id = 2;
+  string new_name = 3;
+}
+// Returns a 'Collection' message

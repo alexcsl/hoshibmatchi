@@ -110,6 +110,14 @@ func main() {
 
 		protected.POST("/users/:id/block", handleBlockUser_Gin)
 		protected.DELETE("/users/:id/block", handleBlockUser_Gin)
+
+		protected.POST("/collections", handleCreateCollection_Gin)
+		protected.GET("/collections", handleGetUserCollections_Gin)
+		protected.GET("/collections/:id", handleGetPostsInCollection_Gin)
+		protected.POST("/collections/:id/posts", handleSavePostToCollection_Gin)
+		protected.DELETE("/collections/:id/posts/:post_id", handleUnsavePostFromCollection_Gin)
+		protected.DELETE("/collections/:id", handleDeleteCollection_Gin)
+		protected.PUT("/collections/:id", handleRenameCollection_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -988,4 +996,120 @@ func handleBlockUser_Gin(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Invalid request method"})
 	}
+}
+
+// --- GIN-NATIVE HANDLER: handleCreateCollection ---
+func handleCreateCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	var req struct { Name string `json:"name"` }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return
+	}
+
+	grpcReq := &postPb.CreateCollectionRequest{UserId: userID, Name: req.Name}
+	grpcRes, err := postClient.CreateCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusCreated, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetUserCollections ---
+func handleGetUserCollections_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	grpcReq := &postPb.GetUserCollectionsRequest{UserId: userID}
+	grpcRes, err := postClient.GetUserCollections(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes.Collections)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetPostsInCollection ---
+func handleGetPostsInCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
+	offset := (page - 1) * limit
+
+	grpcReq := &postPb.GetPostsInCollectionRequest{
+		UserId:       userID,
+		CollectionId: collectionID,
+		PageSize:     int32(limit),
+		PageOffset:   int32(offset),
+	}
+	grpcRes, err := postClient.GetPostsInCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleSavePostToCollection ---
+func handleSavePostToCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+
+	var req struct { PostID int64 `json:"post_id"` }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'post_id'"}); return
+	}
+
+	grpcReq := &postPb.SavePostToCollectionRequest{
+		UserId:       userID,
+		CollectionId: collectionID,
+		PostId:       req.PostID,
+	}
+	grpcRes, err := postClient.SavePostToCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleUnsavePostFromCollection ---
+func handleUnsavePostFromCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	postID, err := strconv.ParseInt(c.Param("post_id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"}); return }
+
+	grpcReq := &postPb.UnsavePostFromCollectionRequest{
+		UserId:       userID,
+		CollectionId: collectionID,
+		PostId:       postID,
+	}
+	grpcRes, err := postClient.UnsavePostFromCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleDeleteCollection ---
+func handleDeleteCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+
+	grpcReq := &postPb.DeleteCollectionRequest{UserId: userID, CollectionId: collectionID}
+	grpcRes, err := postClient.DeleteCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleRenameCollection ---
+func handleRenameCollection_Gin(c *gin.Context) {
+	userID := c.MustGet("userID").(int64)
+	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+
+	var req struct { NewName string `json:"new_name"` }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'new_name'"}); return
+	}
+
+	grpcReq := &postPb.RenameCollectionRequest{
+		UserId:       userID,
+		CollectionId: collectionID,
+		NewName:      req.NewName,
+	}
+	grpcRes, err := postClient.RenameCollection(c.Request.Context(), grpcReq)
+	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	c.JSON(http.StatusOK, grpcRes)
 }

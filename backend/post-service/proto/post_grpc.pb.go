@@ -19,17 +19,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName          = "/post.PostService/CreatePost"
-	PostService_LikePost_FullMethodName            = "/post.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName          = "/post.PostService/UnlikePost"
-	PostService_CommentOnPost_FullMethodName       = "/post.PostService/CommentOnPost"
-	PostService_DeleteComment_FullMethodName       = "/post.PostService/DeleteComment"
-	PostService_GetHomeFeed_FullMethodName         = "/post.PostService/GetHomeFeed"
-	PostService_GetExploreFeed_FullMethodName      = "/post.PostService/GetExploreFeed"
-	PostService_GetReelsFeed_FullMethodName        = "/post.PostService/GetReelsFeed"
-	PostService_GetUserPosts_FullMethodName        = "/post.PostService/GetUserPosts"
-	PostService_GetUserReels_FullMethodName        = "/post.PostService/GetUserReels"
-	PostService_GetUserContentCount_FullMethodName = "/post.PostService/GetUserContentCount"
+	PostService_CreatePost_FullMethodName               = "/post.PostService/CreatePost"
+	PostService_LikePost_FullMethodName                 = "/post.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName               = "/post.PostService/UnlikePost"
+	PostService_CommentOnPost_FullMethodName            = "/post.PostService/CommentOnPost"
+	PostService_DeleteComment_FullMethodName            = "/post.PostService/DeleteComment"
+	PostService_GetHomeFeed_FullMethodName              = "/post.PostService/GetHomeFeed"
+	PostService_GetExploreFeed_FullMethodName           = "/post.PostService/GetExploreFeed"
+	PostService_GetReelsFeed_FullMethodName             = "/post.PostService/GetReelsFeed"
+	PostService_GetUserPosts_FullMethodName             = "/post.PostService/GetUserPosts"
+	PostService_GetUserReels_FullMethodName             = "/post.PostService/GetUserReels"
+	PostService_GetUserContentCount_FullMethodName      = "/post.PostService/GetUserContentCount"
+	PostService_CreateCollection_FullMethodName         = "/post.PostService/CreateCollection"
+	PostService_GetUserCollections_FullMethodName       = "/post.PostService/GetUserCollections"
+	PostService_GetPostsInCollection_FullMethodName     = "/post.PostService/GetPostsInCollection"
+	PostService_SavePostToCollection_FullMethodName     = "/post.PostService/SavePostToCollection"
+	PostService_UnsavePostFromCollection_FullMethodName = "/post.PostService/UnsavePostFromCollection"
+	PostService_DeleteCollection_FullMethodName         = "/post.PostService/DeleteCollection"
+	PostService_RenameCollection_FullMethodName         = "/post.PostService/RenameCollection"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -47,6 +54,13 @@ type PostServiceClient interface {
 	GetUserPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetUserReels(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetUserContentCount(ctx context.Context, in *GetUserContentCountRequest, opts ...grpc.CallOption) (*GetUserContentCountResponse, error)
+	CreateCollection(ctx context.Context, in *CreateCollectionRequest, opts ...grpc.CallOption) (*Collection, error)
+	GetUserCollections(ctx context.Context, in *GetUserCollectionsRequest, opts ...grpc.CallOption) (*GetUserCollectionsResponse, error)
+	GetPostsInCollection(ctx context.Context, in *GetPostsInCollectionRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	SavePostToCollection(ctx context.Context, in *SavePostToCollectionRequest, opts ...grpc.CallOption) (*SavePostToCollectionResponse, error)
+	UnsavePostFromCollection(ctx context.Context, in *UnsavePostFromCollectionRequest, opts ...grpc.CallOption) (*UnsavePostFromCollectionResponse, error)
+	DeleteCollection(ctx context.Context, in *DeleteCollectionRequest, opts ...grpc.CallOption) (*DeleteCollectionResponse, error)
+	RenameCollection(ctx context.Context, in *RenameCollectionRequest, opts ...grpc.CallOption) (*Collection, error)
 }
 
 type postServiceClient struct {
@@ -167,6 +181,76 @@ func (c *postServiceClient) GetUserContentCount(ctx context.Context, in *GetUser
 	return out, nil
 }
 
+func (c *postServiceClient) CreateCollection(ctx context.Context, in *CreateCollectionRequest, opts ...grpc.CallOption) (*Collection, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Collection)
+	err := c.cc.Invoke(ctx, PostService_CreateCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetUserCollections(ctx context.Context, in *GetUserCollectionsRequest, opts ...grpc.CallOption) (*GetUserCollectionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserCollectionsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserCollections_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetPostsInCollection(ctx context.Context, in *GetPostsInCollectionRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPostsInCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) SavePostToCollection(ctx context.Context, in *SavePostToCollectionRequest, opts ...grpc.CallOption) (*SavePostToCollectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SavePostToCollectionResponse)
+	err := c.cc.Invoke(ctx, PostService_SavePostToCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnsavePostFromCollection(ctx context.Context, in *UnsavePostFromCollectionRequest, opts ...grpc.CallOption) (*UnsavePostFromCollectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnsavePostFromCollectionResponse)
+	err := c.cc.Invoke(ctx, PostService_UnsavePostFromCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteCollection(ctx context.Context, in *DeleteCollectionRequest, opts ...grpc.CallOption) (*DeleteCollectionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCollectionResponse)
+	err := c.cc.Invoke(ctx, PostService_DeleteCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RenameCollection(ctx context.Context, in *RenameCollectionRequest, opts ...grpc.CallOption) (*Collection, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Collection)
+	err := c.cc.Invoke(ctx, PostService_RenameCollection_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -182,6 +266,13 @@ type PostServiceServer interface {
 	GetUserPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
 	GetUserReels(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
 	GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error)
+	CreateCollection(context.Context, *CreateCollectionRequest) (*Collection, error)
+	GetUserCollections(context.Context, *GetUserCollectionsRequest) (*GetUserCollectionsResponse, error)
+	GetPostsInCollection(context.Context, *GetPostsInCollectionRequest) (*GetHomeFeedResponse, error)
+	SavePostToCollection(context.Context, *SavePostToCollectionRequest) (*SavePostToCollectionResponse, error)
+	UnsavePostFromCollection(context.Context, *UnsavePostFromCollectionRequest) (*UnsavePostFromCollectionResponse, error)
+	DeleteCollection(context.Context, *DeleteCollectionRequest) (*DeleteCollectionResponse, error)
+	RenameCollection(context.Context, *RenameCollectionRequest) (*Collection, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -224,6 +315,27 @@ func (UnimplementedPostServiceServer) GetUserReels(context.Context, *GetUserCont
 }
 func (UnimplementedPostServiceServer) GetUserContentCount(context.Context, *GetUserContentCountRequest) (*GetUserContentCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserContentCount not implemented")
+}
+func (UnimplementedPostServiceServer) CreateCollection(context.Context, *CreateCollectionRequest) (*Collection, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateCollection not implemented")
+}
+func (UnimplementedPostServiceServer) GetUserCollections(context.Context, *GetUserCollectionsRequest) (*GetUserCollectionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserCollections not implemented")
+}
+func (UnimplementedPostServiceServer) GetPostsInCollection(context.Context, *GetPostsInCollectionRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPostsInCollection not implemented")
+}
+func (UnimplementedPostServiceServer) SavePostToCollection(context.Context, *SavePostToCollectionRequest) (*SavePostToCollectionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SavePostToCollection not implemented")
+}
+func (UnimplementedPostServiceServer) UnsavePostFromCollection(context.Context, *UnsavePostFromCollectionRequest) (*UnsavePostFromCollectionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsavePostFromCollection not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteCollection(context.Context, *DeleteCollectionRequest) (*DeleteCollectionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCollection not implemented")
+}
+func (UnimplementedPostServiceServer) RenameCollection(context.Context, *RenameCollectionRequest) (*Collection, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RenameCollection not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -444,6 +556,132 @@ func _PostService_GetUserContentCount_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_CreateCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateCollection(ctx, req.(*CreateCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetUserCollections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserCollectionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserCollections(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserCollections_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserCollections(ctx, req.(*GetUserCollectionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetPostsInCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPostsInCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPostsInCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPostsInCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPostsInCollection(ctx, req.(*GetPostsInCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_SavePostToCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SavePostToCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SavePostToCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SavePostToCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SavePostToCollection(ctx, req.(*SavePostToCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnsavePostFromCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsavePostFromCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnsavePostFromCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnsavePostFromCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnsavePostFromCollection(ctx, req.(*UnsavePostFromCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteCollection(ctx, req.(*DeleteCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RenameCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameCollectionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RenameCollection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RenameCollection_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RenameCollection(ctx, req.(*RenameCollectionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -494,6 +732,34 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserContentCount",
 			Handler:    _PostService_GetUserContentCount_Handler,
+		},
+		{
+			MethodName: "CreateCollection",
+			Handler:    _PostService_CreateCollection_Handler,
+		},
+		{
+			MethodName: "GetUserCollections",
+			Handler:    _PostService_GetUserCollections_Handler,
+		},
+		{
+			MethodName: "GetPostsInCollection",
+			Handler:    _PostService_GetPostsInCollection_Handler,
+		},
+		{
+			MethodName: "SavePostToCollection",
+			Handler:    _PostService_SavePostToCollection_Handler,
+		},
+		{
+			MethodName: "UnsavePostFromCollection",
+			Handler:    _PostService_UnsavePostFromCollection_Handler,
+		},
+		{
+			MethodName: "DeleteCollection",
+			Handler:    _PostService_DeleteCollection_Handler,
+		},
+		{
+			MethodName: "RenameCollection",
+			Handler:    _PostService_RenameCollection_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

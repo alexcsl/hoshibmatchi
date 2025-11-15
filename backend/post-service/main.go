@@ -63,6 +63,22 @@ type server struct {
 	userClient userPb.UserServiceClient
 }
 
+// Collection defines a user's named collection of posts
+type Collection struct {
+	gorm.Model
+	UserID int64  `gorm:"index"`
+	Name   string `gorm:"type:varchar(100)"`
+}
+
+// SavedPost is the join table for the many-to-many relationship
+// between collections and posts
+type SavedPost struct {
+	// Composite primary key
+	CollectionID uint `gorm:"primaryKey"`
+	PostID       uint `gorm:"primaryKey"`
+	CreatedAt    time.Time
+}
+
 func main() {
 	// --- Step 1: Connect to Post DB ---
 	dsn := "host=post-db user=admin password=password dbname=post_service_db port=5432 sslmode=disable TimeZone=UTC"
@@ -73,6 +89,8 @@ func main() {
 	db.AutoMigrate(&Post{})
 	db.AutoMigrate(&PostLike{})
 	db.AutoMigrate(&Comment{})
+	db.AutoMigrate(&Collection{})
+	db.AutoMigrate(&SavedPost{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -417,4 +435,177 @@ func (s *server) GetUserContentCount(ctx context.Context, req *pb.GetUserContent
 		PostCount: postCount,
 		ReelCount: reelCount,
 	}, nil
+}
+
+// --- Helper function to convert GORM Collection to gRPC Collection ---
+func (s *server) gormToGrpcCollection(collection *Collection) *pb.Collection {
+	// TODO: Get 4 cover image URLs
+	return &pb.Collection{
+		Id:     strconv.FormatUint(uint64(collection.ID), 10),
+		UserId: strconv.FormatInt(collection.UserID, 10),
+		Name:   collection.Name,
+	}
+}
+
+// --- GPRC: CreateCollection ---
+func (s *server) CreateCollection(ctx context.Context, req *pb.CreateCollectionRequest) (*pb.Collection, error) {
+	newCollection := Collection{
+		UserID: req.UserId,
+		Name:   req.Name,
+	}
+	if result := s.db.Create(&newCollection); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to create collection")
+	}
+	return s.gormToGrpcCollection(&newCollection), nil
+}
+
+// --- GPRC: GetUserCollections ---
+func (s *server) GetUserCollections(ctx context.Context, req *pb.GetUserCollectionsRequest) (*pb.GetUserCollectionsResponse, error) {
+	var collections []Collection
+	if err := s.db.Where("user_id = ?", req.UserId).Order("created_at DESC").Find(&collections).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve collections")
+	}
+
+	var grpcCollections []*pb.Collection
+	for _, c := range collections {
+		grpcCollections = append(grpcCollections, s.gormToGrpcCollection(&c))
+	}
+
+	return &pb.GetUserCollectionsResponse{Collections: grpcCollections}, nil
+}
+
+// --- GPRC: GetPostsInCollection ---
+func (s *server) GetPostsInCollection(ctx context.Context, req *pb.GetPostsInCollectionRequest) (*pb.GetHomeFeedResponse, error) {
+	// 1. Verify this user owns this collection
+	var collection Collection
+	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Collection not found")
+	}
+	if collection.UserID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+
+	// 2. Get all Post IDs from the join table
+	var postIDs []uint
+	s.db.Model(&SavedPost{}).Where("collection_id = ?", req.CollectionId).Order("created_at DESC").Pluck("post_id", &postIDs)
+
+	// 3. Get all posts matching those IDs
+	var posts []Post
+	if err := s.db.Where("id IN ?", postIDs).
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	// 4. Convert and return
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&post)) // Assumes you have a gormToGrpcPost helper
+	}
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+}
+
+// --- GPRC: SavePostToCollection ---
+func (s *server) SavePostToCollection(ctx context.Context, req *pb.SavePostToCollectionRequest) (*pb.SavePostToCollectionResponse, error) {
+	// 1. Verify this user owns this collection
+	var collection Collection
+	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Collection not found")
+	}
+	if collection.UserID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+
+	// 2. Save the post
+	savedPost := SavedPost{
+		CollectionID: uint(req.CollectionId),
+		PostID:       uint(req.PostId),
+	}
+	if result := s.db.Create(&savedPost); result.Error != nil {
+		if strings.Contains(result.Error.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "Post already saved to this collection")
+		}
+		return nil, status.Error(codes.Internal, "Failed to save post")
+	}
+
+	return &pb.SavePostToCollectionResponse{Message: "Post saved successfully"}, nil
+}
+
+// --- GPRC: UnsavePostFromCollection ---
+func (s *server) UnsavePostFromCollection(ctx context.Context, req *pb.UnsavePostFromCollectionRequest) (*pb.UnsavePostFromCollectionResponse, error) {
+	// 1. Verify this user owns this collection
+	var collection Collection
+	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Collection not found")
+	}
+	if collection.UserID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+
+	// 2. Unsave the post
+	savedPost := SavedPost{
+		CollectionID: uint(req.CollectionId),
+		PostID:       uint(req.PostId),
+	}
+	if result := s.db.Delete(&savedPost); result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "Post was not saved in this collection")
+	}
+
+	return &pb.UnsavePostFromCollectionResponse{Message: "Post unsaved successfully"}, nil
+}
+
+// --- GPRC: DeleteCollection ---
+func (s *server) DeleteCollection(ctx context.Context, req *pb.DeleteCollectionRequest) (*pb.DeleteCollectionResponse, error) {
+	var collection Collection
+	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Collection not found")
+	}
+	if collection.UserID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+
+	// Delete from collections table (GORM will handle cascade deletes if set up)
+	// For simplicity, we'll manually delete from the join table first
+	if err := s.db.Where("collection_id = ?", req.CollectionId).Delete(&SavedPost{}).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to clear collection items")
+	}
+	if err := s.db.Delete(&collection).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to delete collection")
+	}
+
+	return &pb.DeleteCollectionResponse{Message: "Collection deleted successfully"}, nil
+}
+
+// --- GPRC: RenameCollection ---
+func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionRequest) (*pb.Collection, error) {
+	var collection Collection
+	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Collection not found")
+	}
+	if collection.UserID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+
+	collection.Name = req.NewName
+	if err := s.db.Save(&collection).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to rename collection")
+	}
+	
+	return s.gormToGrpcCollection(&collection), nil
+}
+
+// --- Helper function: gormToGrpcPost (You need to add this) ---
+// We need this for GetPostsInCollection
+func (s *server) gormToGrpcPost(post *Post) *pb.Post {
+	return &pb.Post{
+		Id:                 strconv.FormatUint(uint64(post.ID), 10),
+		Caption:            post.Caption,
+		AuthorUsername:     post.AuthorUsername,
+		AuthorProfileUrl:   post.AuthorProfileURL,
+		AuthorIsVerified:   post.AuthorIsVerified,
+		MediaUrls:          post.MediaURLs,
+		CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+		IsReel:             post.IsReel,
+	}
 }
