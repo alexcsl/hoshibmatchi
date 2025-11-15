@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"time"
-    "strings"
-	"encoding/json"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -27,17 +27,17 @@ import (
 // Story defines the GORM model
 type Story struct {
 	gorm.Model
-	AuthorID         int64
-	MediaURL         string
-	
+	AuthorID int64
+	MediaURL string
+
 	// Denormalized data
 	AuthorUsername   string
 	AuthorProfileURL string
 }
 
 type StoryLike struct {
-	UserID int64 `gorm:"primaryKey"`
-	StoryID int64 `gorm:"primaryKey"`
+	UserID    int64 `gorm:"primaryKey"`
+	StoryID   int64 `gorm:"primaryKey"`
 	CreatedAt time.Time
 }
 
@@ -57,7 +57,7 @@ func main() {
 		log.Fatalf("Failed to connect to story-db: %v", err)
 	}
 	db.AutoMigrate(&Story{})
-    db.AutoMigrate(&StoryLike{})
+	db.AutoMigrate(&StoryLike{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -74,15 +74,22 @@ func main() {
 	retryDelay := 2 * time.Second
 	for i := 0; i < maxRetries; i++ {
 		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
-		if err == nil { log.Println("Successfully connected to RabbitMQ"); break }
+		if err == nil {
+			log.Println("Successfully connected to RabbitMQ")
+			break
+		}
 		log.Printf("Failed to connect to RabbitMQ: %v. Retrying...", err)
 		time.Sleep(retryDelay)
 	}
-	if amqpConn == nil { log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries) }
+	if amqpConn == nil {
+		log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries)
+	}
 	defer amqpConn.Close()
 
 	amqpCh, err := amqpConn.Channel()
-	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
+	}
 	defer amqpCh.Close()
 
 	// 1. This is the FINAL queue the worker will listen to.
@@ -122,8 +129,24 @@ func main() {
 	_, err = amqpCh.QueueDeclare(
 		"notification_queue", true, false, false, false, nil,
 	)
-	if err != nil { log.Fatalf("Failed to declare notification_queue: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to declare notification_queue: %v", err)
+	}
 	log.Println("RabbitMQ notification_queue declared")
+
+	// --- ADDED: Declare video transcoding queue ---
+	_, err = amqpCh.QueueDeclare(
+		"video_transcoding_queue",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare video_transcoding_queue: %v", err)
+	}
+	log.Println("RabbitMQ video_transcoding_queue declared")
 
 	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9002") // Correct port 9002
@@ -147,10 +170,10 @@ func main() {
 func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
 	return s.amqpCh.PublishWithContext(
 		ctx,
-		"",          // exchange (default)
-		queueName,   // routing key (queue name)
-		false,       // mandatory
-		false,       // immediate
+		"",        // exchange (default)
+		queueName, // routing key (queue name)
+		false,     // mandatory
+		false,     // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent,
@@ -193,10 +216,10 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 	// Publish to the "wait" queue, NOT the final queue
 	err = s.amqpCh.PublishWithContext(
 		ctxTimeout,
-		"",                 // exchange (default)
+		"",               // exchange (default)
 		"story_wait_24h", // routing key (the "wait" queue)
-		false,              // mandatory
-		false,              // immediate
+		false,            // mandatory
+		false,            // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent, // Make message durable
