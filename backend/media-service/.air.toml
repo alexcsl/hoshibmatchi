@@ -1,0 +1,22 @@
+# .air.toml
+# Config file for air hot-reload tool
+
+# Set the root directory for air to watch
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Command to build the binary
+cmd = "go build -o ./tmp/main ."
+# The path to the built binary
+bin = "./tmp/main"
+# Files to watch
+include_ext = ["go", "toml", "mod"]
+# Files to ignore
+exclude_dir = ["tmp", "vendor"]
+# Log name
+log = "air.log"
+
+[misc]
+# Delete the tmp binary on exit
+clean_on_exit = true

@@ -1,0 +1,91 @@
+# This file overrides settings in docker-compose.yml for development
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./backend/api-gateway/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend # Mount local backend code
+    # Run air, pointing to the correct config file
+    command: ["air", "-c", "/app/backend/api-gateway/.air.toml"]
+    # This service connects to all others, so it should wait for them
+    depends_on:
+      user-service:
+        condition: service_started
+      post-service:
+        condition: service_started
+      story-service:
+        condition: service_started
+      media-service:
+        condition: service_started
+
+  user-service:
+    build:
+      context: .
+      dockerfile: ./backend/user-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/user-service/.air.toml"]
+
+  post-service:
+    build:
+      context: .
+      dockerfile: ./backend/post-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/post-service/.air.toml"]
+
+  story-service:
+    build:
+      context: .
+      dockerfile: ./backend/story-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/story-service/.air.toml"]
+
+  media-service:
+    build:
+      context: .
+      dockerfile: ./backend/media-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/media-service/.air.toml"]
+
+  message-service:
+    build:
+      context: .
+      dockerfile: ./backend/message-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/message-service/.air.toml"]
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: ./backend/notification-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/notification-service/.air.toml"]
+
+  email-service:
+    build:
+      context: .
+      dockerfile: ./backend/email-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/email-service/.air.toml"]
+
+  worker-service:
+    build:
+      context: .
+      dockerfile: ./backend/worker-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    command: ["air", "-c", "/app/backend/worker-service/.air.toml"]
+  
+  ai-service:
+    # Python's uvicorn has a built-in reloader
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9008", "--reload"]
+    volumes:
+      # Mount the local ai-service code
+      - ./backend/ai-service:/app
