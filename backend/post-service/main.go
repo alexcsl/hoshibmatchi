@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 	"strings"
+	"encoding/json"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,6 +20,7 @@ import (
 	userPb "github.com/hoshibmatchi/user-service/proto"
 	
 	"github.com/lib/pq" // For string arrays
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // Post defines the GORM model
@@ -61,6 +63,7 @@ type server struct {
 	pb.UnimplementedPostServiceServer
 	db         *gorm.DB
 	userClient userPb.UserServiceClient
+	amqpCh     *amqp.Channel
 }
 
 // Collection defines a user's named collection of posts
@@ -101,19 +104,77 @@ func main() {
 	userClient := userPb.NewUserServiceClient(userConn)
 	log.Println("Successfully connected to user-service")
 
-	// --- Step 3: Start this gRPC Server ---
+	// --- Step 3: Connect to RabbitMQ (with retries) ---
+	var amqpConn *amqp.Connection
+	maxRetries := 10
+	retryDelay := 2 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		if err == nil {
+			log.Println("Successfully connected to RabbitMQ")
+			break
+		}
+		log.Printf("Failed to connect to RabbitMQ: %v. Retrying...", err)
+		time.Sleep(retryDelay)
+	}
+	if amqpConn == nil {
+		log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries)
+	}
+	defer amqpConn.Close()
+
+
+	amqpCh, err := amqpConn.Channel()
+	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
+	defer amqpCh.Close()
+
+	_, err = amqpCh.QueueDeclare(
+		"notification_queue", // queue name
+		true,                // durable
+		false,               // delete when unused
+		false,               // exclusive
+		false,               // no-wait
+		nil,                 // arguments
+	)
+	if err != nil { log.Fatalf("Failed to declare notification_queue: %v", err) }
+	log.Println("RabbitMQ notification_queue declared")
+
+	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9001") // Port 9001
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterPostServiceServer(s, &server{db: db, userClient: userClient})
+	
+	// --- THIS IS THE FIX ---
+	// We must pass the amqpCh to the server struct
+	pb.RegisterPostServiceServer(s, &server{
+		db:         db,
+		userClient: userClient,
+		amqpCh:     amqpCh, // <-- This was missing
+	})
+	// --- END FIX ---
 
 	log.Println("Post service listening on port 9001...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
+	return s.amqpCh.PublishWithContext(
+		ctx,
+		"",          // exchange (default)
+		queueName,   // routing key (queue name)
+		false,       // mandatory
+		false,       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Body:         body,
+		},
+	)
 }
 
 // --- Implement CreatePost ---
@@ -173,7 +234,23 @@ func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.Lik
 		return nil, status.Error(codes.Internal, "Failed to like post")
 	}
 	
-	// TODO: Send a "post.liked" event to RabbitMQ for notifications
+	// RabbitMQ Notifications 
+	// Get Post Author ID
+	var post Post
+	s.db.First(&post, req.PostId)
+	
+	// Don't notify if user likes their own post
+	if post.AuthorID != req.UserId {
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"type":      "post.liked",
+			"actor_id":  req.UserId,
+			"user_id":   post.AuthorID, // The user to be notified
+			"entity_id": req.PostId,
+		})
+		s.publishToQueue(ctx, "notification_queue", msgBody)
+	}
+	// --- END ADD ---
+
 	return &pb.LikePostResponse{Message: "Post liked"}, nil
 }
 
@@ -216,7 +293,21 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		return nil, status.Error(codes.Internal, "Failed to save comment")
 	}
 	
-	// TODO: Send "post.commented" event to RabbitMQ
+	// Notification for comments 
+	// Get Post Author ID
+	var post Post
+	s.db.First(&post, req.PostId)
+	
+	// Don't notify if user comments on their own post
+	if post.AuthorID != req.UserId {
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"type":      "post.commented",
+			"actor_id":  req.UserId,
+			"user_id":   post.AuthorID,
+			"entity_id": req.PostId,
+		})
+		s.publishToQueue(ctx, "notification_queue", msgBody)
+	}
 
 	// --- Step 3: Return the created comment ---
 	return &pb.CommentResponse{

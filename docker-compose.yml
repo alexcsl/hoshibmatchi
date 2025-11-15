@@ -218,6 +218,8 @@ services:
     depends_on:
       post-db:
         condition: service_healthy
+      rabbitmq: # <-- ADD THIS BLOCK
+        condition: service_healthy
     networks: [hoshi-net]
 
   story-service:
@@ -227,6 +229,8 @@ services:
     container_name: story-service
     depends_on:
       story-db:
+        condition: service_healthy
+      rabbitmq: # <-- ADD THIS BLOCK
         condition: service_healthy
     networks: [hoshi-net]
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
-	// "context"
+	"context"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -160,11 +160,9 @@ func GinAuthMiddleware() gin.HandlerFunc {
 		
 		userID := int64(userIDFloat)
 
-		// --- THIS IS THE FIX ---
-		// We set the userID directly into Gin's context.
-		// All handlers using c.MustGet("userID") will now work.
-		c.Set("userID", userID)
-		// --- END FIX ---
+		// We set the userID in the standard http.Request.Context()
+		ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
+		c.Request = c.Request.WithContext(ctx)
 		
 		c.Next()
 	}
@@ -454,7 +452,8 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 
 // --- GIN-NATIVE HANDLER: handleCreatePost ---
 func handleCreatePost_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	var req struct {
 		Caption          string   `json:"caption"`
@@ -488,7 +487,8 @@ func handleCreatePost_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleCreateStory ---
 func handleCreateStory_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	var req struct {
 		MediaURL string `json:"media_url"`
@@ -515,7 +515,8 @@ func handleCreateStory_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleCreateComment ---
 func handleCreateComment_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	var req struct {
 		PostID          int64  `json:"post_id"`
@@ -670,7 +671,8 @@ func handleDeleteComment_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUploadURL ---
 func handleGetUploadURL_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	
 	// Get query params, e.g., /media/upload-url?filename=foo.jpg&type=image/jpeg
 	filename := c.Query("filename")
@@ -698,7 +700,8 @@ func handleGetUploadURL_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
 func handleGetHomeFeed_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64) // From JWT
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	// Get pagination query params, e.g., /feed/home?page=1&limit=20
 	// We'll default to page 1, limit 20
@@ -729,7 +732,8 @@ func handleGetHomeFeed_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetExploreFeed ---
 func handleGetExploreFeed_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64) // We still need this for context, even if not used in query
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
@@ -755,7 +759,8 @@ func handleGetExploreFeed_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetReelsFeed ---
 func handleGetReelsFeed_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
@@ -782,7 +787,8 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetUserProfile ---
 // This is a complex aggregator handler
 func handleGetUserProfile_Gin(c *gin.Context) {
-	selfUserID := c.MustGet("userID").(int64) // Get ID of user making the request
+	selfUserID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	usernameToFind := c.Param("username")    // Get username from URL
 
 	// --- 1. Get Profile Data from User-Service ---
@@ -894,7 +900,8 @@ func handleGetUserReels_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleUpdateProfile ---
 func handleUpdateProfile_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64) // From JWT
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	var req struct {
 		Name   string `json:"name"`
@@ -926,7 +933,8 @@ func handleUpdateProfile_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleSetPrivacy ---
 func handleSetPrivacy_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	var req struct {
 		IsPrivate bool `json:"is_private"`
@@ -955,7 +963,8 @@ func handleSetPrivacy_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleBlockUser (Handles POST for Block, DELETE for Unblock) ---
 func handleBlockUser_Gin(c *gin.Context) {
 	// 1. Get the current user's ID from the JWT
-	blockerID := c.MustGet("userID").(int64)
+	blockerID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 
 	// 2. Get the target user's ID from the URL
 	blockedIDStr := c.Param("id")
@@ -1000,7 +1009,8 @@ func handleBlockUser_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleCreateCollection ---
 func handleCreateCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	var req struct { Name string `json:"name"` }
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return
@@ -1014,7 +1024,8 @@ func handleCreateCollection_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUserCollections ---
 func handleGetUserCollections_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	grpcReq := &postPb.GetUserCollectionsRequest{UserId: userID}
 	grpcRes, err := postClient.GetUserCollections(c.Request.Context(), grpcReq)
 	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
@@ -1023,7 +1034,8 @@ func handleGetUserCollections_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetPostsInCollection ---
 func handleGetPostsInCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
 
@@ -1044,7 +1056,8 @@ func handleGetPostsInCollection_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleSavePostToCollection ---
 func handleSavePostToCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
 
@@ -1065,7 +1078,8 @@ func handleSavePostToCollection_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleUnsavePostFromCollection ---
 func handleUnsavePostFromCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
 	postID, err := strconv.ParseInt(c.Param("post_id"), 10, 64)
@@ -1083,7 +1097,8 @@ func handleUnsavePostFromCollection_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleDeleteCollection ---
 func handleDeleteCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
 
@@ -1095,7 +1110,8 @@ func handleDeleteCollection_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleRenameCollection ---
 func handleRenameCollection_Gin(c *gin.Context) {
-	userID := c.MustGet("userID").(int64)
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
 

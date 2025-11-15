@@ -578,7 +578,14 @@ func (s *server) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb
 		return nil, status.Error(codes.Internal, "Failed to follow user")
 	}
 
-	// TODO: Send "user.followed" event to RabbitMQ for notification
+	msgBody, _ := json.Marshal(map[string]interface{}{
+		"type":      "user.followed",
+		"actor_id":  req.FollowerId,
+		"user_id":   req.FollowingId, // The user to be notified
+		"entity_id": req.FollowerId, // The entity is the follower
+	})
+	s.publishToQueue(ctx, "notification_queue", msgBody)
+	
 	log.Printf("User %d is now following User %d", req.FollowerId, req.FollowingId)
 	
 	return &pb.FollowUserResponse{Message: "Successfully followed user"}, nil

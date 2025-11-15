@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
     "strings"
+	"encoding/json"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -14,6 +15,8 @@ import (
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	// --- This service's generated proto ---
 	pb "github.com/hoshibmatchi/story-service/proto"
@@ -43,6 +46,7 @@ type server struct {
 	pb.UnimplementedStoryServiceServer
 	db         *gorm.DB
 	userClient userPb.UserServiceClient
+	amqpCh     *amqp.Channel
 }
 
 func main() {
@@ -64,19 +68,61 @@ func main() {
 	userClient := userPb.NewUserServiceClient(userConn)
 	log.Println("Successfully connected to user-service")
 
-	// --- Step 3: Start this gRPC Server ---
+	// --- Step 3: Connect to RabbitMQ (with retries) ---
+	var amqpConn *amqp.Connection
+	maxRetries := 10
+	retryDelay := 2 * time.Second
+	for i := 0; i < maxRetries; i++ {
+		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		if err == nil { log.Println("Successfully connected to RabbitMQ"); break }
+		log.Printf("Failed to connect to RabbitMQ: %v. Retrying...", err)
+		time.Sleep(retryDelay)
+	}
+	if amqpConn == nil { log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries) }
+	defer amqpConn.Close()
+
+	amqpCh, err := amqpConn.Channel()
+	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
+	defer amqpCh.Close()
+
+	_, err = amqpCh.QueueDeclare(
+		"notification_queue", true, false, false, false, nil,
+	)
+	if err != nil { log.Fatalf("Failed to declare notification_queue: %v", err) }
+	log.Println("RabbitMQ notification_queue declared")
+
+	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9002") // Correct port 9002
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterStoryServiceServer(s, &server{db: db, userClient: userClient})
+	pb.RegisterStoryServiceServer(s, &server{
+		db:         db,
+		userClient: userClient,
+		amqpCh:     amqpCh, // <-- This was missing
+	})
 
 	log.Println("Story service listening on port 9002...")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
+	return s.amqpCh.PublishWithContext(
+		ctx,
+		"",          // exchange (default)
+		queueName,   // routing key (queue name)
+		false,       // mandatory
+		false,       // immediate
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Body:         body,
+		},
+	)
 }
 
 // --- Implement CreateStory ---
@@ -129,7 +175,19 @@ func (s *server) LikeStory(ctx context.Context, req *pb.LikeStoryRequest) (*pb.L
 		}
 		return nil, status.Error(codes.Internal, "Failed to like story")
 	}
-	// TODO: Send "story.liked" event to RabbitMQ
+
+	var story Story
+	s.db.First(&story, req.StoryId)
+	if story.AuthorID != req.UserId {
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"type":      "story.liked",
+			"actor_id":  req.UserId,
+			"user_id":   story.AuthorID,
+			"entity_id": req.StoryId,
+		})
+		s.publishToQueue(ctx, "notification_queue", msgBody)
+	}
+
 	return &pb.LikeStoryResponse{Message: "Story liked"}, nil
 }
 

@@ -5,8 +5,7 @@ WORKDIR /app/backend/notification-service
 # 1. Copy this service's mod files
 COPY backend/notification-service/go.mod backend/notification-service/go.sum ./
 
-# 2. Copy mod files for dependencies
-COPY backend/user-service/go.mod backend/user-service/go.sum ../user-service/
+# 2. (No local dependencies)
 
 # 3. Download dependencies
 RUN go mod download
@@ -21,5 +20,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/main .
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/main .
-EXPOSE 9004
+
+# This is a worker, it does not need to EXPOSE a port
 CMD ["/app/main"]
