@@ -125,6 +125,7 @@ func main() {
 
 		// Messsage
 		protected.POST("/conversations", handleCreateConversation_Gin)
+		protected.POST("/conversations/:id/messages", handleSendMessage_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1210,4 +1211,41 @@ func handleCreateConversation_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleSendMessage ---
+func handleSendMessage_Gin(c *gin.Context) {
+	senderID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get conversation ID from URL param
+	convoID := c.Param("id")
+
+	var req struct {
+		Content string `json:"content"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.Content == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'content' in request body"})
+		return
+	}
+
+	grpcReq := &messagePb.SendMessageRequest{
+		SenderId:       senderID,
+		ConversationId: convoID,
+		Content:        req.Content,
+	}
+
+	grpcRes, err := messageClient.SendMessage(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to SendMessage failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes.Message)
 }

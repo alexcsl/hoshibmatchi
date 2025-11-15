@@ -6,6 +6,8 @@ import (
 	"net"
 	"time"
     "strconv"
+    "encoding/json"
+	"fmt"
 
 	"github.com/go-redis/redis/v8"
 	"google.golang.org/grpc"
@@ -243,5 +245,110 @@ func (s *server) gormToGrpcConversation(ctx context.Context, convo *Conversation
 		CreatedAt:    convo.CreatedAt.Format(time.RFC3339),
 		IsGroup:      convo.IsGroup,
 		GroupName:    convo.GroupName,
+	}, nil
+}
+
+func (s *server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	log.Printf("SendMessage request from user %d to convo %s", req.SenderId, req.ConversationId)
+
+	// --- Step 1: Validation (Security Check) ---
+	// Check if the sender is actually a participant in this conversation.
+	var participantCount int64
+	// We must convert the conversation ID from string back to uint
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
+	}
+
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.SenderId).Count(&participantCount)
+	if participantCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "Sender is not a participant of this conversation")
+	}
+
+	// --- Step 2: Create and Save the Message ---
+	newMessage := Message{
+		ConversationID: uint(convoID),
+		SenderID:       req.SenderId,
+		Content:        req.Content,
+	}
+
+	// We use a transaction to save the message AND update the conversation's timestamp
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Save the new message
+		if err := tx.Create(&newMessage).Error; err != nil {
+			return err
+		}
+
+		// 2. "Touch" the conversation's UpdatedAt timestamp.
+		// This is critical for sorting conversations by "most recent".
+		if err := tx.Model(&Conversation{}).Where("id = ?", convoID).Update("updated_at", time.Now()).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("Failed to save message: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to send message")
+	}
+
+	// --- Step 3: Publish to Redis Pub/Sub for Real-Time (Solution 4.2) ---
+	// Convert to gRPC response first, as this is what we'll send
+	grpcMessage, err := s.gormToGrpcMessage(ctx, &newMessage)
+	if err != nil {
+		// Log the error, but don't fail the send. The message is saved.
+		log.Printf("Failed to convert message %d to gRPC: %v", newMessage.ID, err)
+	} else {
+		// Marshal the gRPC message to JSON
+		msgBody, err := json.Marshal(grpcMessage)
+		if err != nil {
+			log.Printf("Failed to marshal message %d for redis: %v", newMessage.ID, err)
+		} else {
+			// Publish to a dynamic channel for this specific conversation
+			channelName := fmt.Sprintf("chat:%s", req.ConversationId)
+			if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+				log.Printf("Failed to publish message to redis channel %s: %v", channelName, err)
+			} else {
+				log.Printf("Published message to redis channel %s", channelName)
+			}
+		}
+	}
+
+	// --- Step 4: Return the created message ---
+	// If we failed to convert/publish, return a manually converted message
+	if grpcMessage == nil {
+		grpcMessage = &pb.Message{
+			Id:             strconv.FormatUint(uint64(newMessage.ID), 10),
+			ConversationId: req.ConversationId,
+			SenderId:       strconv.FormatInt(newMessage.SenderID, 10),
+			Content:        newMessage.Content,
+			SentAt:         newMessage.CreatedAt.Format(time.RFC3339),
+			SenderUsername: "...", // Denormalization failed
+		}
+	}
+
+	return &pb.SendMessageResponse{
+		Message: grpcMessage,
+	}, nil
+}
+
+// gormToGrpcMessage converts a GORM Message to its gRPC representation
+func (s *server) gormToGrpcMessage(ctx context.Context, msg *Message) (*pb.Message, error) {
+	// 1. Get sender's user data
+	userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: msg.SenderID})
+	if err != nil {
+		// Don't fail the whole conversion, just log and use a placeholder
+		log.Printf("Failed to get user data for sender %d: %v", msg.SenderID, err)
+		userData = &userPb.GetUserDataResponse{Username: "Unknown"}
+	}
+
+	// 2. Assemble and return
+	return &pb.Message{
+		Id:             strconv.FormatUint(uint64(msg.ID), 10),
+		ConversationId: strconv.FormatUint(uint64(msg.ConversationID), 10),
+		SenderId:       strconv.FormatInt(msg.SenderID, 10),
+		Content:        msg.Content,
+		SentAt:         msg.CreatedAt.Format(time.RFC3339),
+		SenderUsername: userData.Username,
 	}, nil
 }
