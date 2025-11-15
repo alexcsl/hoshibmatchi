@@ -32,6 +32,7 @@ func main() {
 	db.AutoMigrate(&Story{})
 	log.Println("Worker successfully connected to story-db")
 
+	log.Println("Testo Testoaaasdasahhh")
 	// --- Step 2: Connect to RabbitMQ (with retries) ---
 	var amqpConn *amqp.Connection
 	maxRetries := 10
@@ -72,30 +73,67 @@ func main() {
 		log.Fatalf("Worker failed to declare story_deletion_queue: %v", err)
 	}
 
-	// --- Step 4: Start consuming messages ---
-	msgs, err := amqpCh.Consume(
-		q.Name, // queue
-		"",     // consumer
-		false,  // auto-ack (set to false)
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
+	// --- ADDED: Declare video transcoding queue ---
+	videoQ, err := amqpCh.QueueDeclare(
+		"video_transcoding_queue",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
 	)
 	if err != nil {
-		log.Fatalf("Worker failed to register consumer: %v", err)
+		log.Fatalf("Worker failed to declare video_transcoding_queue: %v", err)
 	}
 
-	log.Println("Worker service is running. Waiting for story deletion jobs...")
+	// --- REVISED: Consume from BOTH queues ---
+	storyMsgs, err := amqpCh.Consume(
+		q.Name,           // story_deletion_queue
+		"story_consumer", // consumer tag
+		false,            // auto-ack
+		false,            // exclusive
+		false,            // no-local
+		false,            // no-wait
+		nil,              // args
+	)
+	if err != nil {
+		log.Fatalf("Failed to register story consumer: %v", err)
+	}
+
+	videoMsgs, err := amqpCh.Consume(
+		videoQ.Name,      // video_transcoding_queue
+		"video_consumer", // consumer tag
+		false,            // auto-ack
+		false,            // exclusive
+		false,            // no-local
+		false,            // no-wait
+		nil,              // args
+	)
+	if err != nil {
+		log.Fatalf("Failed to register video consumer: %v", err)
+	}
 
 	var forever chan struct{}
+
+	// Consumer for story deletion jobs
 	go func() {
-		for d := range msgs {
+		for d := range storyMsgs {
 			log.Printf("Received a story deletion job: %s", d.Body)
 			s.processStoryDeletion(d.Body)
-			d.Ack(false) // Acknowledge the message *after* processing
+			d.Ack(false) // Acknowledge the message
 		}
 	}()
+
+	// Consumer for video transcoding jobs
+	go func() {
+		for d := range videoMsgs {
+			log.Printf("Received a video transcoding job: %s", d.Body)
+			s.processVideoTranscoding(d.Body)
+			d.Ack(false) // Acknowledge the message
+		}
+	}()
+
+	log.Println("Worker service is running. Waiting for jobs...")
 	<-forever // Block forever
 }
 
@@ -120,4 +158,32 @@ func (s *server) processStoryDeletion(body []byte) {
 	}
 
 	log.Printf("Successfully deleted story %d", storyID)
+}
+
+func (s *server) processVideoTranscoding(body []byte) {
+	var job map[string]interface{}
+	if err := json.Unmarshal(body, &job); err != nil {
+		log.Printf("Error decoding video transcoding job: %v", err)
+		return
+	}
+
+	postID, ok := job["post_id"]
+	if !ok {
+		log.Printf("Invalid job payload, missing 'post_id'")
+		return
+	}
+
+	log.Printf("--- STARTING VIDEO JOB for Post ID: %v ---", postID)
+
+	// Simulate a long-running transcode job
+	time.Sleep(5 * time.Second)
+
+	// TODO:
+	// 1. Download video from MinIO (using media_urls)
+	// 2. Run 'ffmpeg' command to convert to HLS (.m3u8)
+	// 3. Upload new HLS files back to MinIO
+	// 4. Connect to post-db and update the Post row's media_urls
+	//    to point to the new .m3u8 file.
+
+	log.Printf("--- FINISHED VIDEO JOB for Post ID: %v ---", postID)
 }

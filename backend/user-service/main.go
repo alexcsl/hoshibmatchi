@@ -109,8 +109,6 @@ func main() {
 	}
 	log.Println("Successfully connected to Redis.")
 
-	log.Println("HEE HEE HOT RELOADDDaadw")
-
 	// --- Step 3: Connect to RabbitMQ (with retries) ---
 	var amqpConn *amqp.Connection
 	maxRetries := 10
