@@ -32,7 +32,6 @@ func main() {
 	db.AutoMigrate(&Story{})
 	log.Println("Worker successfully connected to story-db")
 
-	log.Println("Testo Testoaaasdasahhh")
 	// --- Step 2: Connect to RabbitMQ (with retries) ---
 	var amqpConn *amqp.Connection
 	maxRetries := 10
