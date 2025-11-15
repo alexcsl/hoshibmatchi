@@ -85,8 +85,6 @@ func main() {
 	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
 	defer amqpCh.Close()
 
-	// --- ADDED: Declare queues for 24h story deletion ---
-
 	// 1. This is the FINAL queue the worker will listen to.
 	_, err = amqpCh.QueueDeclare(
 		"story_deletion_queue",
@@ -184,7 +182,7 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to save story to database")
 	}
 
-	// --- ADDED: Publish 24-hour delayed deletion job ---
+	// --- Publish 24-hour delayed deletion job ---
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
