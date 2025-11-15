@@ -19,21 +19,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_RegisterUser_FullMethodName        = "/user.UserService/RegisterUser"
-	UserService_SendRegistrationOtp_FullMethodName = "/user.UserService/SendRegistrationOtp"
-	UserService_LoginUser_FullMethodName           = "/user.UserService/LoginUser"
-	UserService_Verify2FA_FullMethodName           = "/user.UserService/Verify2FA"
-	UserService_SendPasswordReset_FullMethodName   = "/user.UserService/SendPasswordReset"
-	UserService_ResetPassword_FullMethodName       = "/user.UserService/ResetPassword"
-	UserService_GetUserData_FullMethodName         = "/user.UserService/GetUserData"
-	UserService_FollowUser_FullMethodName          = "/user.UserService/FollowUser"
-	UserService_UnfollowUser_FullMethodName        = "/user.UserService/UnfollowUser"
-	UserService_GetFollowingList_FullMethodName    = "/user.UserService/GetFollowingList"
-	UserService_GetUserProfile_FullMethodName      = "/user.UserService/GetUserProfile"
-	UserService_UpdateUserProfile_FullMethodName   = "/user.UserService/UpdateUserProfile"
-	UserService_SetAccountPrivacy_FullMethodName   = "/user.UserService/SetAccountPrivacy"
-	UserService_BlockUser_FullMethodName           = "/user.UserService/BlockUser"
-	UserService_UnblockUser_FullMethodName         = "/user.UserService/UnblockUser"
+	UserService_RegisterUser_FullMethodName          = "/user.UserService/RegisterUser"
+	UserService_SendRegistrationOtp_FullMethodName   = "/user.UserService/SendRegistrationOtp"
+	UserService_VerifyRegistrationOtp_FullMethodName = "/user.UserService/VerifyRegistrationOtp"
+	UserService_LoginUser_FullMethodName             = "/user.UserService/LoginUser"
+	UserService_Verify2FA_FullMethodName             = "/user.UserService/Verify2FA"
+	UserService_SendPasswordReset_FullMethodName     = "/user.UserService/SendPasswordReset"
+	UserService_ResetPassword_FullMethodName         = "/user.UserService/ResetPassword"
+	UserService_GetUserData_FullMethodName           = "/user.UserService/GetUserData"
+	UserService_FollowUser_FullMethodName            = "/user.UserService/FollowUser"
+	UserService_UnfollowUser_FullMethodName          = "/user.UserService/UnfollowUser"
+	UserService_GetFollowingList_FullMethodName      = "/user.UserService/GetFollowingList"
+	UserService_GetUserProfile_FullMethodName        = "/user.UserService/GetUserProfile"
+	UserService_UpdateUserProfile_FullMethodName     = "/user.UserService/UpdateUserProfile"
+	UserService_SetAccountPrivacy_FullMethodName     = "/user.UserService/SetAccountPrivacy"
+	UserService_BlockUser_FullMethodName             = "/user.UserService/BlockUser"
+	UserService_UnblockUser_FullMethodName           = "/user.UserService/UnblockUser"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -43,6 +44,8 @@ type UserServiceClient interface {
 	// From Auth
 	RegisterUser(ctx context.Context, in *RegisterUserRequest, opts ...grpc.CallOption) (*RegisterUserResponse, error)
 	SendRegistrationOtp(ctx context.Context, in *SendOtpRequest, opts ...grpc.CallOption) (*SendOtpResponse, error)
+	// NEW: This service will verify the OTP and return tokens
+	VerifyRegistrationOtp(ctx context.Context, in *VerifyRegistrationOtpRequest, opts ...grpc.CallOption) (*VerifyRegistrationOtpResponse, error)
 	LoginUser(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	// From 2FA
 	Verify2FA(ctx context.Context, in *Verify2FARequest, opts ...grpc.CallOption) (*Verify2FAResponse, error)
@@ -83,6 +86,16 @@ func (c *userServiceClient) SendRegistrationOtp(ctx context.Context, in *SendOtp
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendOtpResponse)
 	err := c.cc.Invoke(ctx, UserService_SendRegistrationOtp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) VerifyRegistrationOtp(ctx context.Context, in *VerifyRegistrationOtpRequest, opts ...grpc.CallOption) (*VerifyRegistrationOtpResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyRegistrationOtpResponse)
+	err := c.cc.Invoke(ctx, UserService_VerifyRegistrationOtp_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +239,8 @@ type UserServiceServer interface {
 	// From Auth
 	RegisterUser(context.Context, *RegisterUserRequest) (*RegisterUserResponse, error)
 	SendRegistrationOtp(context.Context, *SendOtpRequest) (*SendOtpResponse, error)
+	// NEW: This service will verify the OTP and return tokens
+	VerifyRegistrationOtp(context.Context, *VerifyRegistrationOtpRequest) (*VerifyRegistrationOtpResponse, error)
 	LoginUser(context.Context, *LoginRequest) (*LoginResponse, error)
 	// From 2FA
 	Verify2FA(context.Context, *Verify2FARequest) (*Verify2FAResponse, error)
@@ -257,6 +272,9 @@ func (UnimplementedUserServiceServer) RegisterUser(context.Context, *RegisterUse
 }
 func (UnimplementedUserServiceServer) SendRegistrationOtp(context.Context, *SendOtpRequest) (*SendOtpResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendRegistrationOtp not implemented")
+}
+func (UnimplementedUserServiceServer) VerifyRegistrationOtp(context.Context, *VerifyRegistrationOtpRequest) (*VerifyRegistrationOtpResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyRegistrationOtp not implemented")
 }
 func (UnimplementedUserServiceServer) LoginUser(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoginUser not implemented")
@@ -350,6 +368,24 @@ func _UserService_SendRegistrationOtp_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SendRegistrationOtp(ctx, req.(*SendOtpRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_VerifyRegistrationOtp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyRegistrationOtpRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).VerifyRegistrationOtp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_VerifyRegistrationOtp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).VerifyRegistrationOtp(ctx, req.(*VerifyRegistrationOtpRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -602,6 +638,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendRegistrationOtp",
 			Handler:    _UserService_SendRegistrationOtp_Handler,
+		},
+		{
+			MethodName: "VerifyRegistrationOtp",
+			Handler:    _UserService_VerifyRegistrationOtp_Handler,
 		},
 		{
 			MethodName: "LoginUser",

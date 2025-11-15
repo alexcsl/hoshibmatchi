@@ -9,6 +9,8 @@ service UserService {
   // From Auth
   rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse);
   rpc SendRegistrationOtp (SendOtpRequest) returns (SendOtpResponse);
+  // NEW: This service will verify the OTP and return tokens
+  rpc VerifyRegistrationOtp (VerifyRegistrationOtpRequest) returns (VerifyRegistrationOtpResponse);
   rpc LoginUser (LoginRequest) returns (LoginResponse);
   
   // From 2FA
@@ -42,14 +44,16 @@ message RegisterUserRequest {
   string password = 4;
   string date_of_birth = 5;
   string gender = 6;
-  string profile_picture_url = 7;
-  string otp_code = 8;
+  // string profile_picture_url = 7; // REMOVED
+  // string otp_code = 8; // REMOVED
+  string confirm_password = 9; // ADDED
 }
 
 message RegisterUserResponse {
-  int64 id = 1;
+  int64 id = 1; // Return the new User ID
   string username = 2;
   string email = 3;
+  string message = 4; // e.g., "Registration successful. Please check email."
 }
 
 // --- Send OTP ---
@@ -61,6 +65,19 @@ message SendOtpResponse {
   string message = 1;
   int32 rate_limit_seconds = 2;
 }
+
+// --- NEW: Verify Registration OTP ---
+message VerifyRegistrationOtpRequest {
+  string email = 1;
+  string otp_code = 2;
+}
+
+// Returns tokens, officially "logging in" the new user
+message VerifyRegistrationOtpResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
 
 // --- Login ---
 message LoginRequest {
