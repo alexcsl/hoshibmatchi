@@ -1428,6 +1428,199 @@ func (x *SetAccountPrivacyResponse) GetMessage() string {
 	return ""
 }
 
+// --- Block / Unblock User ---
+type BlockUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockerId     int64                  `protobuf:"varint,1,opt,name=blocker_id,json=blockerId,proto3" json:"blocker_id,omitempty"` // The user initiating the block (from JWT)
+	BlockedId     int64                  `protobuf:"varint,2,opt,name=blocked_id,json=blockedId,proto3" json:"blocked_id,omitempty"` // The user to be blocked (from URL)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockUserRequest) Reset() {
+	*x = BlockUserRequest{}
+	mi := &file_user_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockUserRequest) ProtoMessage() {}
+
+func (x *BlockUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockUserRequest.ProtoReflect.Descriptor instead.
+func (*BlockUserRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *BlockUserRequest) GetBlockerId() int64 {
+	if x != nil {
+		return x.BlockerId
+	}
+	return 0
+}
+
+func (x *BlockUserRequest) GetBlockedId() int64 {
+	if x != nil {
+		return x.BlockedId
+	}
+	return 0
+}
+
+type BlockUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // "Successfully blocked user"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockUserResponse) Reset() {
+	*x = BlockUserResponse{}
+	mi := &file_user_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockUserResponse) ProtoMessage() {}
+
+func (x *BlockUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockUserResponse.ProtoReflect.Descriptor instead.
+func (*BlockUserResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *BlockUserResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type UnblockUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BlockerId     int64                  `protobuf:"varint,1,opt,name=blocker_id,json=blockerId,proto3" json:"blocker_id,omitempty"` // The user initiating the unblock
+	BlockedId     int64                  `protobuf:"varint,2,opt,name=blocked_id,json=blockedId,proto3" json:"blocked_id,omitempty"` // The user to be unblocked
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnblockUserRequest) Reset() {
+	*x = UnblockUserRequest{}
+	mi := &file_user_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnblockUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnblockUserRequest) ProtoMessage() {}
+
+func (x *UnblockUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnblockUserRequest.ProtoReflect.Descriptor instead.
+func (*UnblockUserRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *UnblockUserRequest) GetBlockerId() int64 {
+	if x != nil {
+		return x.BlockerId
+	}
+	return 0
+}
+
+func (x *UnblockUserRequest) GetBlockedId() int64 {
+	if x != nil {
+		return x.BlockedId
+	}
+	return 0
+}
+
+type UnblockUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // "Successfully unblocked user"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnblockUserResponse) Reset() {
+	*x = UnblockUserResponse{}
+	mi := &file_user_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnblockUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnblockUserResponse) ProtoMessage() {}
+
+func (x *UnblockUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnblockUserResponse.ProtoReflect.Descriptor instead.
+func (*UnblockUserResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *UnblockUserResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
@@ -1527,7 +1720,21 @@ const file_user_proto_rawDesc = "" +
 	"\n" +
 	"is_private\x18\x02 \x01(\bR\tisPrivate\"5\n" +
 	"\x19SetAccountPrivacyResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xc1\a\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"P\n" +
+	"\x10BlockUserRequest\x12\x1d\n" +
+	"\n" +
+	"blocker_id\x18\x01 \x01(\x03R\tblockerId\x12\x1d\n" +
+	"\n" +
+	"blocked_id\x18\x02 \x01(\x03R\tblockedId\"-\n" +
+	"\x11BlockUserResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"R\n" +
+	"\x12UnblockUserRequest\x12\x1d\n" +
+	"\n" +
+	"blocker_id\x18\x01 \x01(\x03R\tblockerId\x12\x1d\n" +
+	"\n" +
+	"blocked_id\x18\x02 \x01(\x03R\tblockedId\"/\n" +
+	"\x13UnblockUserResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xc3\b\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x124\n" +
@@ -1542,7 +1749,9 @@ const file_user_proto_rawDesc = "" +
 	"\x10GetFollowingList\x12\x1d.user.GetFollowingListRequest\x1a\x1e.user.GetFollowingListResponse\x12K\n" +
 	"\x0eGetUserProfile\x12\x1b.user.GetUserProfileRequest\x1a\x1c.user.GetUserProfileResponse\x12Q\n" +
 	"\x11UpdateUserProfile\x12\x1e.user.UpdateUserProfileRequest\x1a\x1c.user.GetUserProfileResponse\x12T\n" +
-	"\x11SetAccountPrivacy\x12\x1e.user.SetAccountPrivacyRequest\x1a\x1f.user.SetAccountPrivacyResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\x11SetAccountPrivacy\x12\x1e.user.SetAccountPrivacyRequest\x1a\x1f.user.SetAccountPrivacyResponse\x12<\n" +
+	"\tBlockUser\x12\x16.user.BlockUserRequest\x1a\x17.user.BlockUserResponse\x12B\n" +
+	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -1556,7 +1765,7 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_user_proto_goTypes = []any{
 	(*RegisterUserRequest)(nil),       // 0: user.RegisterUserRequest
 	(*RegisterUserResponse)(nil),      // 1: user.RegisterUserResponse
@@ -1583,6 +1792,10 @@ var file_user_proto_goTypes = []any{
 	(*UpdateUserProfileRequest)(nil),  // 22: user.UpdateUserProfileRequest
 	(*SetAccountPrivacyRequest)(nil),  // 23: user.SetAccountPrivacyRequest
 	(*SetAccountPrivacyResponse)(nil), // 24: user.SetAccountPrivacyResponse
+	(*BlockUserRequest)(nil),          // 25: user.BlockUserRequest
+	(*BlockUserResponse)(nil),         // 26: user.BlockUserResponse
+	(*UnblockUserRequest)(nil),        // 27: user.UnblockUserRequest
+	(*UnblockUserResponse)(nil),       // 28: user.UnblockUserResponse
 }
 var file_user_proto_depIdxs = []int32{
 	0,  // 0: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
@@ -1598,21 +1811,25 @@ var file_user_proto_depIdxs = []int32{
 	20, // 10: user.UserService.GetUserProfile:input_type -> user.GetUserProfileRequest
 	22, // 11: user.UserService.UpdateUserProfile:input_type -> user.UpdateUserProfileRequest
 	23, // 12: user.UserService.SetAccountPrivacy:input_type -> user.SetAccountPrivacyRequest
-	1,  // 13: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3,  // 14: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5,  // 15: user.UserService.LoginUser:output_type -> user.LoginResponse
-	7,  // 16: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
-	9,  // 17: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
-	11, // 18: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
-	13, // 19: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
-	15, // 20: user.UserService.FollowUser:output_type -> user.FollowUserResponse
-	17, // 21: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
-	19, // 22: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
-	21, // 23: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
-	21, // 24: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
-	24, // 25: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
-	13, // [13:26] is the sub-list for method output_type
-	0,  // [0:13] is the sub-list for method input_type
+	25, // 13: user.UserService.BlockUser:input_type -> user.BlockUserRequest
+	27, // 14: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
+	1,  // 15: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3,  // 16: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5,  // 17: user.UserService.LoginUser:output_type -> user.LoginResponse
+	7,  // 18: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	9,  // 19: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
+	11, // 20: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
+	13, // 21: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
+	15, // 22: user.UserService.FollowUser:output_type -> user.FollowUserResponse
+	17, // 23: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
+	19, // 24: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
+	21, // 25: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
+	21, // 26: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
+	24, // 27: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
+	26, // 28: user.UserService.BlockUser:output_type -> user.BlockUserResponse
+	28, // 29: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
+	15, // [15:30] is the sub-list for method output_type
+	0,  // [0:15] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
@@ -1629,7 +1846,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

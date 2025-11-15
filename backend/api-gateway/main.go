@@ -107,6 +107,9 @@ func main() {
 		// Edit Profiel
 		protected.PUT("/profile/edit", handleUpdateProfile_Gin)
 		protected.PUT("/settings/privacy", handleSetPrivacy_Gin)
+
+		protected.POST("/users/:id/block", handleBlockUser_Gin)
+		protected.DELETE("/users/:id/block", handleBlockUser_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -939,4 +942,50 @@ func handleSetPrivacy_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleBlockUser (Handles POST for Block, DELETE for Unblock) ---
+func handleBlockUser_Gin(c *gin.Context) {
+	// 1. Get the current user's ID from the JWT
+	blockerID := c.MustGet("userID").(int64)
+
+	// 2. Get the target user's ID from the URL
+	blockedIDStr := c.Param("id")
+	blockedID, err := strconv.ParseInt(blockedIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if c.Request.Method == http.MethodPost {
+		// --- Block User ---
+		grpcReq := &pb.BlockUserRequest{
+			BlockerId:  blockerID,
+			BlockedId: blockedID,
+		}
+		grpcRes, err := client.BlockUser(c.Request.Context(), grpcReq)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
+		c.JSON(http.StatusOK, grpcRes)
+
+	} else if c.Request.Method == http.MethodDelete {
+		// --- Unblock User ---
+		grpcReq := &pb.UnblockUserRequest{
+			BlockerId:  blockerID,
+			BlockedId: blockedID,
+		}
+		grpcRes, err := client.UnblockUser(c.Request.Context(), grpcReq)
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
+		c.JSON(http.StatusOK, grpcRes)
+
+	} else {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Invalid request method"})
+	}
 }

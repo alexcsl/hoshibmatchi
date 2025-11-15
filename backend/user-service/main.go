@@ -65,6 +65,14 @@ type server struct {
 	amqpCh *amqp.Channel
 }
 
+// Block defines a block relationship
+type Block struct {
+	// Composite primary key (blocker_id, blocked_id)
+	BlockerID int64 `gorm:"primaryKey"` // The user doing the blocking
+	BlockedID int64 `gorm:"primaryKey"` // The user being blocked
+	CreatedAt time.Time
+}
+
 // Not secure
 var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
 
@@ -87,6 +95,7 @@ func main() {
 	log.Println("Running database migrations...")
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Follow{})
+	db.AutoMigrate(&Block{})
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -719,4 +728,69 @@ func (s *server) SetAccountPrivacy(ctx context.Context, req *pb.SetAccountPrivac
 	log.Printf("Account privacy set to %t for user_id: %d", req.IsPrivate, req.UserId)
 
 	return &pb.SetAccountPrivacyResponse{Message: "Account privacy updated successfully"}, nil
+}
+
+// --- GPRC: BlockUser ---
+func (s *server) BlockUser(ctx context.Context, req *pb.BlockUserRequest) (*pb.BlockUserResponse, error) {
+	if req.BlockerId == req.BlockedId {
+		return nil, status.Error(codes.InvalidArgument, "You cannot block yourself")
+	}
+
+	// Check if the user to be blocked exists
+	var userToBlock User
+	if err := s.db.First(&userToBlock, req.BlockedId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "The user you are trying to block does not exist")
+	}
+
+	// Create the block relationship
+	block := Block{
+		BlockerID: req.BlockerId,
+		BlockedID: req.BlockedId,
+	}
+
+	// Use a database transaction to ensure all or nothing
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the block
+		if err := tx.Create(&block).Error; err != nil {
+			if strings.Contains(err.Error(), "unique constraint") {
+				return status.Error(codes.AlreadyExists, "You are already blocking this user")
+			}
+			return status.Error(codes.Internal, "Failed to block user")
+		}
+		
+		// 2. The blocker unfollows the blocked user
+		tx.Delete(&Follow{}, "follower_id = ? AND following_id = ?", req.BlockerId, req.BlockedId)
+		
+		// 3. The blocked user unfollows the blocker
+		tx.Delete(&Follow{}, "follower_id = ? AND following_id = ?", req.BlockedId, req.BlockerId)
+		
+		return nil // Commit
+	})
+	
+	if err != nil {
+		// Transaction failed
+		return nil, err
+	}
+
+	log.Printf("User %d is now blocking User %d", req.BlockerId, req.BlockedId)
+	
+	return &pb.BlockUserResponse{Message: "Successfully blocked user"}, nil
+}
+
+// --- GPRC: UnblockUser ---
+func (s *server) UnblockUser(ctx context.Context, req *pb.UnblockUserRequest) (*pb.UnblockUserResponse, error) {
+	block := Block{
+		BlockerID: req.BlockerId,
+		BlockedID: req.BlockedId,
+	}
+
+	if result := s.db.Delete(&block); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to unblock user")
+	} else if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "You are not blocking this user")
+	}
+
+	log.Printf("User %d has unblocked User %d", req.BlockerId, req.BlockedId)
+
+	return &pb.UnblockUserResponse{Message: "Successfully unblocked user"}, nil
 }

@@ -29,6 +29,9 @@ service UserService {
 
   rpc UpdateUserProfile (UpdateUserProfileRequest) returns (GetUserProfileResponse);
   rpc SetAccountPrivacy (SetAccountPrivacyRequest) returns (SetAccountPrivacyResponse);
+
+  rpc BlockUser (BlockUserRequest) returns (BlockUserResponse);
+  rpc UnblockUser (UnblockUserRequest) returns (UnblockUserResponse);
 }
 
 // --- Register ---
@@ -178,4 +181,23 @@ message SetAccountPrivacyRequest {
 
 message SetAccountPrivacyResponse {
   string message = 1;
+}
+
+// --- Block / Unblock User ---
+message BlockUserRequest {
+  int64 blocker_id = 1; // The user initiating the block (from JWT)
+  int64 blocked_id = 2; // The user to be blocked (from URL)
+}
+
+message BlockUserResponse {
+  string message = 1; // "Successfully blocked user"
+}
+
+message UnblockUserRequest {
+  int64 blocker_id = 1; // The user initiating the unblock
+  int64 blocked_id = 2; // The user to be unblocked
+}
+
+message UnblockUserResponse {
+  string message = 1; // "Successfully unblocked user"
 }
