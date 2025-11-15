@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net"
 	"strconv"
-	"time"
 	"strings"
-	"encoding/json"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,7 +18,7 @@ import (
 
 	pb "github.com/hoshibmatchi/post-service/proto"
 	userPb "github.com/hoshibmatchi/user-service/proto"
-	
+
 	"github.com/lib/pq" // For string arrays
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -39,18 +39,18 @@ type Post struct {
 // PostLike defines the GORM model for a like on a post
 type PostLike struct {
 	// Composite primary key (user_id, post_id)
-	UserID int64 `gorm:"primaryKey"`
-	PostID int64 `gorm:"primaryKey"`
+	UserID    int64 `gorm:"primaryKey"`
+	PostID    int64 `gorm:"primaryKey"`
 	CreatedAt time.Time
 }
 
 // Comment defines the GORM model for a comment
 type Comment struct {
 	gorm.Model
-	UserID   int64
-	PostID   int64
-	Content  string // This can be text or a GIF URL
-	
+	UserID  int64
+	PostID  int64
+	Content string // This can be text or a GIF URL
+
 	// For nested replies
 	ParentCommentID uint // GORM's Model.ID is uint
 
@@ -123,21 +123,38 @@ func main() {
 	}
 	defer amqpConn.Close()
 
-
 	amqpCh, err := amqpConn.Channel()
-	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
+	}
 	defer amqpCh.Close()
 
 	_, err = amqpCh.QueueDeclare(
 		"notification_queue", // queue name
-		true,                // durable
-		false,               // delete when unused
-		false,               // exclusive
-		false,               // no-wait
-		nil,                 // arguments
+		true,                 // durable
+		false,                // delete when unused
+		false,                // exclusive
+		false,                // no-wait
+		nil,                  // arguments
 	)
-	if err != nil { log.Fatalf("Failed to declare notification_queue: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to declare notification_queue: %v", err)
+	}
 	log.Println("RabbitMQ notification_queue declared")
+
+	// --- ADDED: Declare video transcoding queue ---
+	_, err = amqpCh.QueueDeclare(
+		"video_transcoding_queue",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare video_transcoding_queue: %v", err)
+	}
+	log.Println("RabbitMQ video_transcoding_queue declared")
 
 	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9001") // Port 9001
@@ -146,7 +163,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	
+
 	// --- THIS IS THE FIX ---
 	// We must pass the amqpCh to the server struct
 	pb.RegisterPostServiceServer(s, &server{
@@ -165,10 +182,10 @@ func main() {
 func (s *server) publishToQueue(ctx context.Context, queueName string, body []byte) error {
 	return s.amqpCh.PublishWithContext(
 		ctx,
-		"",          // exchange (default)
-		queueName,   // routing key (queue name)
-		false,       // mandatory
-		false,       // immediate
+		"",        // exchange (default)
+		queueName, // routing key (queue name)
+		false,     // mandatory
+		false,     // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent,
@@ -204,17 +221,56 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		return nil, status.Error(codes.Internal, "Failed to save post to database")
 	}
 
+	// We check if it's a Reel OR if any media URLs look like videos.
+	isAVideoJob := newPost.IsReel
+	if !isAVideoJob {
+		for _, url := range newPost.MediaURLs {
+			if strings.HasSuffix(url, ".mp4") || strings.HasSuffix(url, ".mov") {
+				isAVideoJob = true
+				break
+			}
+		}
+	}
+
+	if isAVideoJob {
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"post_id":    newPost.ID,
+			"media_urls": newPost.MediaURLs,
+		})
+
+		err = s.amqpCh.PublishWithContext(
+			ctxTimeout,
+			"",                        // exchange (default)
+			"video_transcoding_queue", // routing key
+			false,                     // mandatory
+			false,                     // immediate
+			amqp.Publishing{
+				ContentType:  "application/json",
+				DeliveryMode: amqp.Persistent,
+				Body:         msgBody,
+			},
+		)
+		if err != nil {
+			log.Printf("Failed to publish video transcoding job for post %d: %v", newPost.ID, err)
+		} else {
+			log.Printf("Published video transcoding job for post %d", newPost.ID)
+		}
+	}
+
 	// --- Step 3: Return the created post ---
 	return &pb.CreatePostResponse{
 		Post: &pb.Post{
-			Id:                 strconv.FormatUint(uint64(newPost.ID), 10),
-			Caption:            newPost.Caption,
-			AuthorUsername:     newPost.AuthorUsername,
-			AuthorProfileUrl:   newPost.AuthorProfileURL,
-			AuthorIsVerified:   newPost.AuthorIsVerified,
-			MediaUrls:          newPost.MediaURLs,
-			CreatedAt:          newPost.CreatedAt.Format(time.RFC3339),
-			IsReel:             newPost.IsReel,
+			Id:               strconv.FormatUint(uint64(newPost.ID), 10),
+			Caption:          newPost.Caption,
+			AuthorUsername:   newPost.AuthorUsername,
+			AuthorProfileUrl: newPost.AuthorProfileURL,
+			AuthorIsVerified: newPost.AuthorIsVerified,
+			MediaUrls:        newPost.MediaURLs,
+			CreatedAt:        newPost.CreatedAt.Format(time.RFC3339),
+			IsReel:           newPost.IsReel,
 		},
 	}, nil
 }
@@ -225,7 +281,7 @@ func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.Lik
 		UserID: req.UserId,
 		PostID: req.PostId,
 	}
-	
+
 	// GORM's Create will fail if the composite primary key already exists
 	if result := s.db.Create(&like); result.Error != nil {
 		if strings.Contains(result.Error.Error(), "unique constraint") {
@@ -233,12 +289,12 @@ func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.Lik
 		}
 		return nil, status.Error(codes.Internal, "Failed to like post")
 	}
-	
-	// RabbitMQ Notifications 
+
+	// RabbitMQ Notifications
 	// Get Post Author ID
 	var post Post
 	s.db.First(&post, req.PostId)
-	
+
 	// Don't notify if user likes their own post
 	if post.AuthorID != req.UserId {
 		msgBody, _ := json.Marshal(map[string]interface{}{
@@ -260,13 +316,13 @@ func (s *server) UnlikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.U
 		UserID: req.UserId,
 		PostID: req.PostId,
 	}
-	
+
 	if result := s.db.Delete(&like); result.Error != nil {
 		return nil, status.Error(codes.Internal, "Failed to unlike post")
 	} else if result.RowsAffected == 0 {
 		return nil, status.Error(codes.NotFound, "Post was not liked")
 	}
-	
+
 	return &pb.UnlikePostResponse{Message: "Post unliked"}, nil
 }
 
@@ -292,12 +348,12 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 	if result := s.db.Create(&newComment); result.Error != nil {
 		return nil, status.Error(codes.Internal, "Failed to save comment")
 	}
-	
-	// Notification for comments 
+
+	// Notification for comments
 	// Get Post Author ID
 	var post Post
 	s.db.First(&post, req.PostId)
-	
+
 	// Don't notify if user comments on their own post
 	if post.AuthorID != req.UserId {
 		msgBody, _ := json.Marshal(map[string]interface{}{
@@ -324,12 +380,12 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 // --- Implement DeleteComment ---
 func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest) (*pb.DeleteCommentResponse, error) {
 	var comment Comment
-	
+
 	// Find the comment first
 	if err := s.db.First(&comment, req.CommentId).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "Comment not found")
 	}
-	
+
 	// PDF Requirement: "Users can delete the replies they have posted"
 	// This means we must check ownership
 	if comment.UserID != req.UserId {
@@ -340,7 +396,7 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 	if result := s.db.Delete(&comment); result.Error != nil {
 		return nil, status.Error(codes.Internal, "Failed to delete comment")
 	}
-	
+
 	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
 }
 
@@ -371,13 +427,13 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:                 strconv.FormatUint(uint64(post.ID), 10),
-			Caption:            post.Caption,
-			AuthorUsername:     post.AuthorUsername,
-			AuthorProfileUrl:   post.AuthorProfileURL,
-			AuthorIsVerified:   post.AuthorIsVerified,
-			MediaUrls:          post.MediaURLs,
-			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
 		})
 	}
 
@@ -403,14 +459,14 @@ func (s *server) GetExploreFeed(ctx context.Context, req *pb.GetHomeFeedRequest)
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:                 strconv.FormatUint(uint64(post.ID), 10),
-			Caption:            post.Caption,
-			AuthorUsername:     post.AuthorUsername,
-			AuthorProfileUrl:   post.AuthorProfileURL,
-			AuthorIsVerified:   post.AuthorIsVerified,
-			MediaUrls:          post.MediaURLs,
-			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
-			IsReel:             post.IsReel,
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+			IsReel:           post.IsReel,
 		})
 	}
 
@@ -435,14 +491,14 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:                 strconv.FormatUint(uint64(post.ID), 10),
-			Caption:            post.Caption,
-			AuthorUsername:     post.AuthorUsername,
-			AuthorProfileUrl:   post.AuthorProfileURL,
-			AuthorIsVerified:   post.AuthorIsVerified,
-			MediaUrls:          post.MediaURLs,
-			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
-			IsReel:             post.IsReel,
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+			IsReel:           post.IsReel,
 		})
 	}
 
@@ -452,7 +508,7 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 // --- Implement GetUserPosts ---
 func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
 	var posts []Post
-	
+
 	// Query for posts by author_id, filtering OUT reels
 	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, false).
 		Order("created_at DESC").
@@ -465,14 +521,14 @@ func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:                 strconv.FormatUint(uint64(post.ID), 10),
-			Caption:            post.Caption,
-			AuthorUsername:     post.AuthorUsername,
-			AuthorProfileUrl:   post.AuthorProfileURL,
-			AuthorIsVerified:   post.AuthorIsVerified,
-			MediaUrls:          post.MediaURLs,
-			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
-			IsReel:             post.IsReel,
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+			IsReel:           post.IsReel,
 		})
 	}
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
@@ -481,7 +537,7 @@ func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest
 // --- Implement GetUserReels ---
 func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
 	var posts []Post
-	
+
 	// Query for posts by author_id, filtering FOR reels
 	if err := s.db.Where("author_id = ? AND is_reel = ?", req.UserId, true).
 		Order("created_at DESC").
@@ -494,14 +550,14 @@ func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:                 strconv.FormatUint(uint64(post.ID), 10),
-			Caption:            post.Caption,
-			AuthorUsername:     post.AuthorUsername,
-			AuthorProfileUrl:   post.AuthorProfileURL,
-			AuthorIsVerified:   post.AuthorIsVerified,
-			MediaUrls:          post.MediaURLs,
-			CreatedAt:          post.CreatedAt.Format(time.RFC3339),
-			IsReel:             post.IsReel,
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+			IsReel:           post.IsReel,
 		})
 	}
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
@@ -682,7 +738,7 @@ func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionR
 	if err := s.db.Save(&collection).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to rename collection")
 	}
-	
+
 	return s.gormToGrpcCollection(&collection), nil
 }
 
@@ -690,13 +746,13 @@ func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionR
 // We need this for GetPostsInCollection
 func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 	return &pb.Post{
-		Id:                 strconv.FormatUint(uint64(post.ID), 10),
-		Caption:            post.Caption,
-		AuthorUsername:     post.AuthorUsername,
-		AuthorProfileUrl:   post.AuthorProfileURL,
-		AuthorIsVerified:   post.AuthorIsVerified,
-		MediaUrls:          post.MediaURLs,
-		CreatedAt:          post.CreatedAt.Format(time.RFC3339),
-		IsReel:             post.IsReel,
+		Id:               strconv.FormatUint(uint64(post.ID), 10),
+		Caption:          post.Caption,
+		AuthorUsername:   post.AuthorUsername,
+		AuthorProfileUrl: post.AuthorProfileURL,
+		AuthorIsVerified: post.AuthorIsVerified,
+		MediaUrls:        post.MediaURLs,
+		CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+		IsReel:           post.IsReel,
 	}
 }
