@@ -8,9 +8,6 @@ services:
       - ./backend:/app/backend # Mount local backend code
     working_dir: /app/backend/api-gateway
     command: ["air", "-c", ".air.toml"]
-    # THIS IS THE FIX:
-    # We changed service_healthy to service_started.
-    # This fixes the "no healthcheck" error.
     depends_on:
       user-service:
         condition: service_started
@@ -20,8 +17,8 @@ services:
         condition: service_started
       media-service:
         condition: service_started
-      message-service: # <-- ADD THIS
-            condition: service_started # <-- ADD THIS
+      message-service:
+        condition: service_started
 
   user-service:
     build:
@@ -67,6 +64,14 @@ services:
       - ./backend:/app/backend
     working_dir: /app/backend/message-service
     command: ["air", "-c", ".air.toml"]
+    ports:
+      - "9004:9004"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.message-ws.rule=Host(`api.hoshi.local`) && PathPrefix(`/ws`)"
+      - "traefik.http.routers.message-ws.entrypoints=web"
+      - "traefik.http.routers.message-ws.priority=100"
+      - "traefik.http.services.message-ws.loadbalancer.server.port=9004"
 
   notification-service:
     build:
@@ -94,10 +99,8 @@ services:
       - ./backend:/app/backend
     working_dir: /app/backend/worker-service
     command: ["air", "-c", ".air.toml"]
-  
+
   ai-service:
-    # Python's uvicorn has a built-in reloader
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9008", "--reload"]
     volumes:
-      # Mount the local ai-service code
       - ./backend/ai-service:/app

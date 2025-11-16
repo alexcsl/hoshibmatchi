@@ -8,8 +8,11 @@ import (
     "strconv"
     "encoding/json"
 	"fmt"
+	"net/http"
+	"sync"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"gorm.io/driver/postgres"
@@ -48,12 +51,64 @@ type Message struct {
 	Content        string
 }
 
+// upgrader specifies the parameters for upgrading an HTTP connection to a WebSocket
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	// This is NOT secure for production, but fine for our local dev
+	// It allows connections from any origin (e.g., hoshi.local)
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// Client is a WebSocket client
+type Client struct {
+	conn     *websocket.Conn
+	send     chan []byte
+	userID   int64
+	convoIDs map[string]bool // Set of conversation IDs this client is listening to
+}
+
+// Hub maintains the set of active clients and broadcasts messages
+type Hub struct {
+	clients    sync.Map // Thread-safe map of [int64]*Client (userID -> Client)
+	register   chan *Client
+	unregister chan *Client
+}
+
+// newHub creates a new Hub
+func newHub() *Hub {
+	return &Hub{
+		register:   make(chan *Client),
+		unregister: make(chan *Client),
+	}
+}
+
+// run starts the hub's event loop
+func (h *Hub) run() {
+	for {
+		select {
+		case client := <-h.register:
+			h.clients.Store(client.userID, client)
+			log.Printf("Client registered: %d", client.userID)
+		case client := <-h.unregister:
+			if _, ok := h.clients.Load(client.userID); ok {
+				h.clients.Delete(client.userID)
+				close(client.send)
+				log.Printf("Client unregistered: %d", client.userID)
+			}
+		}
+	}
+}
+
 // server struct holds our database, cache, and client connections
 type server struct {
 	pb.UnimplementedMessageServiceServer
 	db         *gorm.DB                 // Postgres connection
 	rdb        *redis.Client            // Redis connection
 	userClient userPb.UserServiceClient // gRPC client for user-service
+	hub 	  *Hub                     // Hub for managing WebSocket clients
 }
 
 func main() {
@@ -62,7 +117,6 @@ func main() {
 	var db *gorm.DB
 	var err error
 
-	// Retry connection
 	for i := 0; i < 10; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 		if err == nil {
@@ -76,7 +130,6 @@ func main() {
 		log.Fatalf("Failed to connect to message-db after retries: %v", err)
 	}
 
-	// Auto-migrate the schema
 	db.AutoMigrate(&Conversation{}, &Participant{}, &Message{})
 
 	// --- Step 2: Connect to Redis ---
@@ -85,7 +138,6 @@ func main() {
 		Password: "", // no password set
 		DB:       0,  // default DB
 	})
-
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
 		log.Fatalf("Failed to connect to redis: %v", err)
 	}
@@ -100,25 +152,44 @@ func main() {
 	userClient := userPb.NewUserServiceClient(userConn)
 	log.Println("Successfully connected to user-service")
 
-	// --- Step 4: Start this gRPC Server (message-service) ---
-	lis, err := net.Listen("tcp", ":9003") // Port 9003
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
+	// --- Step 4: Create Hub and Server Struct ---
+	hub := newHub()
+	go hub.run() // Start the hub's event loop in a goroutine
 
-	s := grpc.NewServer()
-	pb.RegisterMessageServiceServer(s, &server{
+	s := &server{
 		db:         db,
 		rdb:        rdb,
 		userClient: userClient,
+		hub:        hub,
+	}
+
+	// --- Step 5: Start Redis Pub/Sub Listener ---
+	go s.listenForRealtimeMessages() // Start in a goroutine
+
+	// --- Step 6: Start gRPC Server (in a goroutine) ---
+	lis, err := net.Listen("tcp", ":9003") // Port 9003 for gRPC
+	if err != nil {
+		log.Fatalf("Failed to listen on gRPC port: %v", err)
+	}
+
+	grpcServer := grpc.NewServer()
+	pb.RegisterMessageServiceServer(grpcServer, s)
+
+	go func() {
+		log.Println("Message service (gRPC) listening on port 9003...")
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve gRPC: %v", err)
+		}
+	}()
+
+	// --- Step 7: Start WebSocket Server (on main thread) ---
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		s.handleWebSocket(w, r)
 	})
 
-	// TODO (Solution 4.2): Start Redis Pub/Sub listener goroutine
-	// go s.listenForRealtimeMessages()
-
-	log.Println("Message service listening on port 9003...")
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+	log.Println("Message service (WebSocket) listening on port 9004...")
+	if err := http.ListenAndServe(":9004", nil); err != nil {
+		log.Fatalf("Failed to serve WebSocket: %v", err)
 	}
 }
 
@@ -456,4 +527,147 @@ func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsR
 	return &pb.GetConversationsResponse{
 		Conversations: grpcConversations,
 	}, nil
+}
+
+// handleWebSocket upgrades the HTTP request to a WebSocket connection
+func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth!
+	// We MUST get the userID from the auth token.
+	// For now, we'll fake it with a query param: /ws?user_id=1
+	userIDStr := r.URL.Query().Get("user_id")
+	userID, _ := strconv.ParseInt(userIDStr, 10, 64)
+	if userID == 0 {
+		http.Error(w, "Unauthorized: Missing user_id query parameter", http.StatusUnauthorized)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Failed to upgrade WebSocket: %v", err)
+		return
+	}
+
+	// Get all conversation IDs for this user
+	convoIDs, err := s.getConversationIDsForUser(userID)
+	if err != nil {
+		log.Printf("Failed to get convo IDs for user %d: %v", userID, err)
+		conn.Close()
+		return
+	}
+
+	client := &Client{
+		conn:     conn,
+		send:     make(chan []byte, 256),
+		userID:   userID,
+		convoIDs: convoIDs,
+	}
+	s.hub.register <- client
+
+	// Start goroutines to handle reading and writing for this client
+	go client.writePump()
+	go client.readPump(s.hub)
+}
+
+// getConversationIDsForUser is a helper to find all convos a user is in
+func (s *server) getConversationIDsForUser(userID int64) (map[string]bool, error) {
+	var conversationIDs []uint
+	if err := s.db.Model(&Participant{}).Where("user_id = ?", userID).Pluck("conversation_id", &conversationIDs).Error; err != nil {
+		return nil, err
+	}
+
+	idMap := make(map[string]bool)
+	for _, id := range conversationIDs {
+		idMap[strconv.FormatUint(uint64(id), 10)] = true
+	}
+	return idMap, nil
+}
+
+// listenForRealtimeMessages is the Redis subscriber (Solution 4.2)
+func (s *server) listenForRealtimeMessages() {
+	log.Println("Redis Pub/Sub listener started...")
+	// Subscribe to all chat channels
+	pubsub := s.rdb.PSubscribe(context.Background(), "chat:*")
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+
+	for msg := range ch {
+		log.Printf("Received message from Redis channel %s", msg.Channel)
+
+		// We don't need to parse msg.Channel, we just need the payload
+		// The payload is the JSON of the pb.Message we sent from SendMessage
+		var grpcMessage pb.Message
+		if err := json.Unmarshal([]byte(msg.Payload), &grpcMessage); err != nil {
+			log.Printf("Failed to unmarshal message from redis: %v", err)
+			continue
+		}
+
+		convoID := grpcMessage.ConversationId
+
+		// Find all clients who are part of this conversation
+		s.hub.clients.Range(func(key, value interface{}) bool {
+			client, ok := value.(*Client)
+			if !ok {
+				return true // continue
+			}
+
+			// If the client is subscribed to this conversation
+			if _, subscribed := client.convoIDs[convoID]; subscribed {
+				// Send the message
+				select {
+				case client.send <- []byte(msg.Payload):
+				default:
+					// Failed to send, client buffer is full
+					log.Printf("Failed to send to client %d, closing", client.userID)
+					close(client.send)
+					s.hub.clients.Delete(client.userID)
+				}
+			}
+			return true
+		})
+	}
+}
+
+// --- WebSocket Client Helper Methods ---
+
+// readPump pumps messages from the WebSocket connection to the hub.
+func (c *Client) readPump(hub *Hub) {
+	defer func() {
+		hub.unregister <- c
+		c.conn.Close()
+	}()
+	// Set read limits, etc. (omitted for brevity)
+	for {
+		// Read message from client (e.g., "ping", "user is typing")
+		_, _, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("WebSocket read error: %v", err)
+			}
+			break
+		}
+		// We don't process client messages for now, just keep connection alive
+	}
+}
+
+// writePump pumps messages from the hub to the WebSocket connection.
+func (c *Client) writePump() {
+	defer func() {
+		c.conn.Close()
+	}()
+	for {
+		select {
+		case message, ok := <-c.send:
+			if !ok {
+				// The hub closed the channel.
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				log.Printf("WebSocket write error: %v", err)
+				return
+			}
+		}
+	}
 }
