@@ -3,17 +3,34 @@ module github.com/hoshibmatchi/worker-service
 go 1.25.3
 
 require (
+	github.com/hoshibmatchi/hashtag-service v0.0.0
+	github.com/lib/pq v1.10.9
 	github.com/rabbitmq/amqp091-go v1.10.0
-	gorm.io/driver/postgres v1.5.7
-	gorm.io/gorm v1.25.10
+	google.golang.org/grpc v1.76.0
+	gorm.io/driver/postgres v1.6.0
+	gorm.io/gorm v1.31.1
 )
 
 require (
+	github.com/hoshibmatchi/post-service v0.0.0 // indirect
+	github.com/hoshibmatchi/user-service v0.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.4.3 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.7.6 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/crypto v0.43.0 // indirect
+	golang.org/x/net v0.46.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.30.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+replace github.com/hoshibmatchi/hashtag-service => ../hashtag-service
+
+replace github.com/hoshibmatchi/post-service => ../post-service
+
+replace github.com/hoshibmatchi/user-service => ../user-service

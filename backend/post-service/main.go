@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"regexp"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -22,6 +23,8 @@ import (
 	"github.com/lib/pq" // For string arrays
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+var hashtagRegex = regexp.MustCompile(`#(\w+)`)
 
 // Post defines the GORM model
 type Post struct {
@@ -156,6 +159,20 @@ func main() {
 	}
 	log.Println("RabbitMQ video_transcoding_queue declared")
 
+	// --- ADDED: Declare hashtag processing queue ---
+	_, err = amqpCh.QueueDeclare(
+		"hashtag_queue",
+		true,  // durable
+		false, // delete when unused
+		false, // exclusive
+		false, // no-wait
+		nil,   // arguments
+	)
+	if err != nil {
+		log.Fatalf("Failed to declare hashtag_queue: %v", err)
+	}
+	log.Println("RabbitMQ hashtag_queue declared")
+
 	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9001") // Port 9001
 	if err != nil {
@@ -257,6 +274,50 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 			log.Printf("Failed to publish video transcoding job for post %d: %v", newPost.ID, err)
 		} else {
 			log.Printf("Published video transcoding job for post %d", newPost.ID)
+		}
+	}
+
+	// --- ADDED: Parse caption for hashtags and publish job ---
+	matches := hashtagRegex.FindAllStringSubmatch(newPost.Caption, -1)
+	if len(matches) > 0 {
+		hashtagNames := []string{}
+		uniqueTags := make(map[string]bool)
+		for _, match := range matches {
+			if len(match) > 1 {
+				tag := strings.ToLower(match[1]) // Get the tag (group 1) and lowercase it
+				if !uniqueTags[tag] { // Ensure tags are unique per post
+					uniqueTags[tag] = true
+					hashtagNames = append(hashtagNames, tag)
+				}
+			}
+		}
+
+		if len(hashtagNames) > 0 {
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			msgBody, _ := json.Marshal(map[string]interface{}{
+				"post_id":       newPost.ID,
+				"hashtag_names": hashtagNames,
+			})
+
+			err = s.amqpCh.PublishWithContext(
+				ctxTimeout,
+				"",              // exchange (default)
+				"hashtag_queue", // routing key
+				false,           // mandatory
+				false,           // immediate
+				amqp.Publishing{
+					ContentType:  "application/json",
+					DeliveryMode: amqp.Persistent,
+					Body:         msgBody,
+				},
+			)
+			if err != nil {
+				log.Printf("Failed to publish hashtag job for post %d: %v", newPost.ID, err)
+			} else {
+				log.Printf("Published hashtag job for post %d with tags: %v", newPost.ID, hashtagNames)
+			}
 		}
 	}
 

@@ -195,6 +195,25 @@ services:
       timeout: 5s
       retries: 5
 
+  hashtag-db:
+    image: postgres:15-alpine
+    container_name: hashtag-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=hashtag_service_db
+    ports:
+      - "5437:5432" # New port
+    volumes:
+      - hashtag-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d hashtag_service_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ==================================================================
   # 4. BACKEND SERVICES
   # ==================================================================
@@ -286,6 +305,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks: [hoshi-net]
 
   email-service:
@@ -335,6 +356,18 @@ services:
         condition: service_healthy
     networks: [hoshi-net]
 
+  hashtag-service:
+    build:
+      context: .
+      dockerfile: ./backend/hashtag-service/Dockerfile
+    container_name: hashtag-service
+    depends_on:
+      hashtag-db:
+        condition: service_healthy
+      post-service:
+        condition: service_started
+    networks: [hoshi-net]
+
 
   # ==================================================================
   # 5. FRONTEND SERVICE
@@ -362,6 +395,7 @@ volumes:
   message-db-data:
   notification-db-data:
   report-db-data:
+  hashtag-db-data:
 
 networks:
   hoshi-net:

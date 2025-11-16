@@ -14,6 +14,7 @@ require (
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/hoshibmatchi/hashtag-service v0.0.0
 	github.com/hoshibmatchi/message-service v0.0.0-00010101000000-000000000000
 	github.com/hoshibmatchi/report-service v0.0.0
 )
@@ -64,3 +65,5 @@ replace github.com/hoshibmatchi/media-service => ../media-service
 replace github.com/hoshibmatchi/message-service => ../message-service
 
 replace github.com/hoshibmatchi/report-service => ../report-service
+
+replace github.com/hoshibmatchi/hashtag-service => ../hashtag-service

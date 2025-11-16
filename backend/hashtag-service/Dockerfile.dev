@@ -1,0 +1,7 @@
+# This is a development-only Dockerfile
+FROM golang:1.25-alpine
+
+# Install air for hot-reloading
+RUN go install github.com/air-verse/air@latest
+
+WORKDIR /app

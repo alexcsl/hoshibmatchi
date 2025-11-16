@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package hashtag;
+
+option go_package = "github.com/hoshibmatchi/hashtag-service/proto";
+
+// Import post.proto so we can return Post objects
+import "post.proto";
+
+service HashtagService {
+  // --- User-facing RPCs ---
+  // Search for posts by a specific hashtag
+  rpc SearchByHashtag (SearchByHashtagRequest) returns (SearchByHashtagResponse);
+  // Get a list of trending hashtags
+  rpc GetTrendingHashtags (GetTrendingHashtagsRequest) returns (GetTrendingHashtagsResponse);
+
+  // --- Internal RPC (called by worker-service) ---
+  rpc AddHashtagsToPost (AddHashtagsToPostRequest) returns (AddHashtagsToPostResponse);
+}
+
+// --- Data Structures ---
+message Hashtag {
+  string id = 1;
+  string name = 2;
+  int64 post_count = 3;
+}
+
+// --- SearchByHashtag ---
+message SearchByHashtagRequest {
+  string hashtag_name = 1;
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+message SearchByHashtagResponse {
+  // We can re-use the Post message from post.proto
+  repeated post.Post posts = 1;
+  int64 total_post_count = 2;
+}
+
+// --- GetTrendingHashtags ---
+message GetTrendingHashtagsRequest {
+  int32 limit = 1;
+}
+message GetTrendingHashtagsResponse {
+  repeated Hashtag hashtags = 1;
+}
+
+// --- AddHashtagsToPost (Internal) ---
+message AddHashtagsToPostRequest {
+  int64 post_id = 1;
+  repeated string hashtag_names = 2;
+}
+message AddHashtagsToPostResponse {
+  string message = 1;
+}

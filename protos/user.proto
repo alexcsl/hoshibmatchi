@@ -41,8 +41,13 @@ service UserService {
   rpc BanUser (BanUserRequest) returns (BanUserResponse);
   rpc UnbanUser (UnbanUserRequest) returns (UnbanUserResponse);
 
+  // Admin: Newsletter
+  rpc SendNewsletter (SendNewsletterRequest) returns (SendNewsletterResponse);
+
   // Verification Requests
   rpc SubmitVerificationRequest (SubmitVerificationRequestRequest) returns (SubmitVerificationRequestResponse);
+  rpc GetVerificationRequests (GetVerificationRequestsRequest) returns (GetVerificationRequestsResponse);
+  rpc ResolveVerificationRequest (ResolveVerificationRequestRequest) returns (ResolveVerificationRequestResponse);
 }
 
 // --- Register ---

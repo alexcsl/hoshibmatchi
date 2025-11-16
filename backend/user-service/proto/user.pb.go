@@ -2729,7 +2729,7 @@ const file_user_proto_rawDesc = "" +
 	"request_id\x18\x02 \x01(\x03R\trequestId\x12\x16\n" +
 	"\x06action\x18\x03 \x01(\tR\x06action\">\n" +
 	"\"ResolveVerificationRequestResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xcd\v\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xf3\r\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x12`\n" +
@@ -2750,8 +2750,11 @@ const file_user_proto_rawDesc = "" +
 	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponse\x12B\n" +
 	"\vSearchUsers\x12\x18.user.SearchUsersRequest\x1a\x19.user.SearchUsersResponse\x126\n" +
 	"\aBanUser\x12\x14.user.BanUserRequest\x1a\x15.user.BanUserResponse\x12<\n" +
-	"\tUnbanUser\x12\x16.user.UnbanUserRequest\x1a\x17.user.UnbanUserResponse\x12l\n" +
-	"\x19SubmitVerificationRequest\x12&.user.SubmitVerificationRequestRequest\x1a'.user.SubmitVerificationRequestResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\tUnbanUser\x12\x16.user.UnbanUserRequest\x1a\x17.user.UnbanUserResponse\x12K\n" +
+	"\x0eSendNewsletter\x12\x1b.user.SendNewsletterRequest\x1a\x1c.user.SendNewsletterResponse\x12l\n" +
+	"\x19SubmitVerificationRequest\x12&.user.SubmitVerificationRequestRequest\x1a'.user.SubmitVerificationRequestResponse\x12f\n" +
+	"\x17GetVerificationRequests\x12$.user.GetVerificationRequestsRequest\x1a%.user.GetVerificationRequestsResponse\x12o\n" +
+	"\x1aResolveVerificationRequest\x12'.user.ResolveVerificationRequestRequest\x1a(.user.ResolveVerificationRequestResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -2837,29 +2840,35 @@ var file_user_proto_depIdxs = []int32{
 	31, // 19: user.UserService.SearchUsers:input_type -> user.SearchUsersRequest
 	33, // 20: user.UserService.BanUser:input_type -> user.BanUserRequest
 	35, // 21: user.UserService.UnbanUser:input_type -> user.UnbanUserRequest
-	40, // 22: user.UserService.SubmitVerificationRequest:input_type -> user.SubmitVerificationRequestRequest
-	1,  // 23: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3,  // 24: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5,  // 25: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
-	7,  // 26: user.UserService.LoginUser:output_type -> user.LoginResponse
-	9,  // 27: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
-	11, // 28: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
-	13, // 29: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
-	15, // 30: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
-	17, // 31: user.UserService.FollowUser:output_type -> user.FollowUserResponse
-	19, // 32: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
-	21, // 33: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
-	23, // 34: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
-	23, // 35: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
-	26, // 36: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
-	28, // 37: user.UserService.BlockUser:output_type -> user.BlockUserResponse
-	30, // 38: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
-	32, // 39: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
-	34, // 40: user.UserService.BanUser:output_type -> user.BanUserResponse
-	36, // 41: user.UserService.UnbanUser:output_type -> user.UnbanUserResponse
-	41, // 42: user.UserService.SubmitVerificationRequest:output_type -> user.SubmitVerificationRequestResponse
-	23, // [23:43] is the sub-list for method output_type
-	3,  // [3:23] is the sub-list for method input_type
+	37, // 22: user.UserService.SendNewsletter:input_type -> user.SendNewsletterRequest
+	40, // 23: user.UserService.SubmitVerificationRequest:input_type -> user.SubmitVerificationRequestRequest
+	42, // 24: user.UserService.GetVerificationRequests:input_type -> user.GetVerificationRequestsRequest
+	44, // 25: user.UserService.ResolveVerificationRequest:input_type -> user.ResolveVerificationRequestRequest
+	1,  // 26: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3,  // 27: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5,  // 28: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
+	7,  // 29: user.UserService.LoginUser:output_type -> user.LoginResponse
+	9,  // 30: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	11, // 31: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
+	13, // 32: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
+	15, // 33: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
+	17, // 34: user.UserService.FollowUser:output_type -> user.FollowUserResponse
+	19, // 35: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
+	21, // 36: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
+	23, // 37: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
+	23, // 38: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
+	26, // 39: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
+	28, // 40: user.UserService.BlockUser:output_type -> user.BlockUserResponse
+	30, // 41: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
+	32, // 42: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
+	34, // 43: user.UserService.BanUser:output_type -> user.BanUserResponse
+	36, // 44: user.UserService.UnbanUser:output_type -> user.UnbanUserResponse
+	38, // 45: user.UserService.SendNewsletter:output_type -> user.SendNewsletterResponse
+	41, // 46: user.UserService.SubmitVerificationRequest:output_type -> user.SubmitVerificationRequestResponse
+	43, // 47: user.UserService.GetVerificationRequests:output_type -> user.GetVerificationRequestsResponse
+	45, // 48: user.UserService.ResolveVerificationRequest:output_type -> user.ResolveVerificationRequestResponse
+	26, // [26:49] is the sub-list for method output_type
+	3,  // [3:26] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name

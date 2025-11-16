@@ -21,6 +21,8 @@ services:
         condition: service_started
       report-service:
         condition: service_started
+      hashtag-service: # <-- ADD THIS
+        condition: service_started
 
   user-service:
     build:
@@ -101,6 +103,9 @@ services:
       - ./backend:/app/backend
     working_dir: /app/backend/worker-service
     command: ["air", "-c", ".air.toml"]
+    depends_on: # <-- ADD THIS BLOCK
+      hashtag-service:
+        condition: service_started
 
   ai-service:
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9008", "--reload"]
@@ -114,4 +119,13 @@ services:
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/report-service
+    command: ["air", "-c", ".air.toml"]
+  
+  hashtag-service:
+    build:
+      context: .
+      dockerfile: ./backend/hashtag-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    working_dir: /app/backend/hashtag-service
     command: ["air", "-c", ".air.toml"]

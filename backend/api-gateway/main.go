@@ -1,5 +1,7 @@
 package main
 
+// API Gateway: Main entry point for all client requests
+
 import (
 	"bytes"
 	"context"
@@ -21,6 +23,7 @@ import (
 
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
+	hashtagPb "github.com/hoshibmatchi/hashtag-service/proto"
 	mediaPb "github.com/hoshibmatchi/media-service/proto"
 	messagePb "github.com/hoshibmatchi/message-service/proto"
 	postPb "github.com/hoshibmatchi/post-service/proto"
@@ -36,13 +39,14 @@ var storyClient storyPb.StoryServiceClient
 var mediaClient mediaPb.MediaServiceClient
 var messageClient messagePb.MessageServiceClient
 var reportClient reportPb.ReportServiceClient
-
+var hashtagClient hashtagPb.HashtagServiceClient
 
 // ADD THIS (must match user-service)
 // TODO: Load this from an environment variable, not hardcoded
 var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
 
 type contextKey string
+
 const userIDKey contextKey = "userID"
 
 func main() {
@@ -53,7 +57,8 @@ func main() {
 	mustConnect(&mediaClient, "media-service:9005")
 	mustConnect(&messageClient, "message-service:9003")
 	mustConnect(&reportClient, "report-service:9006")
-	
+	mustConnect(&hashtagClient, "hashtag-service:9007")
+
 	// --- Set up Gin Router ---
 	router := gin.Default()
 	router.Use(gin.Logger())   // Add default logger
@@ -63,7 +68,7 @@ func main() {
 	router.GET("/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "API Gateway is running")
 	})
-	
+
 	authRoutes := router.Group("/auth")
 	{
 		// These handlers don't need params, so gin.WrapF is fine.
@@ -92,7 +97,7 @@ func main() {
 		protected.POST("/posts", handleCreatePost_Gin)
 		protected.POST("/posts/:id/like", handlePostLike_Gin)
 		protected.DELETE("/posts/:id/like", handlePostLike_Gin)
-		
+
 		// Stories
 		protected.POST("/stories", handleCreateStory_Gin)
 		protected.POST("/stories/:id/like", handleStoryLike_Gin)
@@ -105,7 +110,7 @@ func main() {
 		// Users
 		protected.POST("/users/:id/follow", handleFollowUser_Gin)
 		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
-		
+
 		// Media
 		protected.GET("/media/upload-url", handleGetUploadURL_Gin)
 
@@ -149,6 +154,10 @@ func main() {
 		// Verif
 		protected.POST("/profile/verify", handleSubmitVerification_Gin)
 
+		// Hashtag
+		protected.GET("/search/hashtags/:name", handleSearchHashtag_Gin)
+		protected.GET("/trending/hashtags", handleTrendingHashtags_Gin)
+
 	}
 
 	admin := router.Group("/admin")
@@ -161,7 +170,6 @@ func main() {
 		admin.GET("/reports/users", handleGetUserReports_Gin)
 		admin.POST("/reports/posts/:id/resolve", handleResolvePostReport_Gin)
 		admin.POST("/reports/users/:id/resolve", handleResolveUserReport_Gin)
-
 
 		// Newsletter & Verification
 		admin.POST("/newsletters", handleSendNewsletter_Gin)
@@ -206,13 +214,13 @@ func GinAuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
 		}
-		
+
 		userID := int64(userIDFloat)
 
 		// We set the userID in the standard http.Request.Context()
 		ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
 		c.Request = c.Request.WithContext(ctx)
-		
+
 		c.Next()
 	}
 }
@@ -256,13 +264,13 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			return
 		}
-		
+
 		userID := int64(userIDFloat)
 
 		// Set the userID in the context, just like the normal middleware
 		ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
 		c.Request = c.Request.WithContext(ctx)
-		
+
 		c.Next()
 	}
 }
@@ -273,7 +281,7 @@ func mustConnect(client interface{}, target string) {
 	if err != nil {
 		log.Fatalf("Failed to connect to %s: %v", target, err)
 	}
-	
+
 	switch c := client.(type) {
 	case *pb.UserServiceClient:
 		*c = pb.NewUserServiceClient(conn)
@@ -283,10 +291,12 @@ func mustConnect(client interface{}, target string) {
 		*c = storyPb.NewStoryServiceClient(conn)
 	case *mediaPb.MediaServiceClient:
 		*c = mediaPb.NewMediaServiceClient(conn)
-	case *messagePb.MessageServiceClient: 
+	case *messagePb.MessageServiceClient:
 		*c = messagePb.NewMessageServiceClient(conn)
-	case *reportPb.ReportServiceClient: 
+	case *reportPb.ReportServiceClient:
 		*c = reportPb.NewReportServiceClient(conn)
+	case *hashtagPb.HashtagServiceClient: // <-- ADD THIS
+		*c = hashtagPb.NewHashtagServiceClient(conn)
 	default:
 		log.Fatalf("Unknown client type")
 	}
@@ -295,55 +305,55 @@ func mustConnect(client interface{}, target string) {
 
 // handleRegister translates the HTTP request to a gRPC call
 func handleRegister(w http.ResponseWriter, r *http.Request) {
-    // 1. We only accept POST methods
-    if r.Method != http.MethodPost {
-        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-        return
-    }
+	// 1. We only accept POST methods
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
 
-    // 2. Decode the JSON body from the client
-    var req struct {
-        Name            string `json:"name"`
-        Username        string `json:"username"`
-        Email           string `json:"email"`
-        Password        string `json:"password"`
-        ConfirmPassword string `json:"confirm_password"` // ADDED
-        DateOfBirth     string `json:"date_of_birth"`
-        Gender          string `json:"gender"`
-        // ProfilePictureURL string `json:"profile_picture_url"` // REMOVED
-        // OtpCode           string `json:"otp_code"` // REMOVED
-    }
+	// 2. Decode the JSON body from the client
+	var req struct {
+		Name            string `json:"name"`
+		Username        string `json:"username"`
+		Email           string `json:"email"`
+		Password        string `json:"password"`
+		ConfirmPassword string `json:"confirm_password"` // ADDED
+		DateOfBirth     string `json:"date_of_birth"`
+		Gender          string `json:"gender"`
+		// ProfilePictureURL string `json:"profile_picture_url"` // REMOVED
+		// OtpCode           string `json:"otp_code"` // REMOVED
+	}
 
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    // 3. Call the gRPC service
-    grpcReq := &pb.RegisterUserRequest{
-        Name:            req.Name,
-        Username:        req.Username,
-        Email:           req.Email,
-        Password:        req.Password,
-        ConfirmPassword: req.ConfirmPassword, // ADDED
-        DateOfBirth:     req.DateOfBirth,
-        Gender:          req.Gender,
-        // ProfilePictureUrl: req.ProfilePictureURL, // REMOVED
-        // OtpCode:           req.OtpCode, // REMOVED
-    }
+	// 3. Call the gRPC service
+	grpcReq := &pb.RegisterUserRequest{
+		Name:            req.Name,
+		Username:        req.Username,
+		Email:           req.Email,
+		Password:        req.Password,
+		ConfirmPassword: req.ConfirmPassword, // ADDED
+		DateOfBirth:     req.DateOfBirth,
+		Gender:          req.Gender,
+		// ProfilePictureUrl: req.ProfilePictureURL, // REMOVED
+		// OtpCode:           req.OtpCode, // REMOVED
+	}
 
-    res, err := client.RegisterUser(r.Context(), grpcReq)
-    if err != nil {
-        grpcErr, _ := status.FromError(err)
-        log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
-        http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-        return
-    }
+	res, err := client.RegisterUser(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
 
-    // 4. Send the successful JSON response back to the client
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusCreated)
-    json.NewEncoder(w).Encode(res)
+	// 4. Send the successful JSON response back to the client
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(res)
 }
 
 func handleSendOtp(w http.ResponseWriter, r *http.Request) {
@@ -467,7 +477,7 @@ func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
 		Email:   req.Email,
 		OtpCode: req.OtpCode,
 	}
-	
+
 	// 'grpcRes' is the response from the gRPC service
 	grpcRes, err := client.Verify2FA(r.Context(), grpcReq)
 	if err != nil {
@@ -485,7 +495,7 @@ func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
 		RefreshToken  string `json:"refresh_token,omitempty"`
 		Is2FARequired bool   `json:"is_2fa_required"`
 	}
-	
+
 	res := jsonResponse{
 		Message:       "2FA verification successful. Logged in.",
 		AccessToken:   grpcRes.AccessToken,
@@ -504,7 +514,9 @@ func handleSendPasswordReset(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
 	}
-	var req struct { Email string `json:"email"` }
+	var req struct {
+		Email string `json:"email"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -555,7 +567,10 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 // --- GIN-NATIVE HANDLER: handleCreatePost ---
 func handleCreatePost_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	var req struct {
 		Caption          string   `json:"caption"`
@@ -590,7 +605,10 @@ func handleCreatePost_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleCreateStory ---
 func handleCreateStory_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	var req struct {
 		MediaURL string `json:"media_url"`
@@ -618,7 +636,10 @@ func handleCreateStory_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleCreateComment ---
 func handleCreateComment_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	var req struct {
 		PostID          int64  `json:"post_id"`
@@ -636,7 +657,7 @@ func handleCreateComment_Gin(c *gin.Context) {
 		Content:         req.Content,
 		ParentCommentId: req.ParentCommentID,
 	}
-	
+
 	grpcRes, err := postClient.CommentOnPost(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
@@ -704,17 +725,25 @@ func handlePostLike_Gin(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
 		return
 	}
-	
+
 	if c.Request.Method == http.MethodPost {
 		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
 		res, err := postClient.LikePost(c.Request.Context(), req)
-		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
 		c.JSON(http.StatusOK, res)
 
 	} else if c.Request.Method == http.MethodDelete {
 		req := &postPb.LikePostRequest{UserId: userID, PostId: postID}
 		res, err := postClient.UnlikePost(c.Request.Context(), req)
-		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
 		c.JSON(http.StatusOK, res)
 	}
 }
@@ -727,24 +756,32 @@ func handleStoryLike_Gin(c *gin.Context) {
 		return
 	}
 	// --- END FIX ---
-	
+
 	storyIDStr := c.Param("id")
 	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story ID"})
 		return
 	}
-	
+
 	if c.Request.Method == http.MethodPost {
 		req := &storyPb.LikeStoryRequest{UserId: userID, StoryId: storyID}
 		res, err := storyClient.LikeStory(c.Request.Context(), req)
-		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
 		c.JSON(http.StatusOK, res)
 
 	} else if c.Request.Method == http.MethodDelete {
 		req := &storyPb.UnlikeStoryRequest{UserId: userID, StoryId: storyID}
 		res, err := storyClient.UnlikeStory(c.Request.Context(), req)
-		if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+		if err != nil {
+			grpcErr, _ := status.FromError(err)
+			c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+			return
+		}
 		c.JSON(http.StatusOK, res)
 	}
 }
@@ -764,18 +801,25 @@ func handleDeleteComment_Gin(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
 		return
 	}
-	
+
 	grpcReq := &postPb.DeleteCommentRequest{UserId: userID, CommentId: commentID}
 	grpcRes, err := postClient.DeleteComment(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleGetUploadURL ---
 func handleGetUploadURL_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
-	
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
 	// Get query params, e.g., /media/upload-url?filename=foo.jpg&type=image/jpeg
 	filename := c.Query("filename")
 	contentType := c.Query("type")
@@ -803,22 +847,29 @@ func handleGetUploadURL_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
 func handleGetHomeFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	// Get pagination query params, e.g., /feed/home?page=1&limit=20
 	// We'll default to page 1, limit 20
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
-	if page < 1 { page = 1 }
-	if limit < 1 || limit > 100 { limit = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 
 	offset := (page - 1) * limit
 
 	grpcReq := &postPb.GetHomeFeedRequest{
-		UserId:      userID,
-		PageSize:    int32(limit),
-		PageOffset:  int32(offset),
+		UserId:     userID,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
 	}
 
 	grpcRes, err := postClient.GetHomeFeed(c.Request.Context(), grpcReq)
@@ -835,18 +886,25 @@ func handleGetHomeFeed_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetExploreFeed ---
 func handleGetExploreFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	if page < 1 { page = 1 }
-	if limit < 1 || limit > 100 { limit = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 	offset := (page - 1) * limit
 
 	grpcReq := &postPb.GetHomeFeedRequest{
-		UserId:      userID,
-		PageSize:    int32(limit),
-		PageOffset:  int32(offset),
+		UserId:     userID,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
 	}
 
 	grpcRes, err := postClient.GetExploreFeed(c.Request.Context(), grpcReq)
@@ -862,18 +920,25 @@ func handleGetExploreFeed_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetReelsFeed ---
 func handleGetReelsFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	if page < 1 { page = 1 }
-	if limit < 1 || limit > 100 { limit = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 	offset := (page - 1) * limit
 
 	grpcReq := &postPb.GetHomeFeedRequest{
-		UserId:      userID,
-		PageSize:    int32(limit),
-		PageOffset:  int32(offset),
+		UserId:     userID,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
 	}
 
 	grpcRes, err := postClient.GetReelsFeed(c.Request.Context(), grpcReq)
@@ -890,8 +955,11 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 // This is a complex aggregator handler
 func handleGetUserProfile_Gin(c *gin.Context) {
 	selfUserID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
-	usernameToFind := c.Param("username")    // Get username from URL
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	usernameToFind := c.Param("username") // Get username from URL
 
 	// --- 1. Get Profile Data from User-Service ---
 	userReq := &pb.GetUserProfileRequest{
@@ -915,9 +983,9 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 
 	// --- 3. Aggregate the response ---
 	type ProfileResponse struct {
-		User          *pb.GetUserProfileResponse `json:"user"`
-		PostCount     int64                      `json:"post_count"`
-		ReelCount     int64                      `json:"reel_count"`
+		User      *pb.GetUserProfileResponse `json:"user"`
+		PostCount int64                      `json:"post_count"`
+		ReelCount int64                      `json:"reel_count"`
 	}
 
 	var postCount int64 = 0
@@ -939,7 +1007,7 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetUserPosts ---
 func handleGetUserPosts_Gin(c *gin.Context) {
 	usernameToFind := c.Param("username")
-	
+
 	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
@@ -953,9 +1021,9 @@ func handleGetUserPosts_Gin(c *gin.Context) {
 
 	// --- THIS IS THE FIX ---
 	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
-		UserId:      userRes.UserId,
-		PageSize:    int32(limit),
-		PageOffset:  int32(offset),
+		UserId:     userRes.UserId,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
 	}
 	// --- END FIX ---
 
@@ -971,7 +1039,7 @@ func handleGetUserPosts_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleGetUserReels ---
 func handleGetUserReels_Gin(c *gin.Context) {
 	usernameToFind := c.Param("username")
-	
+
 	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
@@ -985,9 +1053,9 @@ func handleGetUserReels_Gin(c *gin.Context) {
 
 	// --- THIS IS THE FIX ---
 	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
-		UserId:      userRes.UserId,
-		PageSize:    int32(limit),
-		PageOffset:  int32(offset),
+		UserId:     userRes.UserId,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
 	}
 	// --- END FIX ---
 
@@ -1003,7 +1071,10 @@ func handleGetUserReels_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleUpdateProfile ---
 func handleUpdateProfile_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	var req struct {
 		Name   string `json:"name"`
@@ -1036,7 +1107,10 @@ func handleUpdateProfile_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleSetPrivacy ---
 func handleSetPrivacy_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	var req struct {
 		IsPrivate bool `json:"is_private"`
@@ -1066,7 +1140,10 @@ func handleSetPrivacy_Gin(c *gin.Context) {
 func handleBlockUser_Gin(c *gin.Context) {
 	// 1. Get the current user's ID from the JWT
 	blockerID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 
 	// 2. Get the target user's ID from the URL
 	blockedIDStr := c.Param("id")
@@ -1079,7 +1156,7 @@ func handleBlockUser_Gin(c *gin.Context) {
 	if c.Request.Method == http.MethodPost {
 		// --- Block User ---
 		grpcReq := &pb.BlockUserRequest{
-			BlockerId:  blockerID,
+			BlockerId: blockerID,
 			BlockedId: blockedID,
 		}
 		grpcRes, err := client.BlockUser(c.Request.Context(), grpcReq)
@@ -1093,7 +1170,7 @@ func handleBlockUser_Gin(c *gin.Context) {
 	} else if c.Request.Method == http.MethodDelete {
 		// --- Unblock User ---
 		grpcReq := &pb.UnblockUserRequest{
-			BlockerId:  blockerID,
+			BlockerId: blockerID,
 			BlockedId: blockedID,
 		}
 		grpcRes, err := client.UnblockUser(c.Request.Context(), grpcReq)
@@ -1112,34 +1189,57 @@ func handleBlockUser_Gin(c *gin.Context) {
 // --- GIN-NATIVE HANDLER: handleCreateCollection ---
 func handleCreateCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
-	var req struct { Name string `json:"name"` }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	var req struct {
+		Name string `json:"name"`
+	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}); return
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	grpcReq := &postPb.CreateCollectionRequest{UserId: userID, Name: req.Name}
 	grpcRes, err := postClient.CreateCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusCreated, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleGetUserCollections ---
 func handleGetUserCollections_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	grpcReq := &postPb.GetUserCollectionsRequest{UserId: userID}
 	grpcRes, err := postClient.GetUserCollections(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes.Collections)
 }
 
 // --- GIN-NATIVE HANDLER: handleGetPostsInCollection ---
 func handleGetPostsInCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
@@ -1152,20 +1252,33 @@ func handleGetPostsInCollection_Gin(c *gin.Context) {
 		PageOffset:   int32(offset),
 	}
 	grpcRes, err := postClient.GetPostsInCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes.Posts)
 }
 
 // --- GIN-NATIVE HANDLER: handleSavePostToCollection ---
 func handleSavePostToCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
 
-	var req struct { PostID int64 `json:"post_id"` }
+	var req struct {
+		PostID int64 `json:"post_id"`
+	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'post_id'"}); return
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'post_id'"})
+		return
 	}
 
 	grpcReq := &postPb.SavePostToCollectionRequest{
@@ -1174,18 +1287,31 @@ func handleSavePostToCollection_Gin(c *gin.Context) {
 		PostId:       req.PostID,
 	}
 	grpcRes, err := postClient.SavePostToCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleUnsavePostFromCollection ---
 func handleUnsavePostFromCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
 	postID, err := strconv.ParseInt(c.Param("post_id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
 
 	grpcReq := &postPb.UnsavePostFromCollectionRequest{
 		UserId:       userID,
@@ -1193,33 +1319,56 @@ func handleUnsavePostFromCollection_Gin(c *gin.Context) {
 		PostId:       postID,
 	}
 	grpcRes, err := postClient.UnsavePostFromCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleDeleteCollection ---
 func handleDeleteCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
 
 	grpcReq := &postPb.DeleteCollectionRequest{UserId: userID, CollectionId: collectionID}
 	grpcRes, err := postClient.DeleteCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleRenameCollection ---
 func handleRenameCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok { c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"}); return }
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
 	collectionID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"}); return }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid collection ID"})
+		return
+	}
 
-	var req struct { NewName string `json:"new_name"` }
+	var req struct {
+		NewName string `json:"new_name"`
+	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'new_name'"}); return
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'new_name'"})
+		return
 	}
 
 	grpcReq := &postPb.RenameCollectionRequest{
@@ -1228,42 +1377,46 @@ func handleRenameCollection_Gin(c *gin.Context) {
 		NewName:      req.NewName,
 	}
 	grpcRes, err := postClient.RenameCollection(c.Request.Context(), grpcReq)
-	if err != nil { grpcErr, _ := status.FromError(err); c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()}); return }
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
 	c.JSON(http.StatusOK, grpcRes)
 }
 
 func handleVerifyRegistrationOtp(w http.ResponseWriter, r *http.Request) {
-    if r.Method != http.MethodPost {
-        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-        return
-    }
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
 
-    var req struct {
-        Email   string `json:"email"`
-        OtpCode string `json:"otp_code"`
-    }
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
+	var req struct {
+		Email   string `json:"email"`
+		OtpCode string `json:"otp_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    grpcReq := &pb.VerifyRegistrationOtpRequest{
-        Email:   req.Email,
-        OtpCode: req.OtpCode,
-    }
+	grpcReq := &pb.VerifyRegistrationOtpRequest{
+		Email:   req.Email,
+		OtpCode: req.OtpCode,
+	}
 
-    grpcRes, err := client.VerifyRegistrationOtp(r.Context(), grpcReq)
-    if err != nil {
-        grpcErr, _ := status.FromError(err)
-        log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
-        http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
-        return
-    }
+	grpcRes, err := client.VerifyRegistrationOtp(r.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		http.Error(w, grpcErr.Message(), gRPCToHTTPStatusCode(grpcErr.Code()))
+		return
+	}
 
-    // Return the tokens
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(grpcRes)
+	// Return the tokens
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(grpcRes)
 }
 
 // --- GIN-NATIVE HANDLER: handleCreateConversation ---
@@ -1290,9 +1443,9 @@ func handleCreateConversation_Gin(c *gin.Context) {
 	}
 
 	grpcReq := &messagePb.CreateConversationRequest{
-		CreatorId:       creatorID,
-		ParticipantIds:  req.ParticipantIDs,
-		GroupName:       req.GroupName,
+		CreatorId:      creatorID,
+		ParticipantIds: req.ParticipantIDs,
+		GroupName:      req.GroupName,
 	}
 
 	grpcRes, err := messageClient.CreateConversation(c.Request.Context(), grpcReq)
@@ -1354,8 +1507,12 @@ func handleGetConversations_Gin(c *gin.Context) {
 	// Get pagination params
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	if page < 1 { page = 1 }
-	if limit < 1 { limit = 20 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
 	offset := (page - 1) * limit
 
 	grpcReq := &messagePb.GetConversationsRequest{
@@ -1389,8 +1546,12 @@ func handleGetMessages_Gin(c *gin.Context) {
 	// Get pagination params
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50")) // Get more messages by default
-	if page < 1 { page = 1 }
-	if limit < 1 { limit = 50 }
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 50
+	}
 	offset := (page - 1) * limit
 
 	grpcReq := &messagePb.GetMessagesRequest{
@@ -1585,7 +1746,7 @@ func handleBanUser_Gin(c *gin.Context) {
 	}
 
 	grpcReq := &pb.BanUserRequest{
-		AdminUserId:  adminID,
+		AdminUserId: adminID,
 		UserToBanId: userToBanID,
 	}
 
@@ -1615,7 +1776,7 @@ func handleUnbanUser_Gin(c *gin.Context) {
 	}
 
 	grpcReq := &pb.UnbanUserRequest{
-		AdminUserId:    adminID,
+		AdminUserId:   adminID,
 		UserToUnbanId: userToUnbanID,
 	}
 
@@ -1826,7 +1987,7 @@ func handleSendNewsletter_Gin(c *gin.Context) {
 func handleGetVerifications_Gin(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-	
+
 	// --- THIS IS THE FIX ---
 	reqStatus := c.DefaultQuery("status", "pending") // Renamed 'status' to 'reqStatus'
 	// --- END FIX ---
@@ -1883,4 +2044,58 @@ func handleResolveVerification_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleSearchHashtag ---
+func handleSearchHashtag_Gin(c *gin.Context) {
+	hashtagName := c.Param("name")
+	if hashtagName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Hashtag name is required"})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	grpcReq := &hashtagPb.SearchByHashtagRequest{
+		HashtagName: strings.ToLower(hashtagName),
+		PageSize:    int32(limit),
+		PageOffset:  int32((page - 1) * limit),
+	}
+
+	grpcRes, err := hashtagClient.SearchByHashtag(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes) // Returns { "posts": [...], "total_post_count": X }
+}
+
+// --- GIN-NATIVE HANDLER: handleTrendingHashtags ---
+func handleTrendingHashtags_Gin(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	grpcReq := &hashtagPb.GetTrendingHashtagsRequest{
+		Limit: int32(limit),
+	}
+
+	grpcRes, err := hashtagClient.GetTrendingHashtags(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Hashtags)
 }

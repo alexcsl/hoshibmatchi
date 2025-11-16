@@ -19,26 +19,29 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_RegisterUser_FullMethodName              = "/user.UserService/RegisterUser"
-	UserService_SendRegistrationOtp_FullMethodName       = "/user.UserService/SendRegistrationOtp"
-	UserService_VerifyRegistrationOtp_FullMethodName     = "/user.UserService/VerifyRegistrationOtp"
-	UserService_LoginUser_FullMethodName                 = "/user.UserService/LoginUser"
-	UserService_Verify2FA_FullMethodName                 = "/user.UserService/Verify2FA"
-	UserService_SendPasswordReset_FullMethodName         = "/user.UserService/SendPasswordReset"
-	UserService_ResetPassword_FullMethodName             = "/user.UserService/ResetPassword"
-	UserService_GetUserData_FullMethodName               = "/user.UserService/GetUserData"
-	UserService_FollowUser_FullMethodName                = "/user.UserService/FollowUser"
-	UserService_UnfollowUser_FullMethodName              = "/user.UserService/UnfollowUser"
-	UserService_GetFollowingList_FullMethodName          = "/user.UserService/GetFollowingList"
-	UserService_GetUserProfile_FullMethodName            = "/user.UserService/GetUserProfile"
-	UserService_UpdateUserProfile_FullMethodName         = "/user.UserService/UpdateUserProfile"
-	UserService_SetAccountPrivacy_FullMethodName         = "/user.UserService/SetAccountPrivacy"
-	UserService_BlockUser_FullMethodName                 = "/user.UserService/BlockUser"
-	UserService_UnblockUser_FullMethodName               = "/user.UserService/UnblockUser"
-	UserService_SearchUsers_FullMethodName               = "/user.UserService/SearchUsers"
-	UserService_BanUser_FullMethodName                   = "/user.UserService/BanUser"
-	UserService_UnbanUser_FullMethodName                 = "/user.UserService/UnbanUser"
-	UserService_SubmitVerificationRequest_FullMethodName = "/user.UserService/SubmitVerificationRequest"
+	UserService_RegisterUser_FullMethodName               = "/user.UserService/RegisterUser"
+	UserService_SendRegistrationOtp_FullMethodName        = "/user.UserService/SendRegistrationOtp"
+	UserService_VerifyRegistrationOtp_FullMethodName      = "/user.UserService/VerifyRegistrationOtp"
+	UserService_LoginUser_FullMethodName                  = "/user.UserService/LoginUser"
+	UserService_Verify2FA_FullMethodName                  = "/user.UserService/Verify2FA"
+	UserService_SendPasswordReset_FullMethodName          = "/user.UserService/SendPasswordReset"
+	UserService_ResetPassword_FullMethodName              = "/user.UserService/ResetPassword"
+	UserService_GetUserData_FullMethodName                = "/user.UserService/GetUserData"
+	UserService_FollowUser_FullMethodName                 = "/user.UserService/FollowUser"
+	UserService_UnfollowUser_FullMethodName               = "/user.UserService/UnfollowUser"
+	UserService_GetFollowingList_FullMethodName           = "/user.UserService/GetFollowingList"
+	UserService_GetUserProfile_FullMethodName             = "/user.UserService/GetUserProfile"
+	UserService_UpdateUserProfile_FullMethodName          = "/user.UserService/UpdateUserProfile"
+	UserService_SetAccountPrivacy_FullMethodName          = "/user.UserService/SetAccountPrivacy"
+	UserService_BlockUser_FullMethodName                  = "/user.UserService/BlockUser"
+	UserService_UnblockUser_FullMethodName                = "/user.UserService/UnblockUser"
+	UserService_SearchUsers_FullMethodName                = "/user.UserService/SearchUsers"
+	UserService_BanUser_FullMethodName                    = "/user.UserService/BanUser"
+	UserService_UnbanUser_FullMethodName                  = "/user.UserService/UnbanUser"
+	UserService_SendNewsletter_FullMethodName             = "/user.UserService/SendNewsletter"
+	UserService_SubmitVerificationRequest_FullMethodName  = "/user.UserService/SubmitVerificationRequest"
+	UserService_GetVerificationRequests_FullMethodName    = "/user.UserService/GetVerificationRequests"
+	UserService_ResolveVerificationRequest_FullMethodName = "/user.UserService/ResolveVerificationRequest"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -70,8 +73,12 @@ type UserServiceClient interface {
 	// Admin controls
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
 	UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*UnbanUserResponse, error)
+	// Admin: Newsletter
+	SendNewsletter(ctx context.Context, in *SendNewsletterRequest, opts ...grpc.CallOption) (*SendNewsletterResponse, error)
 	// Verification Requests
 	SubmitVerificationRequest(ctx context.Context, in *SubmitVerificationRequestRequest, opts ...grpc.CallOption) (*SubmitVerificationRequestResponse, error)
+	GetVerificationRequests(ctx context.Context, in *GetVerificationRequestsRequest, opts ...grpc.CallOption) (*GetVerificationRequestsResponse, error)
+	ResolveVerificationRequest(ctx context.Context, in *ResolveVerificationRequestRequest, opts ...grpc.CallOption) (*ResolveVerificationRequestResponse, error)
 }
 
 type userServiceClient struct {
@@ -272,10 +279,40 @@ func (c *userServiceClient) UnbanUser(ctx context.Context, in *UnbanUserRequest,
 	return out, nil
 }
 
+func (c *userServiceClient) SendNewsletter(ctx context.Context, in *SendNewsletterRequest, opts ...grpc.CallOption) (*SendNewsletterResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendNewsletterResponse)
+	err := c.cc.Invoke(ctx, UserService_SendNewsletter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SubmitVerificationRequest(ctx context.Context, in *SubmitVerificationRequestRequest, opts ...grpc.CallOption) (*SubmitVerificationRequestResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SubmitVerificationRequestResponse)
 	err := c.cc.Invoke(ctx, UserService_SubmitVerificationRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetVerificationRequests(ctx context.Context, in *GetVerificationRequestsRequest, opts ...grpc.CallOption) (*GetVerificationRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVerificationRequestsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetVerificationRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ResolveVerificationRequest(ctx context.Context, in *ResolveVerificationRequestRequest, opts ...grpc.CallOption) (*ResolveVerificationRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveVerificationRequestResponse)
+	err := c.cc.Invoke(ctx, UserService_ResolveVerificationRequest_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -311,8 +348,12 @@ type UserServiceServer interface {
 	// Admin controls
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
 	UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error)
+	// Admin: Newsletter
+	SendNewsletter(context.Context, *SendNewsletterRequest) (*SendNewsletterResponse, error)
 	// Verification Requests
 	SubmitVerificationRequest(context.Context, *SubmitVerificationRequestRequest) (*SubmitVerificationRequestResponse, error)
+	GetVerificationRequests(context.Context, *GetVerificationRequestsRequest) (*GetVerificationRequestsResponse, error)
+	ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -380,8 +421,17 @@ func (UnimplementedUserServiceServer) BanUser(context.Context, *BanUserRequest) 
 func (UnimplementedUserServiceServer) UnbanUser(context.Context, *UnbanUserRequest) (*UnbanUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnbanUser not implemented")
 }
+func (UnimplementedUserServiceServer) SendNewsletter(context.Context, *SendNewsletterRequest) (*SendNewsletterResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendNewsletter not implemented")
+}
 func (UnimplementedUserServiceServer) SubmitVerificationRequest(context.Context, *SubmitVerificationRequestRequest) (*SubmitVerificationRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitVerificationRequest not implemented")
+}
+func (UnimplementedUserServiceServer) GetVerificationRequests(context.Context, *GetVerificationRequestsRequest) (*GetVerificationRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVerificationRequests not implemented")
+}
+func (UnimplementedUserServiceServer) ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolveVerificationRequest not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -746,6 +796,24 @@ func _UserService_UnbanUser_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SendNewsletter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendNewsletterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SendNewsletter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SendNewsletter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SendNewsletter(ctx, req.(*SendNewsletterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SubmitVerificationRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitVerificationRequestRequest)
 	if err := dec(in); err != nil {
@@ -760,6 +828,42 @@ func _UserService_SubmitVerificationRequest_Handler(srv interface{}, ctx context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SubmitVerificationRequest(ctx, req.(*SubmitVerificationRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetVerificationRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVerificationRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetVerificationRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetVerificationRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetVerificationRequests(ctx, req.(*GetVerificationRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ResolveVerificationRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveVerificationRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ResolveVerificationRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ResolveVerificationRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ResolveVerificationRequest(ctx, req.(*ResolveVerificationRequestRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -848,8 +952,20 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_UnbanUser_Handler,
 		},
 		{
+			MethodName: "SendNewsletter",
+			Handler:    _UserService_SendNewsletter_Handler,
+		},
+		{
 			MethodName: "SubmitVerificationRequest",
 			Handler:    _UserService_SubmitVerificationRequest_Handler,
+		},
+		{
+			MethodName: "GetVerificationRequests",
+			Handler:    _UserService_GetVerificationRequests_Handler,
+		},
+		{
+			MethodName: "ResolveVerificationRequest",
+			Handler:    _UserService_ResolveVerificationRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
