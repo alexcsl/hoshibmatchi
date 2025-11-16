@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"sort"
 
 	"fmt"
 	"math/rand"
@@ -19,6 +20,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/adrg/strutil"
+	"github.com/adrg/strutil/metrics"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -71,6 +74,12 @@ type Block struct {
 	BlockerID int64 `gorm:"primaryKey"` // The user doing the blocking
 	BlockedID int64 `gorm:"primaryKey"` // The user being blocked
 	CreatedAt time.Time
+}
+
+// searchResult is a helper struct for sorting
+type searchResult struct {
+	user       User
+	similarity float64
 }
 
 // Not secure
@@ -896,5 +905,68 @@ func (s *server) VerifyRegistrationOtp(ctx context.Context, req *pb.VerifyRegist
 	return &pb.VerifyRegistrationOtpResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*pb.SearchUsersResponse, error) {
+	log.Printf("SearchUsers request received for query: '%s'", req.Query)
+
+	if req.Query == "" {
+		return &pb.SearchUsersResponse{Users: []*pb.GetUserProfileResponse{}}, nil
+	}
+
+	// --- Step 1: Broad database query ---
+	// We find all users who are NOT the user searching
+	// AND whose username starts with the query.
+	var users []User
+	query := req.Query + "%"
+	if err := s.db.Where("username LIKE ? AND id != ?", query, req.SelfUserId).
+		Limit(50). // Limit the initial pull from DB for performance
+		Find(&users).Error; err != nil {
+		log.Printf("Failed to search users in DB: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to perform search")
+	}
+
+	// --- Step 2: Calculate Jaro-Winkler distance (as required by PDF) ---
+	jw := metrics.NewJaroWinkler()
+	jw.CaseSensitive = false // Make search case-insensitive
+
+	var results []searchResult
+	for _, user := range users {
+		similarity := strutil.Similarity(req.Query, user.Username, jw)
+		results = append(results, searchResult{
+			user:       user,
+			similarity: similarity,
+		})
+	}
+
+	// --- Step 3: Sort by similarity (highest first) ---
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].similarity > results[j].similarity
+	})
+
+	// --- Step 4: Get top 5 and convert to gRPC response ---
+	// PDF requires "5 recommended user profiles" 
+	var grpcUsers []*pb.GetUserProfileResponse
+	limit := 5
+	if len(results) < 5 {
+		limit = len(results)
+	}
+
+	for _, res := range results[:limit] {
+		// We can re-use our existing helper function!
+		grpcUser, err := s.GetUserProfile(ctx, &pb.GetUserProfileRequest{
+			Username:   res.user.Username,
+			SelfUserId: req.SelfUserId, // Pass this along
+		})
+		if err != nil {
+			log.Printf("Failed to convert user %s for search: %v", res.user.Username, err)
+			continue
+		}
+		grpcUsers = append(grpcUsers, grpcUser)
+	}
+
+	return &pb.SearchUsersResponse{
+		Users: grpcUsers,
 	}, nil
 }

@@ -1729,6 +1729,104 @@ func (x *UnblockUserResponse) GetMessage() string {
 	return ""
 }
 
+// --- Search Users ---
+type SearchUsersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`                                // The search term
+	SelfUserId    int64                  `protobuf:"varint,2,opt,name=self_user_id,json=selfUserId,proto3" json:"self_user_id,omitempty"` // From JWT, to exclude self from results
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchUsersRequest) Reset() {
+	*x = SearchUsersRequest{}
+	mi := &file_user_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchUsersRequest) ProtoMessage() {}
+
+func (x *SearchUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchUsersRequest.ProtoReflect.Descriptor instead.
+func (*SearchUsersRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SearchUsersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchUsersRequest) GetSelfUserId() int64 {
+	if x != nil {
+		return x.SelfUserId
+	}
+	return 0
+}
+
+// We can re-use GetUserProfileResponse
+type SearchUsersResponse struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Users         []*GetUserProfileResponse `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchUsersResponse) Reset() {
+	*x = SearchUsersResponse{}
+	mi := &file_user_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchUsersResponse) ProtoMessage() {}
+
+func (x *SearchUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchUsersResponse.ProtoReflect.Descriptor instead.
+func (*SearchUsersResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *SearchUsersResponse) GetUsers() []*GetUserProfileResponse {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
@@ -1848,7 +1946,13 @@ const file_user_proto_rawDesc = "" +
 	"\n" +
 	"blocked_id\x18\x02 \x01(\x03R\tblockedId\"/\n" +
 	"\x13UnblockUserResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xa5\t\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"L\n" +
+	"\x12SearchUsersRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12 \n" +
+	"\fself_user_id\x18\x02 \x01(\x03R\n" +
+	"selfUserId\"I\n" +
+	"\x13SearchUsersResponse\x122\n" +
+	"\x05users\x18\x01 \x03(\v2\x1c.user.GetUserProfileResponseR\x05users2\xe9\t\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x12`\n" +
@@ -1866,7 +1970,8 @@ const file_user_proto_rawDesc = "" +
 	"\x11UpdateUserProfile\x12\x1e.user.UpdateUserProfileRequest\x1a\x1c.user.GetUserProfileResponse\x12T\n" +
 	"\x11SetAccountPrivacy\x12\x1e.user.SetAccountPrivacyRequest\x1a\x1f.user.SetAccountPrivacyResponse\x12<\n" +
 	"\tBlockUser\x12\x16.user.BlockUserRequest\x1a\x17.user.BlockUserResponse\x12B\n" +
-	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponse\x12B\n" +
+	"\vSearchUsers\x12\x18.user.SearchUsersRequest\x1a\x19.user.SearchUsersResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -1880,7 +1985,7 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_user_proto_goTypes = []any{
 	(*RegisterUserRequest)(nil),           // 0: user.RegisterUserRequest
 	(*RegisterUserResponse)(nil),          // 1: user.RegisterUserResponse
@@ -1913,45 +2018,50 @@ var file_user_proto_goTypes = []any{
 	(*BlockUserResponse)(nil),             // 28: user.BlockUserResponse
 	(*UnblockUserRequest)(nil),            // 29: user.UnblockUserRequest
 	(*UnblockUserResponse)(nil),           // 30: user.UnblockUserResponse
+	(*SearchUsersRequest)(nil),            // 31: user.SearchUsersRequest
+	(*SearchUsersResponse)(nil),           // 32: user.SearchUsersResponse
 }
 var file_user_proto_depIdxs = []int32{
-	0,  // 0: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
-	2,  // 1: user.UserService.SendRegistrationOtp:input_type -> user.SendOtpRequest
-	4,  // 2: user.UserService.VerifyRegistrationOtp:input_type -> user.VerifyRegistrationOtpRequest
-	6,  // 3: user.UserService.LoginUser:input_type -> user.LoginRequest
-	8,  // 4: user.UserService.Verify2FA:input_type -> user.Verify2FARequest
-	10, // 5: user.UserService.SendPasswordReset:input_type -> user.SendPasswordResetRequest
-	12, // 6: user.UserService.ResetPassword:input_type -> user.ResetPasswordRequest
-	14, // 7: user.UserService.GetUserData:input_type -> user.GetUserDataRequest
-	16, // 8: user.UserService.FollowUser:input_type -> user.FollowUserRequest
-	18, // 9: user.UserService.UnfollowUser:input_type -> user.UnfollowUserRequest
-	20, // 10: user.UserService.GetFollowingList:input_type -> user.GetFollowingListRequest
-	22, // 11: user.UserService.GetUserProfile:input_type -> user.GetUserProfileRequest
-	24, // 12: user.UserService.UpdateUserProfile:input_type -> user.UpdateUserProfileRequest
-	25, // 13: user.UserService.SetAccountPrivacy:input_type -> user.SetAccountPrivacyRequest
-	27, // 14: user.UserService.BlockUser:input_type -> user.BlockUserRequest
-	29, // 15: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
-	1,  // 16: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3,  // 17: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5,  // 18: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
-	7,  // 19: user.UserService.LoginUser:output_type -> user.LoginResponse
-	9,  // 20: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
-	11, // 21: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
-	13, // 22: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
-	15, // 23: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
-	17, // 24: user.UserService.FollowUser:output_type -> user.FollowUserResponse
-	19, // 25: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
-	21, // 26: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
-	23, // 27: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
-	23, // 28: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
-	26, // 29: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
-	28, // 30: user.UserService.BlockUser:output_type -> user.BlockUserResponse
-	30, // 31: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
-	16, // [16:32] is the sub-list for method output_type
-	0,  // [0:16] is the sub-list for method input_type
-	0,  // [0:0] is the sub-list for extension type_name
-	0,  // [0:0] is the sub-list for extension extendee
-	0,  // [0:0] is the sub-list for field type_name
+	23, // 0: user.SearchUsersResponse.users:type_name -> user.GetUserProfileResponse
+	0,  // 1: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
+	2,  // 2: user.UserService.SendRegistrationOtp:input_type -> user.SendOtpRequest
+	4,  // 3: user.UserService.VerifyRegistrationOtp:input_type -> user.VerifyRegistrationOtpRequest
+	6,  // 4: user.UserService.LoginUser:input_type -> user.LoginRequest
+	8,  // 5: user.UserService.Verify2FA:input_type -> user.Verify2FARequest
+	10, // 6: user.UserService.SendPasswordReset:input_type -> user.SendPasswordResetRequest
+	12, // 7: user.UserService.ResetPassword:input_type -> user.ResetPasswordRequest
+	14, // 8: user.UserService.GetUserData:input_type -> user.GetUserDataRequest
+	16, // 9: user.UserService.FollowUser:input_type -> user.FollowUserRequest
+	18, // 10: user.UserService.UnfollowUser:input_type -> user.UnfollowUserRequest
+	20, // 11: user.UserService.GetFollowingList:input_type -> user.GetFollowingListRequest
+	22, // 12: user.UserService.GetUserProfile:input_type -> user.GetUserProfileRequest
+	24, // 13: user.UserService.UpdateUserProfile:input_type -> user.UpdateUserProfileRequest
+	25, // 14: user.UserService.SetAccountPrivacy:input_type -> user.SetAccountPrivacyRequest
+	27, // 15: user.UserService.BlockUser:input_type -> user.BlockUserRequest
+	29, // 16: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
+	31, // 17: user.UserService.SearchUsers:input_type -> user.SearchUsersRequest
+	1,  // 18: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3,  // 19: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5,  // 20: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
+	7,  // 21: user.UserService.LoginUser:output_type -> user.LoginResponse
+	9,  // 22: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	11, // 23: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
+	13, // 24: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
+	15, // 25: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
+	17, // 26: user.UserService.FollowUser:output_type -> user.FollowUserResponse
+	19, // 27: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
+	21, // 28: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
+	23, // 29: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
+	23, // 30: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
+	26, // 31: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
+	28, // 32: user.UserService.BlockUser:output_type -> user.BlockUserResponse
+	30, // 33: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
+	32, // 34: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
+	18, // [18:35] is the sub-list for method output_type
+	1,  // [1:18] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_user_proto_init() }
@@ -1965,7 +2075,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

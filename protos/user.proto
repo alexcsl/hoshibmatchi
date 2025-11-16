@@ -34,6 +34,8 @@ service UserService {
 
   rpc BlockUser (BlockUserRequest) returns (BlockUserResponse);
   rpc UnblockUser (UnblockUserRequest) returns (UnblockUserResponse);
+
+  rpc SearchUsers (SearchUsersRequest) returns (SearchUsersResponse);
 }
 
 // --- Register ---
@@ -217,4 +219,15 @@ message UnblockUserRequest {
 
 message UnblockUserResponse {
   string message = 1; // "Successfully unblocked user"
+}
+
+// --- Search Users ---
+message SearchUsersRequest {
+  string query = 1; // The search term
+  int64 self_user_id = 2; // From JWT, to exclude self from results
+}
+
+// We can re-use GetUserProfileResponse
+message SearchUsersResponse {
+  repeated GetUserProfileResponse users = 1;
 }

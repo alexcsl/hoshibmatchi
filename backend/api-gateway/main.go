@@ -129,6 +129,9 @@ func main() {
 
 		protected.GET("/conversations", handleGetConversations_Gin)
 		protected.GET("/conversations/:id/messages", handleGetMessages_Gin)
+
+		// Search
+		protected.GET("/search/users", handleSearchUsers_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1319,4 +1322,35 @@ func handleGetMessages_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes.Messages)
+}
+
+// --- GIN-NATIVE HANDLER: handleSearchUsers ---
+func handleSearchUsers_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get search query from URL param ?q=
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing search query 'q'"})
+		return
+	}
+
+	grpcReq := &pb.SearchUsersRequest{
+		Query:      query,
+		SelfUserId: userID,
+	}
+
+	grpcRes, err := client.SearchUsers(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to SearchUsers failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Users)
 }
