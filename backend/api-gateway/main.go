@@ -7,6 +7,8 @@ import (
 	"strings"
 	"strconv"
 	"context"
+	"bytes"
+	"io/ioutil"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -132,6 +134,9 @@ func main() {
 
 		// Search
 		protected.GET("/search/users", handleSearchUsers_Gin)
+
+		// AI
+		protected.POST("/posts/:id/summarize", handleSummarizeCaption_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1353,4 +1358,62 @@ func handleSearchUsers_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes.Users)
+}
+
+// --- GIN-NATIVE HANDLER: handleSummarizeCaption (BapTion) ---
+func handleSummarizeCaption_Gin(c *gin.Context) {
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	// --- Step 1: Get Post Caption from post-service ---
+	postReq := &postPb.GetPostRequest{PostId: postID}
+	postRes, err := postClient.GetPost(c.Request.Context(), postReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetPost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	if postRes.Caption == "" {
+		c.JSON(http.StatusOK, gin.H{"summary": ""}) // No caption to summarize
+		return
+	}
+
+	// --- Step 2: Call ai-service (HTTP) ---
+	aiServiceURL := "http://ai-service:9008/summarize"
+	requestBody, _ := json.Marshal(map[string]string{
+		"caption": postRes.Caption,
+	})
+
+	resp, err := http.Post(aiServiceURL, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		log.Printf("Failed to call ai-service: %v", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "AI service is unavailable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("ai-service returned non-200 status: %s", string(bodyBytes))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "AI service failed to process request"})
+		return
+	}
+
+	// --- Step 3: Decode and return ai-service's response ---
+	var aiResponse struct {
+		Summary string `json:"summary"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&aiResponse); err != nil {
+		log.Printf("Failed to decode ai-service response: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse AI response"})
+		return
+	}
+
+	c.JSON(http.StatusOK, aiResponse)
 }

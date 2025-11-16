@@ -37,6 +37,7 @@ const (
 	PostService_UnsavePostFromCollection_FullMethodName = "/post.PostService/UnsavePostFromCollection"
 	PostService_DeleteCollection_FullMethodName         = "/post.PostService/DeleteCollection"
 	PostService_RenameCollection_FullMethodName         = "/post.PostService/RenameCollection"
+	PostService_GetPost_FullMethodName                  = "/post.PostService/GetPost"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -61,6 +62,7 @@ type PostServiceClient interface {
 	UnsavePostFromCollection(ctx context.Context, in *UnsavePostFromCollectionRequest, opts ...grpc.CallOption) (*UnsavePostFromCollectionResponse, error)
 	DeleteCollection(ctx context.Context, in *DeleteCollectionRequest, opts ...grpc.CallOption) (*DeleteCollectionResponse, error)
 	RenameCollection(ctx context.Context, in *RenameCollectionRequest, opts ...grpc.CallOption) (*Collection, error)
+	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*Post, error)
 }
 
 type postServiceClient struct {
@@ -251,6 +253,16 @@ func (c *postServiceClient) RenameCollection(ctx context.Context, in *RenameColl
 	return out, nil
 }
 
+func (c *postServiceClient) GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*Post, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Post)
+	err := c.cc.Invoke(ctx, PostService_GetPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -273,6 +285,7 @@ type PostServiceServer interface {
 	UnsavePostFromCollection(context.Context, *UnsavePostFromCollectionRequest) (*UnsavePostFromCollectionResponse, error)
 	DeleteCollection(context.Context, *DeleteCollectionRequest) (*DeleteCollectionResponse, error)
 	RenameCollection(context.Context, *RenameCollectionRequest) (*Collection, error)
+	GetPost(context.Context, *GetPostRequest) (*Post, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -336,6 +349,9 @@ func (UnimplementedPostServiceServer) DeleteCollection(context.Context, *DeleteC
 }
 func (UnimplementedPostServiceServer) RenameCollection(context.Context, *RenameCollectionRequest) (*Collection, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RenameCollection not implemented")
+}
+func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) (*Post, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPost not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -682,6 +698,24 @@ func _PostService_RenameCollection_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPost(ctx, req.(*GetPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -760,6 +794,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RenameCollection",
 			Handler:    _PostService_RenameCollection_Handler,
+		},
+		{
+			MethodName: "GetPost",
+			Handler:    _PostService_GetPost_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

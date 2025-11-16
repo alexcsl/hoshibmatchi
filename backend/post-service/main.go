@@ -756,3 +756,16 @@ func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 		IsReel:           post.IsReel,
 	}
 }
+
+// --- GPRC: GetPost ---
+func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
+	var post Post
+	if err := s.db.First(&post, req.PostId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Post not found")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Database error")
+	}
+
+	// Use our existing helper
+	return s.gormToGrpcPost(&post), nil
+}

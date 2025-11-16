@@ -29,6 +29,8 @@ service PostService {
   rpc UnsavePostFromCollection (UnsavePostFromCollectionRequest) returns (UnsavePostFromCollectionResponse);
   rpc DeleteCollection (DeleteCollectionRequest) returns (DeleteCollectionResponse);
   rpc RenameCollection (RenameCollectionRequest) returns (Collection);
+
+  rpc GetPost (GetPostRequest) returns (Post);
 }
 
 // Data from the API Gateway
@@ -197,3 +199,8 @@ message RenameCollectionRequest {
   string new_name = 3;
 }
 // Returns a 'Collection' message
+
+// --- Get Post ---
+message GetPostRequest {
+  int64 post_id = 1;
+}
