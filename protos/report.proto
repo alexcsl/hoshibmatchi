@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package report;
+
+option go_package = "github.com/hoshibmatchi/report-service/proto";
+
+service ReportService {
+  // --- User-facing RPCs ---
+  rpc ReportPost (ReportPostRequest) returns (ReportResponse);
+  rpc ReportUser (ReportUserRequest) returns (ReportResponse);
+
+  // --- Admin-facing RPCs (We will implement these later) ---
+  // rpc GetPostReports (GetReportsRequest) returns (GetPostReportsResponse);
+  // rpc GetUserReports (GetReportsRequest) returns (GetUserReportsResponse);
+  // rpc ResolvePostReport (ResolveReportRequest) returns (ReportResponse);
+  // rpc ResolveUserReport (ResolveReportRequest) returns (ReportResponse);
+}
+
+// --- Report Messages ---
+message ReportPostRequest {
+  int64 reporter_id = 1; // From JWT
+  int64 post_id = 2;
+  string reason = 3;
+}
+
+message ReportUserRequest {
+  int64 reporter_id = 1; // From JWT
+  int64 reported_user_id = 2;
+  string reason = 3;
+}
+
+message ReportResponse {
+  string message = 1; // e.g., "Report submitted successfully"
+}

@@ -19,6 +19,8 @@ services:
         condition: service_started
       message-service:
         condition: service_started
+      report-service:
+        condition: service_started
 
   user-service:
     build:
@@ -104,3 +106,12 @@ services:
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9008", "--reload"]
     volumes:
       - ./backend/ai-service:/app
+  
+  report-service:
+    build:
+      context: .
+      dockerfile: ./backend/report-service/Dockerfile.dev
+    volumes:
+      - ./backend:/app/backend
+    working_dir: /app/backend/report-service
+    command: ["air", "-c", ".air.toml"]

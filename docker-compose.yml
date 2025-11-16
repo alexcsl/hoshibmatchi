@@ -175,6 +175,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  report-db:
+    image: postgres:15-alpine
+    container_name: report-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=report_service_db
+    ports:
+      - "5436:5432" # New port
+    volumes:
+      - report-db-data:/var/lib/postgresql/data
+    networks:
+      - hoshi-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d report_service_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ==================================================================
   # 4. BACKEND SERVICES
@@ -299,6 +318,22 @@ services:
     ports:
       - "9008:9008" # Expose the port
     networks: [hoshi-net]
+  
+  report-service:
+    build:
+      context: .
+      dockerfile: ./backend/report-service/Dockerfile
+    container_name: report-service
+    depends_on:
+      report-db:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      post-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks: [hoshi-net]
 
 
   # ==================================================================
@@ -326,6 +361,7 @@ volumes:
   story-db-data:
   message-db-data:
   notification-db-data:
+  report-db-data:
 
 networks:
   hoshi-net:

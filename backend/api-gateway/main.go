@@ -1,14 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 	"strconv"
-	"context"
-	"bytes"
-	"io/ioutil"
+	"strings"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -21,11 +21,12 @@ import (
 
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
-	pb "github.com/hoshibmatchi/user-service/proto"
-	postPb "github.com/hoshibmatchi/post-service/proto"
-	storyPb "github.com/hoshibmatchi/story-service/proto"
 	mediaPb "github.com/hoshibmatchi/media-service/proto"
 	messagePb "github.com/hoshibmatchi/message-service/proto"
+	postPb "github.com/hoshibmatchi/post-service/proto"
+	reportPb "github.com/hoshibmatchi/report-service/proto"
+	storyPb "github.com/hoshibmatchi/story-service/proto"
+	pb "github.com/hoshibmatchi/user-service/proto"
 )
 
 // client will hold the persistent gRPC connection
@@ -34,6 +35,8 @@ var postClient postPb.PostServiceClient
 var storyClient storyPb.StoryServiceClient
 var mediaClient mediaPb.MediaServiceClient
 var messageClient messagePb.MessageServiceClient
+var reportClient reportPb.ReportServiceClient
+
 
 // ADD THIS (must match user-service)
 // TODO: Load this from an environment variable, not hardcoded
@@ -49,6 +52,7 @@ func main() {
 	mustConnect(&storyClient, "story-service:9002")
 	mustConnect(&mediaClient, "media-service:9005")
 	mustConnect(&messageClient, "message-service:9003")
+	mustConnect(&reportClient, "report-service:9006")
 	
 	// --- Set up Gin Router ---
 	router := gin.Default()
@@ -137,6 +141,10 @@ func main() {
 
 		// AI
 		protected.POST("/posts/:id/summarize", handleSummarizeCaption_Gin)
+
+		// Report Routes
+		protected.POST("/reports/post", handleReportPost_Gin)
+		protected.POST("/reports/user", handleReportUser_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -205,6 +213,8 @@ func mustConnect(client interface{}, target string) {
 		*c = mediaPb.NewMediaServiceClient(conn)
 	case *messagePb.MessageServiceClient: 
 		*c = messagePb.NewMessageServiceClient(conn)
+	case *reportPb.ReportServiceClient: 
+		*c = reportPb.NewReportServiceClient(conn)
 	default:
 		log.Fatalf("Unknown client type")
 	}
@@ -1416,4 +1426,74 @@ func handleSummarizeCaption_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, aiResponse)
+}
+
+// --- GIN-NATIVE HANDLER: handleReportPost ---
+func handleReportPost_Gin(c *gin.Context) {
+	reporterID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		PostID int64  `json:"post_id"`
+		Reason string `json:"reason"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.PostID == 0 || req.Reason == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'post_id' or 'reason'"})
+		return
+	}
+
+	grpcReq := &reportPb.ReportPostRequest{
+		ReporterId: reporterID,
+		PostId:     req.PostID,
+		Reason:     req.Reason,
+	}
+
+	grpcRes, err := reportClient.ReportPost(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to ReportPost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleReportUser ---
+func handleReportUser_Gin(c *gin.Context) {
+	reporterID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		ReportedUserID int64  `json:"reported_user_id"`
+		Reason         string `json:"reason"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.ReportedUserID == 0 || req.Reason == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'reported_user_id' or 'reason'"})
+		return
+	}
+
+	grpcReq := &reportPb.ReportUserRequest{
+		ReporterId:     reporterID,
+		ReportedUserId: req.ReportedUserID,
+		Reason:         req.Reason,
+	}
+
+	grpcRes, err := reportClient.ReportUser(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to ReportUser failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes)
 }
