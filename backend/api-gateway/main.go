@@ -145,6 +145,14 @@ func main() {
 		// Report Routes
 		protected.POST("/reports/post", handleReportPost_Gin)
 		protected.POST("/reports/user", handleReportUser_Gin)
+
+	}
+
+	admin := router.Group("/admin")
+	admin.Use(AdminAuthMiddleware()) // Use our new middleware
+	{
+		admin.POST("/users/:id/ban", handleBanUser_Gin)
+		admin.POST("/users/:id/unban", handleUnbanUser_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -188,6 +196,56 @@ func GinAuthMiddleware() gin.HandlerFunc {
 		userID := int64(userIDFloat)
 
 		// We set the userID in the standard http.Request.Context()
+		ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
+		c.Request = c.Request.WithContext(ctx)
+		
+		c.Next()
+	}
+}
+
+// --- NEW: Gin-native Admin Auth Middleware ---
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+			return
+		}
+
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			return
+		}
+		tokenString := parts[1]
+
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil
+		})
+
+		if err != nil || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
+
+		// --- THIS IS THE ADMIN CHECK ---
+		role, ok := claims["role"].(string)
+		if !ok || role != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden: Admin access required"})
+			return
+		}
+		// --- END ADMIN CHECK ---
+
+		userIDFloat, ok := claims["user_id"].(float64)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
+		
+		userID := int64(userIDFloat)
+
+		// Set the userID in the context, just like the normal middleware
 		ctx := context.WithValue(c.Request.Context(), userIDKey, userID)
 		c.Request = c.Request.WithContext(ctx)
 		
@@ -1496,4 +1554,64 @@ func handleReportUser_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleBanUser ---
+func handleBanUser_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	userToBanID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	grpcReq := &pb.BanUserRequest{
+		AdminUserId:  adminID,
+		UserToBanId: userToBanID,
+	}
+
+	grpcRes, err := client.BanUser(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to BanUser failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleUnbanUser ---
+func handleUnbanUser_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	userToUnbanID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	grpcReq := &pb.UnbanUserRequest{
+		AdminUserId:    adminID,
+		UserToUnbanId: userToUnbanID,
+	}
+
+	grpcRes, err := client.UnbanUser(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to UnbanUser failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
 }

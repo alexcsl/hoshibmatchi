@@ -1827,6 +1827,200 @@ func (x *SearchUsersResponse) GetUsers() []*GetUserProfileResponse {
 	return nil
 }
 
+// Admin Controls
+// --- Admin: Ban / Unban ---
+type BanUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminUserId   int64                  `protobuf:"varint,1,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"`   // From JWT
+	UserToBanId   int64                  `protobuf:"varint,2,opt,name=user_to_ban_id,json=userToBanId,proto3" json:"user_to_ban_id,omitempty"` // From URL
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BanUserRequest) Reset() {
+	*x = BanUserRequest{}
+	mi := &file_user_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BanUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BanUserRequest) ProtoMessage() {}
+
+func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BanUserRequest.ProtoReflect.Descriptor instead.
+func (*BanUserRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *BanUserRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+func (x *BanUserRequest) GetUserToBanId() int64 {
+	if x != nil {
+		return x.UserToBanId
+	}
+	return 0
+}
+
+type BanUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // e.g., "User banned successfully"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BanUserResponse) Reset() {
+	*x = BanUserResponse{}
+	mi := &file_user_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BanUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BanUserResponse) ProtoMessage() {}
+
+func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BanUserResponse.ProtoReflect.Descriptor instead.
+func (*BanUserResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *BanUserResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type UnbanUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminUserId   int64                  `protobuf:"varint,1,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"`         // From JWT
+	UserToUnbanId int64                  `protobuf:"varint,2,opt,name=user_to_unban_id,json=userToUnbanId,proto3" json:"user_to_unban_id,omitempty"` // From URL
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnbanUserRequest) Reset() {
+	*x = UnbanUserRequest{}
+	mi := &file_user_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnbanUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnbanUserRequest) ProtoMessage() {}
+
+func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnbanUserRequest.ProtoReflect.Descriptor instead.
+func (*UnbanUserRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *UnbanUserRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+func (x *UnbanUserRequest) GetUserToUnbanId() int64 {
+	if x != nil {
+		return x.UserToUnbanId
+	}
+	return 0
+}
+
+type UnbanUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // e.g., "User unbanned successfully"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnbanUserResponse) Reset() {
+	*x = UnbanUserResponse{}
+	mi := &file_user_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnbanUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnbanUserResponse) ProtoMessage() {}
+
+func (x *UnbanUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnbanUserResponse.ProtoReflect.Descriptor instead.
+func (*UnbanUserResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *UnbanUserResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
@@ -1952,7 +2146,18 @@ const file_user_proto_rawDesc = "" +
 	"\fself_user_id\x18\x02 \x01(\x03R\n" +
 	"selfUserId\"I\n" +
 	"\x13SearchUsersResponse\x122\n" +
-	"\x05users\x18\x01 \x03(\v2\x1c.user.GetUserProfileResponseR\x05users2\xe9\t\n" +
+	"\x05users\x18\x01 \x03(\v2\x1c.user.GetUserProfileResponseR\x05users\"Y\n" +
+	"\x0eBanUserRequest\x12\"\n" +
+	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12#\n" +
+	"\x0euser_to_ban_id\x18\x02 \x01(\x03R\vuserToBanId\"+\n" +
+	"\x0fBanUserResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"_\n" +
+	"\x10UnbanUserRequest\x12\"\n" +
+	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12'\n" +
+	"\x10user_to_unban_id\x18\x02 \x01(\x03R\ruserToUnbanId\"-\n" +
+	"\x11UnbanUserResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xdf\n" +
+	"\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x12`\n" +
@@ -1971,7 +2176,9 @@ const file_user_proto_rawDesc = "" +
 	"\x11SetAccountPrivacy\x12\x1e.user.SetAccountPrivacyRequest\x1a\x1f.user.SetAccountPrivacyResponse\x12<\n" +
 	"\tBlockUser\x12\x16.user.BlockUserRequest\x1a\x17.user.BlockUserResponse\x12B\n" +
 	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponse\x12B\n" +
-	"\vSearchUsers\x12\x18.user.SearchUsersRequest\x1a\x19.user.SearchUsersResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\vSearchUsers\x12\x18.user.SearchUsersRequest\x1a\x19.user.SearchUsersResponse\x126\n" +
+	"\aBanUser\x12\x14.user.BanUserRequest\x1a\x15.user.BanUserResponse\x12<\n" +
+	"\tUnbanUser\x12\x16.user.UnbanUserRequest\x1a\x17.user.UnbanUserResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -1985,7 +2192,7 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_user_proto_goTypes = []any{
 	(*RegisterUserRequest)(nil),           // 0: user.RegisterUserRequest
 	(*RegisterUserResponse)(nil),          // 1: user.RegisterUserResponse
@@ -2020,6 +2227,10 @@ var file_user_proto_goTypes = []any{
 	(*UnblockUserResponse)(nil),           // 30: user.UnblockUserResponse
 	(*SearchUsersRequest)(nil),            // 31: user.SearchUsersRequest
 	(*SearchUsersResponse)(nil),           // 32: user.SearchUsersResponse
+	(*BanUserRequest)(nil),                // 33: user.BanUserRequest
+	(*BanUserResponse)(nil),               // 34: user.BanUserResponse
+	(*UnbanUserRequest)(nil),              // 35: user.UnbanUserRequest
+	(*UnbanUserResponse)(nil),             // 36: user.UnbanUserResponse
 }
 var file_user_proto_depIdxs = []int32{
 	23, // 0: user.SearchUsersResponse.users:type_name -> user.GetUserProfileResponse
@@ -2040,25 +2251,29 @@ var file_user_proto_depIdxs = []int32{
 	27, // 15: user.UserService.BlockUser:input_type -> user.BlockUserRequest
 	29, // 16: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
 	31, // 17: user.UserService.SearchUsers:input_type -> user.SearchUsersRequest
-	1,  // 18: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3,  // 19: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5,  // 20: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
-	7,  // 21: user.UserService.LoginUser:output_type -> user.LoginResponse
-	9,  // 22: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
-	11, // 23: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
-	13, // 24: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
-	15, // 25: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
-	17, // 26: user.UserService.FollowUser:output_type -> user.FollowUserResponse
-	19, // 27: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
-	21, // 28: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
-	23, // 29: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
-	23, // 30: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
-	26, // 31: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
-	28, // 32: user.UserService.BlockUser:output_type -> user.BlockUserResponse
-	30, // 33: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
-	32, // 34: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
-	18, // [18:35] is the sub-list for method output_type
-	1,  // [1:18] is the sub-list for method input_type
+	33, // 18: user.UserService.BanUser:input_type -> user.BanUserRequest
+	35, // 19: user.UserService.UnbanUser:input_type -> user.UnbanUserRequest
+	1,  // 20: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3,  // 21: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5,  // 22: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
+	7,  // 23: user.UserService.LoginUser:output_type -> user.LoginResponse
+	9,  // 24: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	11, // 25: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
+	13, // 26: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
+	15, // 27: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
+	17, // 28: user.UserService.FollowUser:output_type -> user.FollowUserResponse
+	19, // 29: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
+	21, // 30: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
+	23, // 31: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
+	23, // 32: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
+	26, // 33: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
+	28, // 34: user.UserService.BlockUser:output_type -> user.BlockUserResponse
+	30, // 35: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
+	32, // 36: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
+	34, // 37: user.UserService.BanUser:output_type -> user.BanUserResponse
+	36, // 38: user.UserService.UnbanUser:output_type -> user.UnbanUserResponse
+	20, // [20:39] is the sub-list for method output_type
+	1,  // [1:20] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -2075,7 +2290,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   33,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -50,6 +50,7 @@ type User struct {
 	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
 	IsPrivate    bool `gorm:"default:false"` // For private accounts
+	Role         string `gorm:"type:varchar(10);default:'user'"`
 }
 
 // Follow defines the relationship between two users
@@ -368,6 +369,7 @@ func createToken(user User, duration time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id":  user.ID,
 		"username": user.Username,
+		"role":     user.Role,
 		"exp":      time.Now().Add(duration).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -969,4 +971,42 @@ func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*
 	return &pb.SearchUsersResponse{
 		Users: grpcUsers,
 	}, nil
+}
+
+// --- ADD NEW ADMIN GRPC FUNCTIONS ---
+
+func (s *server) BanUser(ctx context.Context, req *pb.BanUserRequest) (*pb.BanUserResponse, error) {
+	log.Printf("Admin action: BanUser request from admin %d for user %d", req.AdminUserId, req.UserToBanId)
+
+	// Find the user to ban
+	var userToBan User
+	if err := s.db.First(&userToBan, req.UserToBanId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "User to ban not found")
+	}
+
+	// Ban them
+	if err := s.db.Model(&userToBan).Update("is_banned", true).Error; err != nil {
+		log.Printf("Failed to ban user %d: %v", req.UserToBanId, err)
+		return nil, status.Error(codes.Internal, "Failed to update user status")
+	}
+
+	return &pb.BanUserResponse{Message: "User banned successfully"}, nil
+}
+
+func (s *server) UnbanUser(ctx context.Context, req *pb.UnbanUserRequest) (*pb.UnbanUserResponse, error) {
+	log.Printf("Admin action: UnbanUser request from admin %d for user %d", req.AdminUserId, req.UserToUnbanId)
+
+	// Find the user to unban
+	var userToUnban User
+	if err := s.db.First(&userToUnban, req.UserToUnbanId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "User to unban not found")
+	}
+
+	// Unban them
+	if err := s.db.Model(&userToUnban).Update("is_banned", false).Error; err != nil {
+		log.Printf("Failed to unban user %d: %v", req.UserToUnbanId, err)
+		return nil, status.Error(codes.Internal, "Failed to update user status")
+	}
+
+	return &pb.UnbanUserResponse{Message: "User unbanned successfully"}, nil
 }

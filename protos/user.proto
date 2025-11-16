@@ -36,6 +36,10 @@ service UserService {
   rpc UnblockUser (UnblockUserRequest) returns (UnblockUserResponse);
 
   rpc SearchUsers (SearchUsersRequest) returns (SearchUsersResponse);
+
+  // Admin controls
+  rpc BanUser (BanUserRequest) returns (BanUserResponse);
+  rpc UnbanUser (UnbanUserRequest) returns (UnbanUserResponse);
 }
 
 // --- Register ---
@@ -230,4 +234,24 @@ message SearchUsersRequest {
 // We can re-use GetUserProfileResponse
 message SearchUsersResponse {
   repeated GetUserProfileResponse users = 1;
+}
+
+// Admin Controls
+// --- Admin: Ban / Unban ---
+message BanUserRequest {
+  int64 admin_user_id = 1; // From JWT
+  int64 user_to_ban_id = 2; // From URL
+}
+
+message BanUserResponse {
+  string message = 1; // e.g., "User banned successfully"
+}
+
+message UnbanUserRequest {
+  int64 admin_user_id = 1; // From JWT
+  int64 user_to_unban_id = 2; // From URL
+}
+
+message UnbanUserResponse {
+  string message = 1; // e.g., "User unbanned successfully"
 }
