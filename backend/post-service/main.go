@@ -769,3 +769,51 @@ func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post,
 	// Use our existing helper
 	return s.gormToGrpcPost(&post), nil
 }
+
+// --- GPRC: DeletePost (Admin) ---
+func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb.DeletePostResponse, error) {
+	log.Printf("Admin action: DeletePost request from admin %d for post %d", req.AdminUserId, req.PostId)
+
+	// We can't delete a composite primary key (like PostLike) with just GORM,
+	// so we'll use a transaction and delete related data manually.
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete associated comments
+		if err := tx.Where("post_id = ?", req.PostId).Delete(&Comment{}).Error; err != nil {
+			return err
+		}
+
+		// 2. Delete associated likes
+		if err := tx.Where("post_id = ?", req.PostId).Delete(&PostLike{}).Error; err != nil {
+			return err
+		}
+
+		// 3. Delete from "Saved" collections (join table)
+		if err := tx.Where("post_id = ?", req.PostId).Delete(&SavedPost{}).Error; err != nil {
+			return err
+		}
+
+		// 4. Finally, delete the post itself
+		if result := tx.Delete(&Post{}, req.PostId); result.Error != nil {
+			return result.Error
+		} else if result.RowsAffected == 0 {
+			return status.Error(codes.NotFound, "Post not found")
+		}
+
+		return nil // Commit
+	})
+
+	if err != nil {
+		log.Printf("Failed to delete post %d: %v", req.PostId, err)
+		// Check if it's the "not found" error from our transaction
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+			return nil, st.Err()
+		}
+		return nil, status.Error(codes.Internal, "Failed to delete post and associated data")
+	}
+
+	// TODO: Delete media from MinIO
+	log.Printf("Successfully deleted post %d and its associations", req.PostId)
+
+	return &pb.DeletePostResponse{Message: "Post deleted successfully"}, nil
+}

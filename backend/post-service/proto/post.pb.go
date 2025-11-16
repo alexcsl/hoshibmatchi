@@ -1643,6 +1643,103 @@ func (x *GetPostRequest) GetPostId() int64 {
 	return 0
 }
 
+// --- Admin: Delete Post ---
+type DeletePostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PostId        int64                  `protobuf:"varint,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	AdminUserId   int64                  `protobuf:"varint,2,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"` // From JWT, for logging
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePostRequest) Reset() {
+	*x = DeletePostRequest{}
+	mi := &file_post_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePostRequest) ProtoMessage() {}
+
+func (x *DeletePostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePostRequest.ProtoReflect.Descriptor instead.
+func (*DeletePostRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *DeletePostRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+func (x *DeletePostRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+type DeletePostResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // e.g., "Post deleted successfully"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePostResponse) Reset() {
+	*x = DeletePostResponse{}
+	mi := &file_post_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePostResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePostResponse) ProtoMessage() {}
+
+func (x *DeletePostResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePostResponse.ProtoReflect.Descriptor instead.
+func (*DeletePostResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *DeletePostResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -1761,7 +1858,12 @@ const file_post_proto_rawDesc = "" +
 	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x19\n" +
 	"\bnew_name\x18\x03 \x01(\tR\anewName\")\n" +
 	"\x0eGetPostRequest\x12\x17\n" +
-	"\apost_id\x18\x01 \x01(\x03R\x06postId2\x95\v\n" +
+	"\apost_id\x18\x01 \x01(\x03R\x06postId\"P\n" +
+	"\x11DeletePostRequest\x12\x17\n" +
+	"\apost_id\x18\x01 \x01(\x03R\x06postId\x12\"\n" +
+	"\radmin_user_id\x18\x02 \x01(\x03R\vadminUserId\".\n" +
+	"\x12DeletePostResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xd6\v\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -1784,7 +1886,9 @@ const file_post_proto_rawDesc = "" +
 	"\x10DeleteCollection\x12\x1d.post.DeleteCollectionRequest\x1a\x1e.post.DeleteCollectionResponse\x12C\n" +
 	"\x10RenameCollection\x12\x1d.post.RenameCollectionRequest\x1a\x10.post.Collection\x12+\n" +
 	"\aGetPost\x12\x14.post.GetPostRequest\x1a\n" +
-	".post.PostB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	".post.Post\x12?\n" +
+	"\n" +
+	"DeletePost\x12\x17.post.DeletePostRequest\x1a\x18.post.DeletePostResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -1798,7 +1902,7 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),                // 0: post.CreatePostRequest
 	(*Post)(nil),                             // 1: post.Post
@@ -1829,6 +1933,8 @@ var file_post_proto_goTypes = []any{
 	(*DeleteCollectionResponse)(nil),         // 26: post.DeleteCollectionResponse
 	(*RenameCollectionRequest)(nil),          // 27: post.RenameCollectionRequest
 	(*GetPostRequest)(nil),                   // 28: post.GetPostRequest
+	(*DeletePostRequest)(nil),                // 29: post.DeletePostRequest
+	(*DeletePostResponse)(nil),               // 30: post.DeletePostResponse
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
@@ -1853,27 +1959,29 @@ var file_post_proto_depIdxs = []int32{
 	25, // 19: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
 	27, // 20: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
 	28, // 21: post.PostService.GetPost:input_type -> post.GetPostRequest
-	2,  // 22: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 23: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 24: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 25: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 26: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 27: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	12, // 28: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	12, // 29: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	12, // 30: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	12, // 31: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	15, // 32: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
-	16, // 33: post.PostService.CreateCollection:output_type -> post.Collection
-	19, // 34: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
-	12, // 35: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
-	22, // 36: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
-	24, // 37: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
-	26, // 38: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
-	16, // 39: post.PostService.RenameCollection:output_type -> post.Collection
-	1,  // 40: post.PostService.GetPost:output_type -> post.Post
-	22, // [22:41] is the sub-list for method output_type
-	3,  // [3:22] is the sub-list for method input_type
+	29, // 22: post.PostService.DeletePost:input_type -> post.DeletePostRequest
+	2,  // 23: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 24: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 25: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 26: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 27: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 28: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	12, // 29: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	12, // 30: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	12, // 31: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	12, // 32: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	15, // 33: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
+	16, // 34: post.PostService.CreateCollection:output_type -> post.Collection
+	19, // 35: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
+	12, // 36: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
+	22, // 37: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
+	24, // 38: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
+	26, // 39: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
+	16, // 40: post.PostService.RenameCollection:output_type -> post.Collection
+	1,  // 41: post.PostService.GetPost:output_type -> post.Post
+	30, // 42: post.PostService.DeletePost:output_type -> post.DeletePostResponse
+	23, // [23:43] is the sub-list for method output_type
+	3,  // [3:23] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -1890,7 +1998,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   29,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

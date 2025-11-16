@@ -19,8 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ReportService_ReportPost_FullMethodName = "/report.ReportService/ReportPost"
-	ReportService_ReportUser_FullMethodName = "/report.ReportService/ReportUser"
+	ReportService_ReportPost_FullMethodName        = "/report.ReportService/ReportPost"
+	ReportService_ReportUser_FullMethodName        = "/report.ReportService/ReportUser"
+	ReportService_GetPostReports_FullMethodName    = "/report.ReportService/GetPostReports"
+	ReportService_GetUserReports_FullMethodName    = "/report.ReportService/GetUserReports"
+	ReportService_ResolvePostReport_FullMethodName = "/report.ReportService/ResolvePostReport"
+	ReportService_ResolveUserReport_FullMethodName = "/report.ReportService/ResolveUserReport"
 )
 
 // ReportServiceClient is the client API for ReportService service.
@@ -30,6 +34,11 @@ type ReportServiceClient interface {
 	// --- User-facing RPCs ---
 	ReportPost(ctx context.Context, in *ReportPostRequest, opts ...grpc.CallOption) (*ReportResponse, error)
 	ReportUser(ctx context.Context, in *ReportUserRequest, opts ...grpc.CallOption) (*ReportResponse, error)
+	// --- Admin-facing RPCs ---
+	GetPostReports(ctx context.Context, in *GetReportsRequest, opts ...grpc.CallOption) (*GetPostReportsResponse, error)
+	GetUserReports(ctx context.Context, in *GetReportsRequest, opts ...grpc.CallOption) (*GetUserReportsResponse, error)
+	ResolvePostReport(ctx context.Context, in *ResolveReportRequest, opts ...grpc.CallOption) (*ReportResponse, error)
+	ResolveUserReport(ctx context.Context, in *ResolveReportRequest, opts ...grpc.CallOption) (*ReportResponse, error)
 }
 
 type reportServiceClient struct {
@@ -60,6 +69,46 @@ func (c *reportServiceClient) ReportUser(ctx context.Context, in *ReportUserRequ
 	return out, nil
 }
 
+func (c *reportServiceClient) GetPostReports(ctx context.Context, in *GetReportsRequest, opts ...grpc.CallOption) (*GetPostReportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPostReportsResponse)
+	err := c.cc.Invoke(ctx, ReportService_GetPostReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *reportServiceClient) GetUserReports(ctx context.Context, in *GetReportsRequest, opts ...grpc.CallOption) (*GetUserReportsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserReportsResponse)
+	err := c.cc.Invoke(ctx, ReportService_GetUserReports_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *reportServiceClient) ResolvePostReport(ctx context.Context, in *ResolveReportRequest, opts ...grpc.CallOption) (*ReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportResponse)
+	err := c.cc.Invoke(ctx, ReportService_ResolvePostReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *reportServiceClient) ResolveUserReport(ctx context.Context, in *ResolveReportRequest, opts ...grpc.CallOption) (*ReportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportResponse)
+	err := c.cc.Invoke(ctx, ReportService_ResolveUserReport_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ReportServiceServer is the server API for ReportService service.
 // All implementations must embed UnimplementedReportServiceServer
 // for forward compatibility.
@@ -67,6 +116,11 @@ type ReportServiceServer interface {
 	// --- User-facing RPCs ---
 	ReportPost(context.Context, *ReportPostRequest) (*ReportResponse, error)
 	ReportUser(context.Context, *ReportUserRequest) (*ReportResponse, error)
+	// --- Admin-facing RPCs ---
+	GetPostReports(context.Context, *GetReportsRequest) (*GetPostReportsResponse, error)
+	GetUserReports(context.Context, *GetReportsRequest) (*GetUserReportsResponse, error)
+	ResolvePostReport(context.Context, *ResolveReportRequest) (*ReportResponse, error)
+	ResolveUserReport(context.Context, *ResolveReportRequest) (*ReportResponse, error)
 	mustEmbedUnimplementedReportServiceServer()
 }
 
@@ -82,6 +136,18 @@ func (UnimplementedReportServiceServer) ReportPost(context.Context, *ReportPostR
 }
 func (UnimplementedReportServiceServer) ReportUser(context.Context, *ReportUserRequest) (*ReportResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReportUser not implemented")
+}
+func (UnimplementedReportServiceServer) GetPostReports(context.Context, *GetReportsRequest) (*GetPostReportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPostReports not implemented")
+}
+func (UnimplementedReportServiceServer) GetUserReports(context.Context, *GetReportsRequest) (*GetUserReportsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserReports not implemented")
+}
+func (UnimplementedReportServiceServer) ResolvePostReport(context.Context, *ResolveReportRequest) (*ReportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolvePostReport not implemented")
+}
+func (UnimplementedReportServiceServer) ResolveUserReport(context.Context, *ResolveReportRequest) (*ReportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResolveUserReport not implemented")
 }
 func (UnimplementedReportServiceServer) mustEmbedUnimplementedReportServiceServer() {}
 func (UnimplementedReportServiceServer) testEmbeddedByValue()                       {}
@@ -140,6 +206,78 @@ func _ReportService_ReportUser_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReportService_GetPostReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReportServiceServer).GetPostReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReportService_GetPostReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReportServiceServer).GetPostReports(ctx, req.(*GetReportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReportService_GetUserReports_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReportsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReportServiceServer).GetUserReports(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReportService_GetUserReports_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReportServiceServer).GetUserReports(ctx, req.(*GetReportsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReportService_ResolvePostReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReportServiceServer).ResolvePostReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReportService_ResolvePostReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReportServiceServer).ResolvePostReport(ctx, req.(*ResolveReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ReportService_ResolveUserReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveReportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReportServiceServer).ResolveUserReport(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReportService_ResolveUserReport_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReportServiceServer).ResolveUserReport(ctx, req.(*ResolveReportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ReportService_ServiceDesc is the grpc.ServiceDesc for ReportService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -154,6 +292,22 @@ var ReportService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReportUser",
 			Handler:    _ReportService_ReportUser_Handler,
+		},
+		{
+			MethodName: "GetPostReports",
+			Handler:    _ReportService_GetPostReports_Handler,
+		},
+		{
+			MethodName: "GetUserReports",
+			Handler:    _ReportService_GetUserReports_Handler,
+		},
+		{
+			MethodName: "ResolvePostReport",
+			Handler:    _ReportService_ResolvePostReport_Handler,
+		},
+		{
+			MethodName: "ResolveUserReport",
+			Handler:    _ReportService_ResolveUserReport_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

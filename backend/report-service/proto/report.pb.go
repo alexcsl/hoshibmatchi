@@ -21,7 +21,160 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// --- Report Messages ---
+// --- Data Structures ---
+type PostReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId    int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	PostId        int64                  `protobuf:"varint,3,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PostReport) Reset() {
+	*x = PostReport{}
+	mi := &file_report_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PostReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PostReport) ProtoMessage() {}
+
+func (x *PostReport) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PostReport.ProtoReflect.Descriptor instead.
+func (*PostReport) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *PostReport) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PostReport) GetReporterId() int64 {
+	if x != nil {
+		return x.ReporterId
+	}
+	return 0
+}
+
+func (x *PostReport) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+func (x *PostReport) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *PostReport) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type UserReport struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId     int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	ReportedUserId int64                  `protobuf:"varint,3,opt,name=reported_user_id,json=reportedUserId,proto3" json:"reported_user_id,omitempty"`
+	Reason         string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt      string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UserReport) Reset() {
+	*x = UserReport{}
+	mi := &file_report_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserReport) ProtoMessage() {}
+
+func (x *UserReport) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserReport.ProtoReflect.Descriptor instead.
+func (*UserReport) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *UserReport) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UserReport) GetReporterId() int64 {
+	if x != nil {
+		return x.ReporterId
+	}
+	return 0
+}
+
+func (x *UserReport) GetReportedUserId() int64 {
+	if x != nil {
+		return x.ReportedUserId
+	}
+	return 0
+}
+
+func (x *UserReport) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *UserReport) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+// --- User-facing Messages ---
 type ReportPostRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ReporterId    int64                  `protobuf:"varint,1,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"` // From JWT
@@ -33,7 +186,7 @@ type ReportPostRequest struct {
 
 func (x *ReportPostRequest) Reset() {
 	*x = ReportPostRequest{}
-	mi := &file_report_proto_msgTypes[0]
+	mi := &file_report_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +198,7 @@ func (x *ReportPostRequest) String() string {
 func (*ReportPostRequest) ProtoMessage() {}
 
 func (x *ReportPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_report_proto_msgTypes[0]
+	mi := &file_report_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +211,7 @@ func (x *ReportPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportPostRequest.ProtoReflect.Descriptor instead.
 func (*ReportPostRequest) Descriptor() ([]byte, []int) {
-	return file_report_proto_rawDescGZIP(), []int{0}
+	return file_report_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ReportPostRequest) GetReporterId() int64 {
@@ -93,7 +246,7 @@ type ReportUserRequest struct {
 
 func (x *ReportUserRequest) Reset() {
 	*x = ReportUserRequest{}
-	mi := &file_report_proto_msgTypes[1]
+	mi := &file_report_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -105,7 +258,7 @@ func (x *ReportUserRequest) String() string {
 func (*ReportUserRequest) ProtoMessage() {}
 
 func (x *ReportUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_report_proto_msgTypes[1]
+	mi := &file_report_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -118,7 +271,7 @@ func (x *ReportUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportUserRequest.ProtoReflect.Descriptor instead.
 func (*ReportUserRequest) Descriptor() ([]byte, []int) {
-	return file_report_proto_rawDescGZIP(), []int{1}
+	return file_report_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ReportUserRequest) GetReporterId() int64 {
@@ -144,14 +297,14 @@ func (x *ReportUserRequest) GetReason() string {
 
 type ReportResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // e.g., "Report submitted successfully"
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"` // e.g., "Report submitted"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ReportResponse) Reset() {
 	*x = ReportResponse{}
-	mi := &file_report_proto_msgTypes[2]
+	mi := &file_report_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +316,7 @@ func (x *ReportResponse) String() string {
 func (*ReportResponse) ProtoMessage() {}
 
 func (x *ReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_report_proto_msgTypes[2]
+	mi := &file_report_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +329,7 @@ func (x *ReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportResponse.ProtoReflect.Descriptor instead.
 func (*ReportResponse) Descriptor() ([]byte, []int) {
-	return file_report_proto_rawDescGZIP(), []int{2}
+	return file_report_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ReportResponse) GetMessage() string {
@@ -186,11 +339,238 @@ func (x *ReportResponse) GetMessage() string {
 	return ""
 }
 
+// --- Admin-facing Messages ---
+type GetReportsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PageSize       int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageOffset     int32                  `protobuf:"varint,2,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	UnresolvedOnly bool                   `protobuf:"varint,3,opt,name=unresolved_only,json=unresolvedOnly,proto3" json:"unresolved_only,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetReportsRequest) Reset() {
+	*x = GetReportsRequest{}
+	mi := &file_report_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetReportsRequest) ProtoMessage() {}
+
+func (x *GetReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetReportsRequest.ProtoReflect.Descriptor instead.
+func (*GetReportsRequest) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetReportsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetReportsRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
+func (x *GetReportsRequest) GetUnresolvedOnly() bool {
+	if x != nil {
+		return x.UnresolvedOnly
+	}
+	return false
+}
+
+type GetPostReportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*PostReport          `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPostReportsResponse) Reset() {
+	*x = GetPostReportsResponse{}
+	mi := &file_report_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPostReportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPostReportsResponse) ProtoMessage() {}
+
+func (x *GetPostReportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPostReportsResponse.ProtoReflect.Descriptor instead.
+func (*GetPostReportsResponse) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetPostReportsResponse) GetReports() []*PostReport {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+type GetUserReportsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Reports       []*UserReport          `protobuf:"bytes,1,rep,name=reports,proto3" json:"reports,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserReportsResponse) Reset() {
+	*x = GetUserReportsResponse{}
+	mi := &file_report_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserReportsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserReportsResponse) ProtoMessage() {}
+
+func (x *GetUserReportsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserReportsResponse.ProtoReflect.Descriptor instead.
+func (*GetUserReportsResponse) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetUserReportsResponse) GetReports() []*UserReport {
+	if x != nil {
+		return x.Reports
+	}
+	return nil
+}
+
+type ResolveReportRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminUserId   int64                  `protobuf:"varint,1,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"` // From JWT
+	ReportId      int64                  `protobuf:"varint,2,opt,name=report_id,json=reportId,proto3" json:"report_id,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"` // "ACCEPT" or "REJECT"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveReportRequest) Reset() {
+	*x = ResolveReportRequest{}
+	mi := &file_report_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveReportRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveReportRequest) ProtoMessage() {}
+
+func (x *ResolveReportRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_report_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveReportRequest.ProtoReflect.Descriptor instead.
+func (*ResolveReportRequest) Descriptor() ([]byte, []int) {
+	return file_report_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ResolveReportRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+func (x *ResolveReportRequest) GetReportId() int64 {
+	if x != nil {
+		return x.ReportId
+	}
+	return 0
+}
+
+func (x *ResolveReportRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
 var File_report_proto protoreflect.FileDescriptor
 
 const file_report_proto_rawDesc = "" +
 	"\n" +
-	"\freport.proto\x12\x06report\"e\n" +
+	"\freport.proto\x12\x06report\"\x8d\x01\n" +
+	"\n" +
+	"PostReport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vreporter_id\x18\x02 \x01(\x03R\n" +
+	"reporterId\x12\x17\n" +
+	"\apost_id\x18\x03 \x01(\x03R\x06postId\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\"\x9e\x01\n" +
+	"\n" +
+	"UserReport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vreporter_id\x18\x02 \x01(\x03R\n" +
+	"reporterId\x12(\n" +
+	"\x10reported_user_id\x18\x03 \x01(\x03R\x0ereportedUserId\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\"e\n" +
 	"\x11ReportPostRequest\x12\x1f\n" +
 	"\vreporter_id\x18\x01 \x01(\x03R\n" +
 	"reporterId\x12\x17\n" +
@@ -202,12 +582,29 @@ const file_report_proto_rawDesc = "" +
 	"\x10reported_user_id\x18\x02 \x01(\x03R\x0ereportedUserId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"*\n" +
 	"\x0eReportResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\x91\x01\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"z\n" +
+	"\x11GetReportsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x02 \x01(\x05R\n" +
+	"pageOffset\x12'\n" +
+	"\x0funresolved_only\x18\x03 \x01(\bR\x0eunresolvedOnly\"F\n" +
+	"\x16GetPostReportsResponse\x12,\n" +
+	"\areports\x18\x01 \x03(\v2\x12.report.PostReportR\areports\"F\n" +
+	"\x16GetUserReportsResponse\x12,\n" +
+	"\areports\x18\x01 \x03(\v2\x12.report.UserReportR\areports\"o\n" +
+	"\x14ResolveReportRequest\x12\"\n" +
+	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12\x1b\n" +
+	"\treport_id\x18\x02 \x01(\x03R\breportId\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action2\xc1\x03\n" +
 	"\rReportService\x12?\n" +
 	"\n" +
 	"ReportPost\x12\x19.report.ReportPostRequest\x1a\x16.report.ReportResponse\x12?\n" +
 	"\n" +
-	"ReportUser\x12\x19.report.ReportUserRequest\x1a\x16.report.ReportResponseB.Z,github.com/hoshibmatchi/report-service/protob\x06proto3"
+	"ReportUser\x12\x19.report.ReportUserRequest\x1a\x16.report.ReportResponse\x12K\n" +
+	"\x0eGetPostReports\x12\x19.report.GetReportsRequest\x1a\x1e.report.GetPostReportsResponse\x12K\n" +
+	"\x0eGetUserReports\x12\x19.report.GetReportsRequest\x1a\x1e.report.GetUserReportsResponse\x12I\n" +
+	"\x11ResolvePostReport\x12\x1c.report.ResolveReportRequest\x1a\x16.report.ReportResponse\x12I\n" +
+	"\x11ResolveUserReport\x12\x1c.report.ResolveReportRequest\x1a\x16.report.ReportResponseB.Z,github.com/hoshibmatchi/report-service/protob\x06proto3"
 
 var (
 	file_report_proto_rawDescOnce sync.Once
@@ -221,22 +618,38 @@ func file_report_proto_rawDescGZIP() []byte {
 	return file_report_proto_rawDescData
 }
 
-var file_report_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_report_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_report_proto_goTypes = []any{
-	(*ReportPostRequest)(nil), // 0: report.ReportPostRequest
-	(*ReportUserRequest)(nil), // 1: report.ReportUserRequest
-	(*ReportResponse)(nil),    // 2: report.ReportResponse
+	(*PostReport)(nil),             // 0: report.PostReport
+	(*UserReport)(nil),             // 1: report.UserReport
+	(*ReportPostRequest)(nil),      // 2: report.ReportPostRequest
+	(*ReportUserRequest)(nil),      // 3: report.ReportUserRequest
+	(*ReportResponse)(nil),         // 4: report.ReportResponse
+	(*GetReportsRequest)(nil),      // 5: report.GetReportsRequest
+	(*GetPostReportsResponse)(nil), // 6: report.GetPostReportsResponse
+	(*GetUserReportsResponse)(nil), // 7: report.GetUserReportsResponse
+	(*ResolveReportRequest)(nil),   // 8: report.ResolveReportRequest
 }
 var file_report_proto_depIdxs = []int32{
-	0, // 0: report.ReportService.ReportPost:input_type -> report.ReportPostRequest
-	1, // 1: report.ReportService.ReportUser:input_type -> report.ReportUserRequest
-	2, // 2: report.ReportService.ReportPost:output_type -> report.ReportResponse
-	2, // 3: report.ReportService.ReportUser:output_type -> report.ReportResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: report.GetPostReportsResponse.reports:type_name -> report.PostReport
+	1, // 1: report.GetUserReportsResponse.reports:type_name -> report.UserReport
+	2, // 2: report.ReportService.ReportPost:input_type -> report.ReportPostRequest
+	3, // 3: report.ReportService.ReportUser:input_type -> report.ReportUserRequest
+	5, // 4: report.ReportService.GetPostReports:input_type -> report.GetReportsRequest
+	5, // 5: report.ReportService.GetUserReports:input_type -> report.GetReportsRequest
+	8, // 6: report.ReportService.ResolvePostReport:input_type -> report.ResolveReportRequest
+	8, // 7: report.ReportService.ResolveUserReport:input_type -> report.ResolveReportRequest
+	4, // 8: report.ReportService.ReportPost:output_type -> report.ReportResponse
+	4, // 9: report.ReportService.ReportUser:output_type -> report.ReportResponse
+	6, // 10: report.ReportService.GetPostReports:output_type -> report.GetPostReportsResponse
+	7, // 11: report.ReportService.GetUserReports:output_type -> report.GetUserReportsResponse
+	4, // 12: report.ReportService.ResolvePostReport:output_type -> report.ReportResponse
+	4, // 13: report.ReportService.ResolveUserReport:output_type -> report.ReportResponse
+	8, // [8:14] is the sub-list for method output_type
+	2, // [2:8] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_report_proto_init() }
@@ -250,7 +663,7 @@ func file_report_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_report_proto_rawDesc), len(file_report_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

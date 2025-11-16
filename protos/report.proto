@@ -9,14 +9,31 @@ service ReportService {
   rpc ReportPost (ReportPostRequest) returns (ReportResponse);
   rpc ReportUser (ReportUserRequest) returns (ReportResponse);
 
-  // --- Admin-facing RPCs (We will implement these later) ---
-  // rpc GetPostReports (GetReportsRequest) returns (GetPostReportsResponse);
-  // rpc GetUserReports (GetReportsRequest) returns (GetUserReportsResponse);
-  // rpc ResolvePostReport (ResolveReportRequest) returns (ReportResponse);
-  // rpc ResolveUserReport (ResolveReportRequest) returns (ReportResponse);
+  // --- Admin-facing RPCs ---
+  rpc GetPostReports (GetReportsRequest) returns (GetPostReportsResponse);
+  rpc GetUserReports (GetReportsRequest) returns (GetUserReportsResponse);
+  rpc ResolvePostReport (ResolveReportRequest) returns (ReportResponse);
+  rpc ResolveUserReport (ResolveReportRequest) returns (ReportResponse);
 }
 
-// --- Report Messages ---
+// --- Data Structures ---
+message PostReport {
+  string id = 1;
+  int64 reporter_id = 2;
+  int64 post_id = 3;
+  string reason = 4;
+  string created_at = 5;
+}
+
+message UserReport {
+  string id = 1;
+  int64 reporter_id = 2;
+  int64 reported_user_id = 3;
+  string reason = 4;
+  string created_at = 5;
+}
+
+// --- User-facing Messages ---
 message ReportPostRequest {
   int64 reporter_id = 1; // From JWT
   int64 post_id = 2;
@@ -30,5 +47,26 @@ message ReportUserRequest {
 }
 
 message ReportResponse {
-  string message = 1; // e.g., "Report submitted successfully"
+  string message = 1; // e.g., "Report submitted"
+}
+
+// --- Admin-facing Messages ---
+message GetReportsRequest {
+  int32 page_size = 1;
+  int32 page_offset = 2;
+  bool unresolved_only = 3;
+}
+
+message GetPostReportsResponse {
+  repeated PostReport reports = 1;
+}
+
+message GetUserReportsResponse {
+  repeated UserReport reports = 1;
+}
+
+message ResolveReportRequest {
+  int64 admin_user_id = 1; // From JWT
+  int64 report_id = 2;
+  string action = 3; // "ACCEPT" or "REJECT"
 }
