@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"sort"
+	"strconv"
 
 	"fmt"
 	"math/rand"
@@ -51,6 +52,7 @@ type User struct {
 	IsSubscribed bool `gorm:"default:false"` // For newsletters
 	IsPrivate    bool `gorm:"default:false"` // For private accounts
 	Role         string `gorm:"type:varchar(10);default:'user'"`
+	IsVerified   bool `gorm:"default:false"` // For verified checkmark
 }
 
 // Follow defines the relationship between two users
@@ -75,6 +77,17 @@ type Block struct {
 	BlockerID int64 `gorm:"primaryKey"` // The user doing the blocking
 	BlockedID int64 `gorm:"primaryKey"` // The user being blocked
 	CreatedAt time.Time
+}
+
+// For verification requests
+type VerificationRequest struct {
+	gorm.Model
+	UserID        int64  `gorm:"index;unique"` // A user can only have one open request
+	IdCardNumber  string // National ID card number
+	FacePictureURL string
+	Reason        string
+	Status        string `gorm:"type:varchar(10);default:'pending'"` // 'pending', 'approved', 'rejected'
+	ResolvedByID   int64  // Admin User ID who resolved it
 }
 
 // searchResult is a helper struct for sorting
@@ -106,6 +119,7 @@ func main() {
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Follow{})
 	db.AutoMigrate(&Block{})
+	db.AutoMigrate(&VerificationRequest{})
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -1009,4 +1023,182 @@ func (s *server) UnbanUser(ctx context.Context, req *pb.UnbanUserRequest) (*pb.U
 	}
 
 	return &pb.UnbanUserResponse{Message: "User unbanned successfully"}, nil
+}
+
+// --- GPRC: SendNewsletter ---
+func (s *server) SendNewsletter(ctx context.Context, req *pb.SendNewsletterRequest) (*pb.SendNewsletterResponse, error) {
+	log.Printf("Admin action: SendNewsletter request from admin %d", req.AdminUserId)
+
+	// 1. Find all subscribed users
+	var subscribedUsers []User
+	if err := s.db.Where("is_subscribed = ?", true).Find(&subscribedUsers).Error; err != nil {
+		log.Printf("Failed to get subscribed users: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve user list")
+	}
+
+	if len(subscribedUsers) == 0 {
+		return &pb.SendNewsletterResponse{Message: "No subscribed users found", RecipientsCount: 0}, nil
+	}
+
+	// 2. Publish one job *per user* to the email_queue
+	// This is more resilient than sending one giant job.
+	for _, user := range subscribedUsers {
+		emailBody, _ := json.Marshal(map[string]string{
+			"to":      user.Email,
+			"type":    "newsletter",
+			"subject": req.Subject,
+			"body":    req.Body,
+		})
+		if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
+			log.Printf("Failed to publish newsletter job for user %s: %v", user.Email, err)
+			// Don't stop, try to send to other users
+		}
+	}
+
+	log.Printf("Published newsletter jobs for %d users", len(subscribedUsers))
+	return &pb.SendNewsletterResponse{
+		Message:         "Newsletter batch queued successfully",
+		RecipientsCount: int32(len(subscribedUsers)),
+	}, nil
+}
+
+// --- GPRC: SubmitVerificationRequest ---
+func (s *server) SubmitVerificationRequest(ctx context.Context, req *pb.SubmitVerificationRequestRequest) (*pb.SubmitVerificationRequestResponse, error) {
+	log.Printf("SubmitVerificationRequest received from user %d", req.UserId)
+
+	newRequest := VerificationRequest{
+		UserID:         req.UserId,
+		IdCardNumber:   req.IdCardNumber,
+		FacePictureURL: req.FacePictureUrl,
+		Reason:         req.Reason,
+		Status:         "pending",
+	}
+
+	// GORM's Create will fail if the unique constraint on UserID is violated
+	if err := s.db.Create(&newRequest).Error; err != nil {
+		if strings.Contains(err.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "A verification request for this user already exists")
+		}
+		log.Printf("Failed to create verification request: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to submit request")
+	}
+
+	// TODO: Publish a "verification.submitted" message to RabbitMQ for admin notifications
+
+	// We can't use a helper here as we need to return the request model
+	return &pb.SubmitVerificationRequestResponse{
+		Request: &pb.VerificationRequest{
+			Id:             strconv.FormatUint(uint64(newRequest.ID), 10),
+			UserId:         newRequest.UserID,
+			IdCardNumber:   "REDACTED",
+			FacePictureUrl: newRequest.FacePictureURL,
+			Reason:         newRequest.Reason,
+			Status:         newRequest.Status,
+			CreatedAt:      newRequest.CreatedAt.Format(time.RFC3339),
+		},
+	}, nil
+}
+
+// --- GPRC: GetVerificationRequests ---
+func (s *server) GetVerificationRequests(ctx context.Context, req *pb.GetVerificationRequestsRequest) (*pb.GetVerificationRequestsResponse, error) {
+	log.Printf("Admin action: GetVerificationRequests request")
+
+	var requests []VerificationRequest
+	query := s.db.Order("created_at DESC").Limit(int(req.PageSize)).Offset(int(req.PageOffset))
+
+	if req.Status == "pending" || req.Status == "approved" || req.Status == "rejected" {
+		query = query.Where("status = ?", req.Status)
+	}
+
+	if err := query.Find(&requests).Error; err != nil {
+		log.Printf("Failed to get verification requests from db: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve requests")
+	}
+
+	// We need user data (usernames) for each request
+	var grpcRequests []*pb.VerificationRequest
+	for _, req := range requests {
+		
+		// --- THIS IS THE FIX ---
+		// Get username for this request directly from our own DB
+		var user User
+		username := "Unknown"
+		// We only select the username for efficiency
+		if err := s.db.Model(&User{}).Select("username").First(&user, req.UserID).Error; err == nil {
+			username = user.Username
+		} else {
+			log.Printf("Could not find user %d for verification request %d", req.UserID, req.ID)
+		}
+		// --- END FIX ---
+
+		grpcRequests = append(grpcRequests, &pb.VerificationRequest{
+			Id:             strconv.FormatUint(uint64(req.ID), 10),
+			UserId:         req.UserID,
+			IdCardNumber:   "REDACTED", // Don't send sensitive info
+			FacePictureUrl: req.FacePictureURL,
+			Reason:         req.Reason,
+			Status:         req.Status,
+			CreatedAt:      req.CreatedAt.Format(time.RFC3339),
+			Username:       username,
+		})
+	}
+
+	return &pb.GetVerificationRequestsResponse{Requests: grpcRequests}, nil
+}
+
+// --- GPRC: ResolveVerificationRequest ---
+func (s *server) ResolveVerificationRequest(ctx context.Context, req *pb.ResolveVerificationRequestRequest) (*pb.ResolveVerificationRequestResponse, error) {
+	log.Printf("Admin action: ResolveVerificationRequest for request %d with action '%s'", req.RequestId, req.Action)
+
+	// 1. Find the request
+	var request VerificationRequest
+	if err := s.db.First(&request, req.RequestId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Request not found")
+	}
+
+	if request.Status != "pending" {
+		return nil, status.Error(codes.AlreadyExists, "This request has already been resolved")
+	}
+
+	// 2. Find the user
+	var user User
+	if err := s.db.First(&user, request.UserID).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "The user for this request no longer exists")
+	}
+
+	// 3. Perform the action
+	var newStatus string
+	var emailType string
+	if req.Action == "APPROVE" {
+		newStatus = "approved"
+		emailType = "verification_accepted"
+		// --- UPDATE THE USER TABLE ---
+		if err := s.db.Model(&user).Update("is_verified", true).Error; err != nil {
+			log.Printf("Failed to set user %d as verified: %v", user.ID, err)
+			return nil, status.Error(codes.Internal, "Failed to update user status")
+		}
+	} else if req.Action == "REJECT" {
+		newStatus = "rejected"
+		emailType = "verification_rejected"
+	} else {
+		return nil, status.Error(codes.InvalidArgument, "Action must be 'APPROVE' or 'REJECT'")
+	}
+
+	// 4. Mark the request as resolved
+	if err := s.db.Model(&request).Updates(VerificationRequest{Status: newStatus, ResolvedByID: req.AdminUserId}).Error; err != nil {
+		log.Printf("Failed to mark request %d as resolved: %v", req.RequestId, err)
+		return nil, status.Error(codes.Internal, "Failed to resolve request")
+	}
+
+	// 5. Send email to user
+	emailBody, _ := json.Marshal(map[string]string{
+		"to":       user.Email,
+		"type":     emailType,
+		"username": user.Username,
+	})
+	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
+		log.Printf("Failed to publish verification email for user %s: %v", user.Email, err)
+	}
+
+	return &pb.ResolveVerificationRequestResponse{Message: "Request resolved successfully"}, nil
 }

@@ -13,7 +13,7 @@ func main() {
 	var amqpConn *amqp.Connection
 	var err error
 	
-	maxRetries := 10
+	maxRetries := 30
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
@@ -102,6 +102,15 @@ func processEmail(body []byte) {
 	case "password_reset":
 		log.Printf("SUBJECT: Your hoshiBmaTchi Password Reset")
 		log.Printf("BODY: Your reset token is: %s", job["token"])
+	case "newsletter":
+		log.Printf("SUBJECT: [Newsletter] %s", job["subject"])
+		log.Printf("BODY: %s", job["body"])
+	case "verification_accepted":
+		log.Printf("SUBJECT: Your hoshiBmaTchi Verification is Approved!")
+		log.Printf("BODY: Hello %s, congratulations! Your account is now verified.", job["username"])
+	case "verification_rejected":
+		log.Printf("SUBJECT: hoshiBmaTchi Verification Status")
+		log.Printf("BODY: Hello %s, after a review, we're unable to verify your account at this time.", job["username"])
 	default:
 		log.Printf("Unknown email type: %s", job["type"])
 	}

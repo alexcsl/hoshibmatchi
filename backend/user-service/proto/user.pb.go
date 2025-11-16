@@ -2021,6 +2021,541 @@ func (x *UnbanUserResponse) GetMessage() string {
 	return ""
 }
 
+// --- Admin: Newsletter ---
+type SendNewsletterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminUserId   int64                  `protobuf:"varint,1,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"` // From JWT
+	Subject       string                 `protobuf:"bytes,2,opt,name=subject,proto3" json:"subject,omitempty"`
+	Body          string                 `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendNewsletterRequest) Reset() {
+	*x = SendNewsletterRequest{}
+	mi := &file_user_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendNewsletterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendNewsletterRequest) ProtoMessage() {}
+
+func (x *SendNewsletterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendNewsletterRequest.ProtoReflect.Descriptor instead.
+func (*SendNewsletterRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *SendNewsletterRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+func (x *SendNewsletterRequest) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *SendNewsletterRequest) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+type SendNewsletterResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Message         string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	RecipientsCount int32                  `protobuf:"varint,2,opt,name=recipients_count,json=recipientsCount,proto3" json:"recipients_count,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SendNewsletterResponse) Reset() {
+	*x = SendNewsletterResponse{}
+	mi := &file_user_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendNewsletterResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendNewsletterResponse) ProtoMessage() {}
+
+func (x *SendNewsletterResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendNewsletterResponse.ProtoReflect.Descriptor instead.
+func (*SendNewsletterResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *SendNewsletterResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SendNewsletterResponse) GetRecipientsCount() int32 {
+	if x != nil {
+		return x.RecipientsCount
+	}
+	return 0
+}
+
+// --- User: Submit Verification ---
+type VerificationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId         int64                  `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IdCardNumber   string                 `protobuf:"bytes,3,opt,name=id_card_number,json=idCardNumber,proto3" json:"id_card_number,omitempty"`
+	FacePictureUrl string                 `protobuf:"bytes,4,opt,name=face_picture_url,json=facePictureUrl,proto3" json:"face_picture_url,omitempty"`
+	Reason         string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Status         string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt      string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Username       string                 `protobuf:"bytes,8,opt,name=username,proto3" json:"username,omitempty"` // Denormalized
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *VerificationRequest) Reset() {
+	*x = VerificationRequest{}
+	mi := &file_user_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerificationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerificationRequest) ProtoMessage() {}
+
+func (x *VerificationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerificationRequest.ProtoReflect.Descriptor instead.
+func (*VerificationRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *VerificationRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *VerificationRequest) GetIdCardNumber() string {
+	if x != nil {
+		return x.IdCardNumber
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetFacePictureUrl() string {
+	if x != nil {
+		return x.FacePictureUrl
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *VerificationRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type SubmitVerificationRequestRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	IdCardNumber   string                 `protobuf:"bytes,2,opt,name=id_card_number,json=idCardNumber,proto3" json:"id_card_number,omitempty"`
+	FacePictureUrl string                 `protobuf:"bytes,3,opt,name=face_picture_url,json=facePictureUrl,proto3" json:"face_picture_url,omitempty"`
+	Reason         string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SubmitVerificationRequestRequest) Reset() {
+	*x = SubmitVerificationRequestRequest{}
+	mi := &file_user_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitVerificationRequestRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitVerificationRequestRequest) ProtoMessage() {}
+
+func (x *SubmitVerificationRequestRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitVerificationRequestRequest.ProtoReflect.Descriptor instead.
+func (*SubmitVerificationRequestRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *SubmitVerificationRequestRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *SubmitVerificationRequestRequest) GetIdCardNumber() string {
+	if x != nil {
+		return x.IdCardNumber
+	}
+	return ""
+}
+
+func (x *SubmitVerificationRequestRequest) GetFacePictureUrl() string {
+	if x != nil {
+		return x.FacePictureUrl
+	}
+	return ""
+}
+
+func (x *SubmitVerificationRequestRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type SubmitVerificationRequestResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Request       *VerificationRequest   `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitVerificationRequestResponse) Reset() {
+	*x = SubmitVerificationRequestResponse{}
+	mi := &file_user_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitVerificationRequestResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitVerificationRequestResponse) ProtoMessage() {}
+
+func (x *SubmitVerificationRequestResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitVerificationRequestResponse.ProtoReflect.Descriptor instead.
+func (*SubmitVerificationRequestResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *SubmitVerificationRequestResponse) GetRequest() *VerificationRequest {
+	if x != nil {
+		return x.Request
+	}
+	return nil
+}
+
+// --- Admin: Manage Verifications ---
+type GetVerificationRequestsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PageSize      int32                  `protobuf:"varint,1,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageOffset    int32                  `protobuf:"varint,2,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // "pending", "approved", "rejected"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetVerificationRequestsRequest) Reset() {
+	*x = GetVerificationRequestsRequest{}
+	mi := &file_user_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVerificationRequestsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVerificationRequestsRequest) ProtoMessage() {}
+
+func (x *GetVerificationRequestsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVerificationRequestsRequest.ProtoReflect.Descriptor instead.
+func (*GetVerificationRequestsRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *GetVerificationRequestsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetVerificationRequestsRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
+func (x *GetVerificationRequestsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+type GetVerificationRequestsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Requests      []*VerificationRequest `protobuf:"bytes,1,rep,name=requests,proto3" json:"requests,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetVerificationRequestsResponse) Reset() {
+	*x = GetVerificationRequestsResponse{}
+	mi := &file_user_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVerificationRequestsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVerificationRequestsResponse) ProtoMessage() {}
+
+func (x *GetVerificationRequestsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVerificationRequestsResponse.ProtoReflect.Descriptor instead.
+func (*GetVerificationRequestsResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *GetVerificationRequestsResponse) GetRequests() []*VerificationRequest {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+type ResolveVerificationRequestRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AdminUserId   int64                  `protobuf:"varint,1,opt,name=admin_user_id,json=adminUserId,proto3" json:"admin_user_id,omitempty"` // From JWT
+	RequestId     int64                  `protobuf:"varint,2,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"` // "APPROVE" or "REJECT"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveVerificationRequestRequest) Reset() {
+	*x = ResolveVerificationRequestRequest{}
+	mi := &file_user_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveVerificationRequestRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveVerificationRequestRequest) ProtoMessage() {}
+
+func (x *ResolveVerificationRequestRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveVerificationRequestRequest.ProtoReflect.Descriptor instead.
+func (*ResolveVerificationRequestRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ResolveVerificationRequestRequest) GetAdminUserId() int64 {
+	if x != nil {
+		return x.AdminUserId
+	}
+	return 0
+}
+
+func (x *ResolveVerificationRequestRequest) GetRequestId() int64 {
+	if x != nil {
+		return x.RequestId
+	}
+	return 0
+}
+
+func (x *ResolveVerificationRequestRequest) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+type ResolveVerificationRequestResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveVerificationRequestResponse) Reset() {
+	*x = ResolveVerificationRequestResponse{}
+	mi := &file_user_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveVerificationRequestResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveVerificationRequestResponse) ProtoMessage() {}
+
+func (x *ResolveVerificationRequestResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveVerificationRequestResponse.ProtoReflect.Descriptor instead.
+func (*ResolveVerificationRequestResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *ResolveVerificationRequestResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
@@ -2156,8 +2691,45 @@ const file_user_proto_rawDesc = "" +
 	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12'\n" +
 	"\x10user_to_unban_id\x18\x02 \x01(\x03R\ruserToUnbanId\"-\n" +
 	"\x11UnbanUserResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xdf\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"i\n" +
+	"\x15SendNewsletterRequest\x12\"\n" +
+	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12\x18\n" +
+	"\asubject\x18\x02 \x01(\tR\asubject\x12\x12\n" +
+	"\x04body\x18\x03 \x01(\tR\x04body\"]\n" +
+	"\x16SendNewsletterResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12)\n" +
+	"\x10recipients_count\x18\x02 \x01(\x05R\x0frecipientsCount\"\xf9\x01\n" +
+	"\x13VerificationRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\x03R\x06userId\x12$\n" +
+	"\x0eid_card_number\x18\x03 \x01(\tR\fidCardNumber\x12(\n" +
+	"\x10face_picture_url\x18\x04 \x01(\tR\x0efacePictureUrl\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1a\n" +
+	"\busername\x18\b \x01(\tR\busername\"\xa3\x01\n" +
+	" SubmitVerificationRequestRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12$\n" +
+	"\x0eid_card_number\x18\x02 \x01(\tR\fidCardNumber\x12(\n" +
+	"\x10face_picture_url\x18\x03 \x01(\tR\x0efacePictureUrl\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"X\n" +
+	"!SubmitVerificationRequestResponse\x123\n" +
+	"\arequest\x18\x01 \x01(\v2\x19.user.VerificationRequestR\arequest\"v\n" +
+	"\x1eGetVerificationRequestsRequest\x12\x1b\n" +
+	"\tpage_size\x18\x01 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x02 \x01(\x05R\n" +
+	"pageOffset\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\"X\n" +
+	"\x1fGetVerificationRequestsResponse\x125\n" +
+	"\brequests\x18\x01 \x03(\v2\x19.user.VerificationRequestR\brequests\"~\n" +
+	"!ResolveVerificationRequestRequest\x12\"\n" +
+	"\radmin_user_id\x18\x01 \x01(\x03R\vadminUserId\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x02 \x01(\x03R\trequestId\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action\">\n" +
+	"\"ResolveVerificationRequestResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xcd\v\n" +
 	"\vUserService\x12E\n" +
 	"\fRegisterUser\x12\x19.user.RegisterUserRequest\x1a\x1a.user.RegisterUserResponse\x12B\n" +
 	"\x13SendRegistrationOtp\x12\x14.user.SendOtpRequest\x1a\x15.user.SendOtpResponse\x12`\n" +
@@ -2178,7 +2750,8 @@ const file_user_proto_rawDesc = "" +
 	"\vUnblockUser\x12\x18.user.UnblockUserRequest\x1a\x19.user.UnblockUserResponse\x12B\n" +
 	"\vSearchUsers\x12\x18.user.SearchUsersRequest\x1a\x19.user.SearchUsersResponse\x126\n" +
 	"\aBanUser\x12\x14.user.BanUserRequest\x1a\x15.user.BanUserResponse\x12<\n" +
-	"\tUnbanUser\x12\x16.user.UnbanUserRequest\x1a\x17.user.UnbanUserResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
+	"\tUnbanUser\x12\x16.user.UnbanUserRequest\x1a\x17.user.UnbanUserResponse\x12l\n" +
+	"\x19SubmitVerificationRequest\x12&.user.SubmitVerificationRequestRequest\x1a'.user.SubmitVerificationRequestResponseB,Z*github.com/hoshibmatchi/user-service/protob\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -2192,91 +2765,104 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
 var file_user_proto_goTypes = []any{
-	(*RegisterUserRequest)(nil),           // 0: user.RegisterUserRequest
-	(*RegisterUserResponse)(nil),          // 1: user.RegisterUserResponse
-	(*SendOtpRequest)(nil),                // 2: user.SendOtpRequest
-	(*SendOtpResponse)(nil),               // 3: user.SendOtpResponse
-	(*VerifyRegistrationOtpRequest)(nil),  // 4: user.VerifyRegistrationOtpRequest
-	(*VerifyRegistrationOtpResponse)(nil), // 5: user.VerifyRegistrationOtpResponse
-	(*LoginRequest)(nil),                  // 6: user.LoginRequest
-	(*LoginResponse)(nil),                 // 7: user.LoginResponse
-	(*Verify2FARequest)(nil),              // 8: user.Verify2FARequest
-	(*Verify2FAResponse)(nil),             // 9: user.Verify2FAResponse
-	(*SendPasswordResetRequest)(nil),      // 10: user.SendPasswordResetRequest
-	(*SendPasswordResetResponse)(nil),     // 11: user.SendPasswordResetResponse
-	(*ResetPasswordRequest)(nil),          // 12: user.ResetPasswordRequest
-	(*ResetPasswordResponse)(nil),         // 13: user.ResetPasswordResponse
-	(*GetUserDataRequest)(nil),            // 14: user.GetUserDataRequest
-	(*GetUserDataResponse)(nil),           // 15: user.GetUserDataResponse
-	(*FollowUserRequest)(nil),             // 16: user.FollowUserRequest
-	(*FollowUserResponse)(nil),            // 17: user.FollowUserResponse
-	(*UnfollowUserRequest)(nil),           // 18: user.UnfollowUserRequest
-	(*UnfollowUserResponse)(nil),          // 19: user.UnfollowUserResponse
-	(*GetFollowingListRequest)(nil),       // 20: user.GetFollowingListRequest
-	(*GetFollowingListResponse)(nil),      // 21: user.GetFollowingListResponse
-	(*GetUserProfileRequest)(nil),         // 22: user.GetUserProfileRequest
-	(*GetUserProfileResponse)(nil),        // 23: user.GetUserProfileResponse
-	(*UpdateUserProfileRequest)(nil),      // 24: user.UpdateUserProfileRequest
-	(*SetAccountPrivacyRequest)(nil),      // 25: user.SetAccountPrivacyRequest
-	(*SetAccountPrivacyResponse)(nil),     // 26: user.SetAccountPrivacyResponse
-	(*BlockUserRequest)(nil),              // 27: user.BlockUserRequest
-	(*BlockUserResponse)(nil),             // 28: user.BlockUserResponse
-	(*UnblockUserRequest)(nil),            // 29: user.UnblockUserRequest
-	(*UnblockUserResponse)(nil),           // 30: user.UnblockUserResponse
-	(*SearchUsersRequest)(nil),            // 31: user.SearchUsersRequest
-	(*SearchUsersResponse)(nil),           // 32: user.SearchUsersResponse
-	(*BanUserRequest)(nil),                // 33: user.BanUserRequest
-	(*BanUserResponse)(nil),               // 34: user.BanUserResponse
-	(*UnbanUserRequest)(nil),              // 35: user.UnbanUserRequest
-	(*UnbanUserResponse)(nil),             // 36: user.UnbanUserResponse
+	(*RegisterUserRequest)(nil),                // 0: user.RegisterUserRequest
+	(*RegisterUserResponse)(nil),               // 1: user.RegisterUserResponse
+	(*SendOtpRequest)(nil),                     // 2: user.SendOtpRequest
+	(*SendOtpResponse)(nil),                    // 3: user.SendOtpResponse
+	(*VerifyRegistrationOtpRequest)(nil),       // 4: user.VerifyRegistrationOtpRequest
+	(*VerifyRegistrationOtpResponse)(nil),      // 5: user.VerifyRegistrationOtpResponse
+	(*LoginRequest)(nil),                       // 6: user.LoginRequest
+	(*LoginResponse)(nil),                      // 7: user.LoginResponse
+	(*Verify2FARequest)(nil),                   // 8: user.Verify2FARequest
+	(*Verify2FAResponse)(nil),                  // 9: user.Verify2FAResponse
+	(*SendPasswordResetRequest)(nil),           // 10: user.SendPasswordResetRequest
+	(*SendPasswordResetResponse)(nil),          // 11: user.SendPasswordResetResponse
+	(*ResetPasswordRequest)(nil),               // 12: user.ResetPasswordRequest
+	(*ResetPasswordResponse)(nil),              // 13: user.ResetPasswordResponse
+	(*GetUserDataRequest)(nil),                 // 14: user.GetUserDataRequest
+	(*GetUserDataResponse)(nil),                // 15: user.GetUserDataResponse
+	(*FollowUserRequest)(nil),                  // 16: user.FollowUserRequest
+	(*FollowUserResponse)(nil),                 // 17: user.FollowUserResponse
+	(*UnfollowUserRequest)(nil),                // 18: user.UnfollowUserRequest
+	(*UnfollowUserResponse)(nil),               // 19: user.UnfollowUserResponse
+	(*GetFollowingListRequest)(nil),            // 20: user.GetFollowingListRequest
+	(*GetFollowingListResponse)(nil),           // 21: user.GetFollowingListResponse
+	(*GetUserProfileRequest)(nil),              // 22: user.GetUserProfileRequest
+	(*GetUserProfileResponse)(nil),             // 23: user.GetUserProfileResponse
+	(*UpdateUserProfileRequest)(nil),           // 24: user.UpdateUserProfileRequest
+	(*SetAccountPrivacyRequest)(nil),           // 25: user.SetAccountPrivacyRequest
+	(*SetAccountPrivacyResponse)(nil),          // 26: user.SetAccountPrivacyResponse
+	(*BlockUserRequest)(nil),                   // 27: user.BlockUserRequest
+	(*BlockUserResponse)(nil),                  // 28: user.BlockUserResponse
+	(*UnblockUserRequest)(nil),                 // 29: user.UnblockUserRequest
+	(*UnblockUserResponse)(nil),                // 30: user.UnblockUserResponse
+	(*SearchUsersRequest)(nil),                 // 31: user.SearchUsersRequest
+	(*SearchUsersResponse)(nil),                // 32: user.SearchUsersResponse
+	(*BanUserRequest)(nil),                     // 33: user.BanUserRequest
+	(*BanUserResponse)(nil),                    // 34: user.BanUserResponse
+	(*UnbanUserRequest)(nil),                   // 35: user.UnbanUserRequest
+	(*UnbanUserResponse)(nil),                  // 36: user.UnbanUserResponse
+	(*SendNewsletterRequest)(nil),              // 37: user.SendNewsletterRequest
+	(*SendNewsletterResponse)(nil),             // 38: user.SendNewsletterResponse
+	(*VerificationRequest)(nil),                // 39: user.VerificationRequest
+	(*SubmitVerificationRequestRequest)(nil),   // 40: user.SubmitVerificationRequestRequest
+	(*SubmitVerificationRequestResponse)(nil),  // 41: user.SubmitVerificationRequestResponse
+	(*GetVerificationRequestsRequest)(nil),     // 42: user.GetVerificationRequestsRequest
+	(*GetVerificationRequestsResponse)(nil),    // 43: user.GetVerificationRequestsResponse
+	(*ResolveVerificationRequestRequest)(nil),  // 44: user.ResolveVerificationRequestRequest
+	(*ResolveVerificationRequestResponse)(nil), // 45: user.ResolveVerificationRequestResponse
 }
 var file_user_proto_depIdxs = []int32{
 	23, // 0: user.SearchUsersResponse.users:type_name -> user.GetUserProfileResponse
-	0,  // 1: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
-	2,  // 2: user.UserService.SendRegistrationOtp:input_type -> user.SendOtpRequest
-	4,  // 3: user.UserService.VerifyRegistrationOtp:input_type -> user.VerifyRegistrationOtpRequest
-	6,  // 4: user.UserService.LoginUser:input_type -> user.LoginRequest
-	8,  // 5: user.UserService.Verify2FA:input_type -> user.Verify2FARequest
-	10, // 6: user.UserService.SendPasswordReset:input_type -> user.SendPasswordResetRequest
-	12, // 7: user.UserService.ResetPassword:input_type -> user.ResetPasswordRequest
-	14, // 8: user.UserService.GetUserData:input_type -> user.GetUserDataRequest
-	16, // 9: user.UserService.FollowUser:input_type -> user.FollowUserRequest
-	18, // 10: user.UserService.UnfollowUser:input_type -> user.UnfollowUserRequest
-	20, // 11: user.UserService.GetFollowingList:input_type -> user.GetFollowingListRequest
-	22, // 12: user.UserService.GetUserProfile:input_type -> user.GetUserProfileRequest
-	24, // 13: user.UserService.UpdateUserProfile:input_type -> user.UpdateUserProfileRequest
-	25, // 14: user.UserService.SetAccountPrivacy:input_type -> user.SetAccountPrivacyRequest
-	27, // 15: user.UserService.BlockUser:input_type -> user.BlockUserRequest
-	29, // 16: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
-	31, // 17: user.UserService.SearchUsers:input_type -> user.SearchUsersRequest
-	33, // 18: user.UserService.BanUser:input_type -> user.BanUserRequest
-	35, // 19: user.UserService.UnbanUser:input_type -> user.UnbanUserRequest
-	1,  // 20: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
-	3,  // 21: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
-	5,  // 22: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
-	7,  // 23: user.UserService.LoginUser:output_type -> user.LoginResponse
-	9,  // 24: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
-	11, // 25: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
-	13, // 26: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
-	15, // 27: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
-	17, // 28: user.UserService.FollowUser:output_type -> user.FollowUserResponse
-	19, // 29: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
-	21, // 30: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
-	23, // 31: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
-	23, // 32: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
-	26, // 33: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
-	28, // 34: user.UserService.BlockUser:output_type -> user.BlockUserResponse
-	30, // 35: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
-	32, // 36: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
-	34, // 37: user.UserService.BanUser:output_type -> user.BanUserResponse
-	36, // 38: user.UserService.UnbanUser:output_type -> user.UnbanUserResponse
-	20, // [20:39] is the sub-list for method output_type
-	1,  // [1:20] is the sub-list for method input_type
-	1,  // [1:1] is the sub-list for extension type_name
-	1,  // [1:1] is the sub-list for extension extendee
-	0,  // [0:1] is the sub-list for field type_name
+	39, // 1: user.SubmitVerificationRequestResponse.request:type_name -> user.VerificationRequest
+	39, // 2: user.GetVerificationRequestsResponse.requests:type_name -> user.VerificationRequest
+	0,  // 3: user.UserService.RegisterUser:input_type -> user.RegisterUserRequest
+	2,  // 4: user.UserService.SendRegistrationOtp:input_type -> user.SendOtpRequest
+	4,  // 5: user.UserService.VerifyRegistrationOtp:input_type -> user.VerifyRegistrationOtpRequest
+	6,  // 6: user.UserService.LoginUser:input_type -> user.LoginRequest
+	8,  // 7: user.UserService.Verify2FA:input_type -> user.Verify2FARequest
+	10, // 8: user.UserService.SendPasswordReset:input_type -> user.SendPasswordResetRequest
+	12, // 9: user.UserService.ResetPassword:input_type -> user.ResetPasswordRequest
+	14, // 10: user.UserService.GetUserData:input_type -> user.GetUserDataRequest
+	16, // 11: user.UserService.FollowUser:input_type -> user.FollowUserRequest
+	18, // 12: user.UserService.UnfollowUser:input_type -> user.UnfollowUserRequest
+	20, // 13: user.UserService.GetFollowingList:input_type -> user.GetFollowingListRequest
+	22, // 14: user.UserService.GetUserProfile:input_type -> user.GetUserProfileRequest
+	24, // 15: user.UserService.UpdateUserProfile:input_type -> user.UpdateUserProfileRequest
+	25, // 16: user.UserService.SetAccountPrivacy:input_type -> user.SetAccountPrivacyRequest
+	27, // 17: user.UserService.BlockUser:input_type -> user.BlockUserRequest
+	29, // 18: user.UserService.UnblockUser:input_type -> user.UnblockUserRequest
+	31, // 19: user.UserService.SearchUsers:input_type -> user.SearchUsersRequest
+	33, // 20: user.UserService.BanUser:input_type -> user.BanUserRequest
+	35, // 21: user.UserService.UnbanUser:input_type -> user.UnbanUserRequest
+	40, // 22: user.UserService.SubmitVerificationRequest:input_type -> user.SubmitVerificationRequestRequest
+	1,  // 23: user.UserService.RegisterUser:output_type -> user.RegisterUserResponse
+	3,  // 24: user.UserService.SendRegistrationOtp:output_type -> user.SendOtpResponse
+	5,  // 25: user.UserService.VerifyRegistrationOtp:output_type -> user.VerifyRegistrationOtpResponse
+	7,  // 26: user.UserService.LoginUser:output_type -> user.LoginResponse
+	9,  // 27: user.UserService.Verify2FA:output_type -> user.Verify2FAResponse
+	11, // 28: user.UserService.SendPasswordReset:output_type -> user.SendPasswordResetResponse
+	13, // 29: user.UserService.ResetPassword:output_type -> user.ResetPasswordResponse
+	15, // 30: user.UserService.GetUserData:output_type -> user.GetUserDataResponse
+	17, // 31: user.UserService.FollowUser:output_type -> user.FollowUserResponse
+	19, // 32: user.UserService.UnfollowUser:output_type -> user.UnfollowUserResponse
+	21, // 33: user.UserService.GetFollowingList:output_type -> user.GetFollowingListResponse
+	23, // 34: user.UserService.GetUserProfile:output_type -> user.GetUserProfileResponse
+	23, // 35: user.UserService.UpdateUserProfile:output_type -> user.GetUserProfileResponse
+	26, // 36: user.UserService.SetAccountPrivacy:output_type -> user.SetAccountPrivacyResponse
+	28, // 37: user.UserService.BlockUser:output_type -> user.BlockUserResponse
+	30, // 38: user.UserService.UnblockUser:output_type -> user.UnblockUserResponse
+	32, // 39: user.UserService.SearchUsers:output_type -> user.SearchUsersResponse
+	34, // 40: user.UserService.BanUser:output_type -> user.BanUserResponse
+	36, // 41: user.UserService.UnbanUser:output_type -> user.UnbanUserResponse
+	41, // 42: user.UserService.SubmitVerificationRequest:output_type -> user.SubmitVerificationRequestResponse
+	23, // [23:43] is the sub-list for method output_type
+	3,  // [3:23] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_user_proto_init() }
@@ -2290,7 +2876,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   37,
+			NumMessages:   46,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

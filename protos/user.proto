@@ -40,6 +40,9 @@ service UserService {
   // Admin controls
   rpc BanUser (BanUserRequest) returns (BanUserResponse);
   rpc UnbanUser (UnbanUserRequest) returns (UnbanUserResponse);
+
+  // Verification Requests
+  rpc SubmitVerificationRequest (SubmitVerificationRequestRequest) returns (SubmitVerificationRequestResponse);
 }
 
 // --- Register ---
@@ -254,4 +257,60 @@ message UnbanUserRequest {
 
 message UnbanUserResponse {
   string message = 1; // e.g., "User unbanned successfully"
+}
+
+// --- Admin: Newsletter ---
+message SendNewsletterRequest {
+  int64 admin_user_id = 1; // From JWT
+  string subject = 2;
+  string body = 3;
+}
+
+message SendNewsletterResponse {
+  string message = 1;
+  int32 recipients_count = 2;
+}
+
+// --- User: Submit Verification ---
+message VerificationRequest {
+  string id = 1;
+  int64 user_id = 2;
+  string id_card_number = 3;
+  string face_picture_url = 4;
+  string reason = 5;
+  string status = 6;
+  string created_at = 7;
+  string username = 8; // Denormalized
+}
+
+message SubmitVerificationRequestRequest {
+  int64 user_id = 1; // From JWT
+  string id_card_number = 2;
+  string face_picture_url = 3;
+  string reason = 4;
+}
+
+message SubmitVerificationRequestResponse {
+  VerificationRequest request = 1;
+}
+
+// --- Admin: Manage Verifications ---
+message GetVerificationRequestsRequest {
+  int32 page_size = 1;
+  int32 page_offset = 2;
+  string status = 3; // "pending", "approved", "rejected"
+}
+
+message GetVerificationRequestsResponse {
+  repeated VerificationRequest requests = 1;
+}
+
+message ResolveVerificationRequestRequest {
+  int64 admin_user_id = 1; // From JWT
+  int64 request_id = 2;
+  string action = 3; // "APPROVE" or "REJECT"
+}
+
+message ResolveVerificationRequestResponse {
+  string message = 1;
 }

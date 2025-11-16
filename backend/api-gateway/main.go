@@ -146,6 +146,9 @@ func main() {
 		protected.POST("/reports/post", handleReportPost_Gin)
 		protected.POST("/reports/user", handleReportUser_Gin)
 
+		// Verif
+		protected.POST("/profile/verify", handleSubmitVerification_Gin)
+
 	}
 
 	admin := router.Group("/admin")
@@ -158,6 +161,12 @@ func main() {
 		admin.GET("/reports/users", handleGetUserReports_Gin)
 		admin.POST("/reports/posts/:id/resolve", handleResolvePostReport_Gin)
 		admin.POST("/reports/users/:id/resolve", handleResolveUserReport_Gin)
+
+
+		// Newsletter & Verification
+		admin.POST("/newsletters", handleSendNewsletter_Gin)
+		admin.GET("/verifications", handleGetVerifications_Gin)
+		admin.POST("/verifications/:id/resolve", handleResolveVerification_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1734,6 +1743,139 @@ func handleResolveUserReport_Gin(c *gin.Context) {
 	}
 
 	grpcRes, err := reportClient.ResolveUserReport(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleSubmitVerification (User-facing) ---
+func handleSubmitVerification_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		IdCardNumber   string `json:"id_card_number"`
+		FacePictureURL string `json:"face_picture_url"`
+		Reason         string `json:"reason"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.IdCardNumber == "" || req.FacePictureURL == "" || req.Reason == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'id_card_number', 'face_picture_url', or 'reason'"})
+		return
+	}
+
+	grpcReq := &pb.SubmitVerificationRequestRequest{
+		UserId:         userID,
+		IdCardNumber:   req.IdCardNumber,
+		FacePictureUrl: req.FacePictureURL,
+		Reason:         req.Reason,
+	}
+
+	grpcRes, err := client.SubmitVerificationRequest(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes.Request)
+}
+
+// --- GIN-NATIVE HANDLER: handleSendNewsletter (Admin) ---
+func handleSendNewsletter_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	var req struct {
+		Subject string `json:"subject"`
+		Body    string `json:"body"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil || req.Subject == "" || req.Body == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'subject' or 'body'"})
+		return
+	}
+
+	grpcReq := &pb.SendNewsletterRequest{
+		AdminUserId: adminID,
+		Subject:     req.Subject,
+		Body:        req.Body,
+	}
+
+	grpcRes, err := client.SendNewsletter(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetVerifications (Admin) ---
+func handleGetVerifications_Gin(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	
+	// --- THIS IS THE FIX ---
+	reqStatus := c.DefaultQuery("status", "pending") // Renamed 'status' to 'reqStatus'
+	// --- END FIX ---
+
+	grpcReq := &pb.GetVerificationRequestsRequest{
+		PageSize:   int32(limit),
+		PageOffset: int32((page - 1) * limit),
+		Status:     reqStatus, // Use the new variable
+	}
+
+	grpcRes, err := client.GetVerificationRequests(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err) // This line will now work
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Requests)
+}
+
+// --- GIN-NATIVE HANDLER: handleResolveVerification (Admin) ---
+func handleResolveVerification_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request ID"})
+		return
+	}
+
+	var req struct {
+		Action string `json:"action"` // "APPROVE" or "REJECT"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || (req.Action != "APPROVE" && req.Action != "REJECT") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing or invalid 'action', must be 'APPROVE' or 'REJECT'"})
+		return
+	}
+
+	grpcReq := &pb.ResolveVerificationRequestRequest{
+		AdminUserId: adminID,
+		RequestId:   requestID,
+		Action:      req.Action,
+	}
+
+	grpcRes, err := client.ResolveVerificationRequest(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
