@@ -126,6 +126,9 @@ func main() {
 		// Messsage
 		protected.POST("/conversations", handleCreateConversation_Gin)
 		protected.POST("/conversations/:id/messages", handleSendMessage_Gin)
+
+		protected.GET("/conversations", handleGetConversations_Gin)
+		protected.GET("/conversations/:id/messages", handleGetMessages_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1248,4 +1251,72 @@ func handleSendMessage_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, grpcRes.Message)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetConversations ---
+func handleGetConversations_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get pagination params
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 { page = 1 }
+	if limit < 1 { limit = 20 }
+	offset := (page - 1) * limit
+
+	grpcReq := &messagePb.GetConversationsRequest{
+		UserId:     userID,
+		PageSize:   int32(limit),
+		PageOffset: int32(offset),
+	}
+
+	grpcRes, err := messageClient.GetConversations(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetConversations failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Conversations)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetMessages ---
+func handleGetMessages_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get conversation ID from URL param
+	convoID := c.Param("id")
+
+	// Get pagination params
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50")) // Get more messages by default
+	if page < 1 { page = 1 }
+	if limit < 1 { limit = 50 }
+	offset := (page - 1) * limit
+
+	grpcReq := &messagePb.GetMessagesRequest{
+		UserId:         userID,
+		ConversationId: convoID,
+		PageSize:       int32(limit),
+		PageOffset:     int32(offset),
+	}
+
+	grpcRes, err := messageClient.GetMessages(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetMessages failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Messages)
 }

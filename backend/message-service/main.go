@@ -206,7 +206,7 @@ func (s *server) CreateConversation(ctx context.Context, req *pb.CreateConversat
 // --- Helper Functions ---
 
 // gormToGrpcConversation converts a GORM Conversation model to its gRPC representation
-// This involves fetching participant details from the user-service
+// This involves fetching participant details AND the last message.
 func (s *server) gormToGrpcConversation(ctx context.Context, convo *Conversation) (*pb.Conversation, error) {
 	// 1. Get all participant IDs for this conversation
 	var participantIDs []int64
@@ -215,27 +215,40 @@ func (s *server) gormToGrpcConversation(ctx context.Context, convo *Conversation
 	}
 
 	// 2. Fetch user data for all participants from user-service
-	// In a real high-performance app, user-service should have a
-	// GetUsersData (plural) RPC. We are simulating that by calling in a loop.
 	grpcParticipants := []*userPb.GetUserDataResponse{}
 	for _, userID := range participantIDs {
-		userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: userID})
+		// Create a new context for each gRPC call to avoid cancellation issues
+		callCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		userData, err := s.userClient.GetUserData(callCtx, &userPb.GetUserDataRequest{UserId: userID})
 		if err != nil {
 			log.Printf("Failed to get user data for participant %d: %v", userID, err)
-			// Add a placeholder to not fail the whole request
 			grpcParticipants = append(grpcParticipants, &userPb.GetUserDataResponse{
 				Username: "Unknown User",
 			})
 		} else {
 			grpcParticipants = append(grpcParticipants, userData)
 		}
+		cancel() // Release context
 	}
 
-	// 3. Get the last message (we'll leave this empty for now)
-	// TODO: Get the actual last message from the 'messages' table
-	lastMessage := &pb.Message{
-		Content: "No messages yet...",
+	// --- THIS IS THE FIX ---
+	// 3. Get the last message
+	var lastMessageGORM Message
+	var lastMessage *pb.Message
+	err := s.db.Where("conversation_id = ?", convo.ID).Order("created_at DESC").First(&lastMessageGORM).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// No messages yet
+		lastMessage = &pb.Message{Content: "No messages yet..."}
+	} else if err != nil {
+		// Database error
+		log.Printf("Failed to get last message for convo %d: %v", convo.ID, err)
+		lastMessage = &pb.Message{Content: "Error loading message..."}
+	} else {
+		// Success, convert the last message
+		lastMessage, _ = s.gormToGrpcMessage(ctx, &lastMessageGORM)
 	}
+	// --- END FIX ---
 
 	// 4. Assemble and return
 	return &pb.Conversation{
@@ -350,5 +363,97 @@ func (s *server) gormToGrpcMessage(ctx context.Context, msg *Message) (*pb.Messa
 		Content:        msg.Content,
 		SentAt:         msg.CreatedAt.Format(time.RFC3339),
 		SenderUsername: userData.Username,
+	}, nil
+}
+
+func (s *server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
+	log.Printf("GetMessages request from user %d for convo %s", req.UserId, req.ConversationId)
+
+	// --- Step 1: Validation (Security Check) ---
+	// Check if the user is a participant in this conversation.
+	var participantCount int64
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
+	}
+
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&participantCount)
+	if participantCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "User is not a participant of this conversation")
+	}
+
+	// --- Step 2: Fetch Messages (with pagination) ---
+	var messages []Message
+	if err := s.db.Where("conversation_id = ?", convoID).
+		Order("created_at DESC"). // Get newest messages first
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&messages).Error; err != nil {
+		log.Printf("Failed to get messages for convo %d: %v", convoID, err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve messages")
+	}
+
+	// --- Step 3: Convert GORM models to gRPC responses ---
+	var grpcMessages []*pb.Message
+	for _, msg := range messages {
+		// We can re-use the helper we already built
+		grpcMsg, err := s.gormToGrpcMessage(ctx, &msg)
+		if err != nil {
+			// Log, but don't fail the entire request
+			log.Printf("Failed to convert message %d: %v", msg.ID, err)
+			continue
+		}
+		grpcMessages = append(grpcMessages, grpcMsg)
+	}
+
+	// Note: The frontend will receive these in reverse-chronological order
+	// and should display them accordingly (e.g., prepending to a list).
+
+	return &pb.GetMessagesResponse{
+		Messages: grpcMessages,
+	}, nil
+}
+
+func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsRequest) (*pb.GetConversationsResponse, error) {
+	log.Printf("GetConversations request received for user %d", req.UserId)
+
+	// --- Step 1: Find all Conversation IDs the user is a part of ---
+	var conversationIDs []uint
+	if err := s.db.Model(&Participant{}).
+		Where("user_id = ?", req.UserId).
+		Pluck("conversation_id", &conversationIDs).Error; err != nil {
+		log.Printf("Failed to get conversation IDs for user %d: %v", req.UserId, err)
+		return nil, status.Error(codes.Internal, "Failed to get conversation list")
+	}
+
+	if len(conversationIDs) == 0 {
+		// User has no conversations, return empty list
+		return &pb.GetConversationsResponse{Conversations: []*pb.Conversation{}}, nil
+	}
+
+	// --- Step 2: Fetch those conversations, sorted by most recent activity ---
+	var conversations []Conversation
+	if err := s.db.Where("id IN ?", conversationIDs).
+		Order("updated_at DESC"). // Sort by most recent message
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&conversations).Error; err != nil {
+		log.Printf("Failed to get conversations for user %d: %v", req.UserId, err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve conversations")
+	}
+
+	// --- Step 3: Convert GORM models to gRPC responses ---
+	var grpcConversations []*pb.Conversation
+	for _, convo := range conversations {
+		grpcConvo, err := s.gormToGrpcConversation(ctx, &convo)
+		if err != nil {
+			log.Printf("Failed to convert conversation %d: %v", convo.ID, err)
+			continue
+		}
+		grpcConversations = append(grpcConversations, grpcConvo)
+	}
+
+	return &pb.GetConversationsResponse{
+		Conversations: grpcConversations,
 	}, nil
 }
