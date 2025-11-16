@@ -4,7 +4,8 @@ import (
 	"context"
 	"log"
 	"net"
-	// "time"
+	"time"
+	"strconv"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -167,4 +168,147 @@ func (s *server) ReportUser(ctx context.Context, req *pb.ReportUserRequest) (*pb
 	// TODO: Publish a "report.created" message to RabbitMQ for admin notifications
 
 	return &pb.ReportResponse{Message: "User reported successfully"}, nil
+}
+
+// --- Implement Admin-facing RPCs ---
+
+// gormToGrpcPostReport converts a GORM PostReport to its gRPC representation
+func gormToGrpcPostReport(report *PostReport) *pb.PostReport {
+	return &pb.PostReport{
+		Id:         strconv.FormatUint(uint64(report.ID), 10),
+		ReporterId: report.ReporterID,
+		PostId:     report.PostID,
+		Reason:     report.Reason,
+		CreatedAt:  report.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+// gormToGrpcUserReport converts a GORM UserReport to its gRPC representation
+func gormToGrpcUserReport(report *UserReport) *pb.UserReport {
+	return &pb.UserReport{
+		Id:             strconv.FormatUint(uint64(report.ID), 10),
+		ReporterId:     report.ReporterID,
+		ReportedUserId: report.ReportedUserID,
+		Reason:         report.Reason,
+		CreatedAt:      report.CreatedAt.Format(time.RFC3339),
+	}
+}
+
+func (s *server) GetPostReports(ctx context.Context, req *pb.GetReportsRequest) (*pb.GetPostReportsResponse, error) {
+	log.Printf("Admin action: GetPostReports request")
+
+	var reports []PostReport
+	query := s.db.Order("created_at DESC").Limit(int(req.PageSize)).Offset(int(req.PageOffset))
+
+	if req.UnresolvedOnly {
+		query = query.Where("is_resolved = ?", false)
+	}
+
+	if err := query.Find(&reports).Error; err != nil {
+		log.Printf("Failed to get post reports from db: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve reports")
+	}
+
+	var grpcReports []*pb.PostReport
+	for _, report := range reports {
+		grpcReports = append(grpcReports, gormToGrpcPostReport(&report))
+	}
+
+	return &pb.GetPostReportsResponse{Reports: grpcReports}, nil
+}
+
+func (s *server) GetUserReports(ctx context.Context, req *pb.GetReportsRequest) (*pb.GetUserReportsResponse, error) {
+	log.Printf("Admin action: GetUserReports request")
+
+	var reports []UserReport
+	query := s.db.Order("created_at DESC").Limit(int(req.PageSize)).Offset(int(req.PageOffset))
+
+	if req.UnresolvedOnly {
+		query = query.Where("is_resolved = ?", false)
+	}
+
+	if err := query.Find(&reports).Error; err != nil {
+		log.Printf("Failed to get user reports from db: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to retrieve reports")
+	}
+
+	var grpcReports []*pb.UserReport
+	for _, report := range reports {
+		grpcReports = append(grpcReports, gormToGrpcUserReport(&report))
+	}
+
+	return &pb.GetUserReportsResponse{Reports: grpcReports}, nil
+}
+
+func (s *server) ResolvePostReport(ctx context.Context, req *pb.ResolveReportRequest) (*pb.ReportResponse, error) {
+	log.Printf("Admin action: ResolvePostReport request for report %d with action '%s'", req.ReportId, req.Action)
+
+	// 1. Find the report
+	var report PostReport
+	if err := s.db.First(&report, req.ReportId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Report not found")
+	}
+
+	if report.IsResolved {
+		return nil, status.Error(codes.AlreadyExists, "This report has already been resolved")
+	}
+
+	// 2. Perform the action
+	if req.Action == "ACCEPT" {
+		// Call post-service to delete the post
+		_, err := s.postClient.DeletePost(ctx, &postPb.DeletePostRequest{
+			PostId:      report.PostID,
+			AdminUserId: req.AdminUserId,
+		})
+		if err != nil {
+			// Don't fail the report resolution, just log it.
+			log.Printf("Failed to delete post %d as part of report %d: %v", report.PostID, req.ReportId, err)
+		} else {
+			log.Printf("Successfully deleted post %d as part of report %d", report.PostID, req.ReportId)
+		}
+	}
+
+	// 3. Mark the report as resolved
+	if err := s.db.Model(&report).Updates(PostReport{IsResolved: true, ResolvedByID: req.AdminUserId}).Error; err != nil {
+		log.Printf("Failed to mark post report %d as resolved: %v", req.ReportId, err)
+		return nil, status.Error(codes.Internal, "Failed to resolve report")
+	}
+
+	return &pb.ReportResponse{Message: "Post report resolved successfully"}, nil
+}
+
+func (s *server) ResolveUserReport(ctx context.Context, req *pb.ResolveReportRequest) (*pb.ReportResponse, error) {
+	log.Printf("Admin action: ResolveUserReport request for report %d with action '%s'", req.ReportId, req.Action)
+
+	// 1. Find the report
+	var report UserReport
+	if err := s.db.First(&report, req.ReportId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Report not found")
+	}
+
+	if report.IsResolved {
+		return nil, status.Error(codes.AlreadyExists, "This report has already been resolved")
+	}
+
+	// 2. Perform the action
+	if req.Action == "ACCEPT" {
+		// Call user-service to ban the user
+		_, err := s.userClient.BanUser(ctx, &userPb.BanUserRequest{
+			AdminUserId:  req.AdminUserId,
+			UserToBanId: report.ReportedUserID,
+		})
+		if err != nil {
+			log.Printf("Failed to ban user %d as part of report %d: %v", report.ReportedUserID, req.ReportId, err)
+		} else {
+			log.Printf("Successfully banned user %d as part of report %d", report.ReportedUserID, req.ReportId)
+		}
+	}
+
+	// 3. Mark the report as resolved
+	if err := s.db.Model(&report).Updates(UserReport{IsResolved: true, ResolvedByID: req.AdminUserId}).Error; err != nil {
+		log.Printf("Failed to mark user report %d as resolved: %v", req.ReportId, err)
+		return nil, status.Error(codes.Internal, "Failed to resolve report")
+	}
+
+	return &pb.ReportResponse{Message: "User report resolved successfully"}, nil
 }

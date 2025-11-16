@@ -153,6 +153,11 @@ func main() {
 	{
 		admin.POST("/users/:id/ban", handleBanUser_Gin)
 		admin.POST("/users/:id/unban", handleUnbanUser_Gin)
+
+		admin.GET("/reports/posts", handleGetPostReports_Gin)
+		admin.GET("/reports/users", handleGetUserReports_Gin)
+		admin.POST("/reports/posts/:id/resolve", handleResolvePostReport_Gin)
+		admin.POST("/reports/users/:id/resolve", handleResolveUserReport_Gin)
 	}
 
 	log.Println("API Gateway starting on port 8000...")
@@ -1609,6 +1614,128 @@ func handleUnbanUser_Gin(c *gin.Context) {
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		log.Printf("gRPC call to UnbanUser failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetPostReports ---
+func handleGetPostReports_Gin(c *gin.Context) {
+	// Pagination and filtering
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	unresolvedOnly, _ := strconv.ParseBool(c.DefaultQuery("unresolved_only", "true"))
+
+	grpcReq := &reportPb.GetReportsRequest{
+		PageSize:       int32(limit),
+		PageOffset:     int32((page - 1) * limit),
+		UnresolvedOnly: unresolvedOnly,
+	}
+
+	grpcRes, err := reportClient.GetPostReports(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Reports)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetUserReports ---
+func handleGetUserReports_Gin(c *gin.Context) {
+	// Pagination and filtering
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	unresolvedOnly, _ := strconv.ParseBool(c.DefaultQuery("unresolved_only", "true"))
+
+	grpcReq := &reportPb.GetReportsRequest{
+		PageSize:       int32(limit),
+		PageOffset:     int32((page - 1) * limit),
+		UnresolvedOnly: unresolvedOnly,
+	}
+
+	grpcRes, err := reportClient.GetUserReports(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Reports)
+}
+
+// --- GIN-NATIVE HANDLER: handleResolvePostReport ---
+func handleResolvePostReport_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	reportID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid report ID"})
+		return
+	}
+
+	var req struct {
+		Action string `json:"action"` // "ACCEPT" or "REJECT"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || (req.Action != "ACCEPT" && req.Action != "REJECT") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing or invalid 'action', must be 'ACCEPT' or 'REJECT'"})
+		return
+	}
+
+	grpcReq := &reportPb.ResolveReportRequest{
+		AdminUserId: adminID,
+		ReportId:    reportID,
+		Action:      req.Action,
+	}
+
+	grpcRes, err := reportClient.ResolvePostReport(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleResolveUserReport ---
+func handleResolveUserReport_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	reportID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid report ID"})
+		return
+	}
+
+	var req struct {
+		Action string `json:"action"` // "ACCEPT" or "REJECT"
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || (req.Action != "ACCEPT" && req.Action != "REJECT") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing or invalid 'action', must be 'ACCEPT' or 'REJECT'"})
+		return
+	}
+
+	grpcReq := &reportPb.ResolveReportRequest{
+		AdminUserId: adminID,
+		ReportId:    reportID,
+		Action:      req.Action,
+	}
+
+	grpcRes, err := reportClient.ResolveUserReport(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
