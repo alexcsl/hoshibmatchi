@@ -288,6 +288,9 @@ services:
       context: .
       dockerfile: ./backend/message-service/Dockerfile
     container_name: message-service
+    environment:
+      - VIDEOSDK_API_KEY=${VIDEOSDK_API_KEY}
+      - VIDEOSDK_API_SECRET=${VIDEOSDK_API_SECRET}
     depends_on:
       message-db:
         condition: service_healthy

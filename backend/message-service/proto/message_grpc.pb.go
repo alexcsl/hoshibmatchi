@@ -23,6 +23,9 @@ const (
 	MessageService_GetMessages_FullMethodName        = "/message.MessageService/GetMessages"
 	MessageService_SendMessage_FullMethodName        = "/message.MessageService/SendMessage"
 	MessageService_CreateConversation_FullMethodName = "/message.MessageService/CreateConversation"
+	MessageService_UnsendMessage_FullMethodName      = "/message.MessageService/UnsendMessage"
+	MessageService_DeleteConversation_FullMethodName = "/message.MessageService/DeleteConversation"
+	MessageService_GetVideoCallToken_FullMethodName  = "/message.MessageService/GetVideoCallToken"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -37,6 +40,10 @@ type MessageServiceClient interface {
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	// Creates a new conversation (either 1-on-1 or group)
 	CreateConversation(ctx context.Context, in *CreateConversationRequest, opts ...grpc.CallOption) (*Conversation, error)
+	// Unsend, Delete, Videocall
+	UnsendMessage(ctx context.Context, in *UnsendMessageRequest, opts ...grpc.CallOption) (*UnsendMessageResponse, error)
+	DeleteConversation(ctx context.Context, in *DeleteConversationRequest, opts ...grpc.CallOption) (*DeleteConversationResponse, error)
+	GetVideoCallToken(ctx context.Context, in *GetVideoCallTokenRequest, opts ...grpc.CallOption) (*GetVideoCallTokenResponse, error)
 }
 
 type messageServiceClient struct {
@@ -87,6 +94,36 @@ func (c *messageServiceClient) CreateConversation(ctx context.Context, in *Creat
 	return out, nil
 }
 
+func (c *messageServiceClient) UnsendMessage(ctx context.Context, in *UnsendMessageRequest, opts ...grpc.CallOption) (*UnsendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnsendMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_UnsendMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) DeleteConversation(ctx context.Context, in *DeleteConversationRequest, opts ...grpc.CallOption) (*DeleteConversationResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteConversationResponse)
+	err := c.cc.Invoke(ctx, MessageService_DeleteConversation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetVideoCallToken(ctx context.Context, in *GetVideoCallTokenRequest, opts ...grpc.CallOption) (*GetVideoCallTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVideoCallTokenResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetVideoCallToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
@@ -99,6 +136,10 @@ type MessageServiceServer interface {
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
 	// Creates a new conversation (either 1-on-1 or group)
 	CreateConversation(context.Context, *CreateConversationRequest) (*Conversation, error)
+	// Unsend, Delete, Videocall
+	UnsendMessage(context.Context, *UnsendMessageRequest) (*UnsendMessageResponse, error)
+	DeleteConversation(context.Context, *DeleteConversationRequest) (*DeleteConversationResponse, error)
+	GetVideoCallToken(context.Context, *GetVideoCallTokenRequest) (*GetVideoCallTokenResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -120,6 +161,15 @@ func (UnimplementedMessageServiceServer) SendMessage(context.Context, *SendMessa
 }
 func (UnimplementedMessageServiceServer) CreateConversation(context.Context, *CreateConversationRequest) (*Conversation, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateConversation not implemented")
+}
+func (UnimplementedMessageServiceServer) UnsendMessage(context.Context, *UnsendMessageRequest) (*UnsendMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsendMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) DeleteConversation(context.Context, *DeleteConversationRequest) (*DeleteConversationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteConversation not implemented")
+}
+func (UnimplementedMessageServiceServer) GetVideoCallToken(context.Context, *GetVideoCallTokenRequest) (*GetVideoCallTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetVideoCallToken not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
@@ -214,6 +264,60 @@ func _MessageService_CreateConversation_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_UnsendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsendMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).UnsendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_UnsendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).UnsendMessage(ctx, req.(*UnsendMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_DeleteConversation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteConversationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DeleteConversation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DeleteConversation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DeleteConversation(ctx, req.(*DeleteConversationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetVideoCallToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVideoCallTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetVideoCallToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetVideoCallToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetVideoCallToken(ctx, req.(*GetVideoCallTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -236,6 +340,18 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateConversation",
 			Handler:    _MessageService_CreateConversation_Handler,
+		},
+		{
+			MethodName: "UnsendMessage",
+			Handler:    _MessageService_UnsendMessage_Handler,
+		},
+		{
+			MethodName: "DeleteConversation",
+			Handler:    _MessageService_DeleteConversation_Handler,
+		},
+		{
+			MethodName: "GetVideoCallToken",
+			Handler:    _MessageService_GetVideoCallToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

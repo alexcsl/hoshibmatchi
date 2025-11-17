@@ -44,3 +44,6 @@ Thumbs.db
 .git
 .gitignore
 .gitattributes
+
+# Environment files
+*.env

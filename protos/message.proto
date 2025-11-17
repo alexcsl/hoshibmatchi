@@ -19,6 +19,11 @@ service MessageService {
   
   // Creates a new conversation (either 1-on-1 or group)
   rpc CreateConversation (CreateConversationRequest) returns (Conversation);
+
+  // Unsend, Delete, Videocall
+  rpc UnsendMessage (UnsendMessageRequest) returns (UnsendMessageResponse);
+  rpc DeleteConversation (DeleteConversationRequest) returns (DeleteConversationResponse);
+  rpc GetVideoCallToken (GetVideoCallTokenRequest) returns (GetVideoCallTokenResponse);
 }
 
 // Represents a single chat conversation
@@ -82,4 +87,35 @@ message CreateConversationRequest {
   int64 creator_id = 1; // From JWT
   repeated int64 participant_ids = 2; // List of *other* user IDs
   string group_name = 3; // If present, creates a group
+}
+
+// --- UnsendMessage ---
+message UnsendMessageRequest {
+  int64 user_id = 1; // From JWT
+  string message_id = 2;
+}
+
+message UnsendMessageResponse {
+  string message = 1;
+}
+
+// --- DeleteConversation ---
+message DeleteConversationRequest {
+  int64 user_id = 1; // From JWT
+  string conversation_id = 2;
+}
+
+message DeleteConversationResponse {
+  string message = 1;
+}
+
+// --- GetVideoCallToken ---
+message GetVideoCallTokenRequest {
+  int64 user_id = 1; // From JWT
+  string conversation_id = 2;
+}
+
+message GetVideoCallTokenResponse {
+  string token = 1;   // The token for the video SDK
+  string room_id = 2; // The room ID
 }

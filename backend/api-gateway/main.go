@@ -158,6 +158,11 @@ func main() {
 		protected.GET("/search/hashtags/:name", handleSearchHashtag_Gin)
 		protected.GET("/trending/hashtags", handleTrendingHashtags_Gin)
 
+		// Video call, delete, unsend
+		protected.DELETE("/messages/:id", handleUnsendMessage_Gin)
+		protected.DELETE("/conversations/:id", handleDeleteConversation_Gin)
+		protected.GET("/conversations/:id/video_token", handleGetVideoToken_Gin)
+
 	}
 
 	admin := router.Group("/admin")
@@ -2098,4 +2103,79 @@ func handleTrendingHashtags_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes.Hashtags)
+}
+
+// --- GIN-NATIVE HANDLER: handleUnsendMessage ---
+func handleUnsendMessage_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	msgID := c.Param("id")
+
+	grpcReq := &messagePb.UnsendMessageRequest{
+		UserId:    userID,
+		MessageId: msgID,
+	}
+
+	grpcRes, err := messageClient.UnsendMessage(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleDeleteConversation ---
+func handleDeleteConversation_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	convoID := c.Param("id")
+
+	grpcReq := &messagePb.DeleteConversationRequest{
+		UserId:        userID,
+		ConversationId: convoID,
+	}
+
+	grpcRes, err := messageClient.DeleteConversation(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetVideoToken ---
+func handleGetVideoToken_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	convoID := c.Param("id")
+
+	grpcReq := &messagePb.GetVideoCallTokenRequest{
+		UserId:        userID,
+		ConversationId: convoID,
+	}
+
+	grpcRes, err := messageClient.GetVideoCallToken(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
 }

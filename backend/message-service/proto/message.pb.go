@@ -578,6 +578,305 @@ func (x *CreateConversationRequest) GetGroupName() string {
 	return ""
 }
 
+// --- UnsendMessage ---
+type UnsendMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	MessageId     string                 `protobuf:"bytes,2,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsendMessageRequest) Reset() {
+	*x = UnsendMessageRequest{}
+	mi := &file_message_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsendMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsendMessageRequest) ProtoMessage() {}
+
+func (x *UnsendMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsendMessageRequest.ProtoReflect.Descriptor instead.
+func (*UnsendMessageRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UnsendMessageRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UnsendMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+type UnsendMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsendMessageResponse) Reset() {
+	*x = UnsendMessageResponse{}
+	mi := &file_message_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsendMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsendMessageResponse) ProtoMessage() {}
+
+func (x *UnsendMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsendMessageResponse.ProtoReflect.Descriptor instead.
+func (*UnsendMessageResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UnsendMessageResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// --- DeleteConversation ---
+type DeleteConversationRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeleteConversationRequest) Reset() {
+	*x = DeleteConversationRequest{}
+	mi := &file_message_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteConversationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteConversationRequest) ProtoMessage() {}
+
+func (x *DeleteConversationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteConversationRequest.ProtoReflect.Descriptor instead.
+func (*DeleteConversationRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteConversationRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *DeleteConversationRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+type DeleteConversationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteConversationResponse) Reset() {
+	*x = DeleteConversationResponse{}
+	mi := &file_message_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteConversationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteConversationResponse) ProtoMessage() {}
+
+func (x *DeleteConversationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteConversationResponse.ProtoReflect.Descriptor instead.
+func (*DeleteConversationResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DeleteConversationResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// --- GetVideoCallToken ---
+type GetVideoCallTokenRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetVideoCallTokenRequest) Reset() {
+	*x = GetVideoCallTokenRequest{}
+	mi := &file_message_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVideoCallTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVideoCallTokenRequest) ProtoMessage() {}
+
+func (x *GetVideoCallTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVideoCallTokenRequest.ProtoReflect.Descriptor instead.
+func (*GetVideoCallTokenRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetVideoCallTokenRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetVideoCallTokenRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+type GetVideoCallTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`                 // The token for the video SDK
+	RoomId        string                 `protobuf:"bytes,2,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"` // The room ID
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetVideoCallTokenResponse) Reset() {
+	*x = GetVideoCallTokenResponse{}
+	mi := &file_message_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetVideoCallTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetVideoCallTokenResponse) ProtoMessage() {}
+
+func (x *GetVideoCallTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetVideoCallTokenResponse.ProtoReflect.Descriptor instead.
+func (*GetVideoCallTokenResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetVideoCallTokenResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *GetVideoCallTokenResponse) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
 var File_message_proto protoreflect.FileDescriptor
 
 const file_message_proto_rawDesc = "" +
@@ -626,12 +925,32 @@ const file_message_proto_rawDesc = "" +
 	"creator_id\x18\x01 \x01(\x03R\tcreatorId\x12'\n" +
 	"\x0fparticipant_ids\x18\x02 \x03(\x03R\x0eparticipantIds\x12\x1d\n" +
 	"\n" +
-	"group_name\x18\x03 \x01(\tR\tgroupName2\xce\x02\n" +
+	"group_name\x18\x03 \x01(\tR\tgroupName\"N\n" +
+	"\x14UnsendMessageRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x02 \x01(\tR\tmessageId\"1\n" +
+	"\x15UnsendMessageResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"]\n" +
+	"\x19DeleteConversationRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\"6\n" +
+	"\x1aDeleteConversationResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\\\n" +
+	"\x18GetVideoCallTokenRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\"J\n" +
+	"\x19GetVideoCallTokenResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
+	"\aroom_id\x18\x02 \x01(\tR\x06roomId2\xd9\x04\n" +
 	"\x0eMessageService\x12W\n" +
 	"\x10GetConversations\x12 .message.GetConversationsRequest\x1a!.message.GetConversationsResponse\x12H\n" +
 	"\vGetMessages\x12\x1b.message.GetMessagesRequest\x1a\x1c.message.GetMessagesResponse\x12H\n" +
 	"\vSendMessage\x12\x1b.message.SendMessageRequest\x1a\x1c.message.SendMessageResponse\x12O\n" +
-	"\x12CreateConversation\x12\".message.CreateConversationRequest\x1a\x15.message.ConversationB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
+	"\x12CreateConversation\x12\".message.CreateConversationRequest\x1a\x15.message.Conversation\x12N\n" +
+	"\rUnsendMessage\x12\x1d.message.UnsendMessageRequest\x1a\x1e.message.UnsendMessageResponse\x12]\n" +
+	"\x12DeleteConversation\x12\".message.DeleteConversationRequest\x1a#.message.DeleteConversationResponse\x12Z\n" +
+	"\x11GetVideoCallToken\x12!.message.GetVideoCallTokenRequest\x1a\".message.GetVideoCallTokenResponseB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
 
 var (
 	file_message_proto_rawDescOnce sync.Once
@@ -645,38 +964,50 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_message_proto_goTypes = []any{
-	(*Conversation)(nil),              // 0: message.Conversation
-	(*Message)(nil),                   // 1: message.Message
-	(*GetConversationsRequest)(nil),   // 2: message.GetConversationsRequest
-	(*GetConversationsResponse)(nil),  // 3: message.GetConversationsResponse
-	(*GetMessagesRequest)(nil),        // 4: message.GetMessagesRequest
-	(*GetMessagesResponse)(nil),       // 5: message.GetMessagesResponse
-	(*SendMessageRequest)(nil),        // 6: message.SendMessageRequest
-	(*SendMessageResponse)(nil),       // 7: message.SendMessageResponse
-	(*CreateConversationRequest)(nil), // 8: message.CreateConversationRequest
-	(*proto.GetUserDataResponse)(nil), // 9: user.GetUserDataResponse
+	(*Conversation)(nil),               // 0: message.Conversation
+	(*Message)(nil),                    // 1: message.Message
+	(*GetConversationsRequest)(nil),    // 2: message.GetConversationsRequest
+	(*GetConversationsResponse)(nil),   // 3: message.GetConversationsResponse
+	(*GetMessagesRequest)(nil),         // 4: message.GetMessagesRequest
+	(*GetMessagesResponse)(nil),        // 5: message.GetMessagesResponse
+	(*SendMessageRequest)(nil),         // 6: message.SendMessageRequest
+	(*SendMessageResponse)(nil),        // 7: message.SendMessageResponse
+	(*CreateConversationRequest)(nil),  // 8: message.CreateConversationRequest
+	(*UnsendMessageRequest)(nil),       // 9: message.UnsendMessageRequest
+	(*UnsendMessageResponse)(nil),      // 10: message.UnsendMessageResponse
+	(*DeleteConversationRequest)(nil),  // 11: message.DeleteConversationRequest
+	(*DeleteConversationResponse)(nil), // 12: message.DeleteConversationResponse
+	(*GetVideoCallTokenRequest)(nil),   // 13: message.GetVideoCallTokenRequest
+	(*GetVideoCallTokenResponse)(nil),  // 14: message.GetVideoCallTokenResponse
+	(*proto.GetUserDataResponse)(nil),  // 15: user.GetUserDataResponse
 }
 var file_message_proto_depIdxs = []int32{
-	9, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
-	1, // 1: message.Conversation.last_message:type_name -> message.Message
-	0, // 2: message.GetConversationsResponse.conversations:type_name -> message.Conversation
-	1, // 3: message.GetMessagesResponse.messages:type_name -> message.Message
-	1, // 4: message.SendMessageResponse.message:type_name -> message.Message
-	2, // 5: message.MessageService.GetConversations:input_type -> message.GetConversationsRequest
-	4, // 6: message.MessageService.GetMessages:input_type -> message.GetMessagesRequest
-	6, // 7: message.MessageService.SendMessage:input_type -> message.SendMessageRequest
-	8, // 8: message.MessageService.CreateConversation:input_type -> message.CreateConversationRequest
-	3, // 9: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
-	5, // 10: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
-	7, // 11: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
-	0, // 12: message.MessageService.CreateConversation:output_type -> message.Conversation
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	15, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
+	1,  // 1: message.Conversation.last_message:type_name -> message.Message
+	0,  // 2: message.GetConversationsResponse.conversations:type_name -> message.Conversation
+	1,  // 3: message.GetMessagesResponse.messages:type_name -> message.Message
+	1,  // 4: message.SendMessageResponse.message:type_name -> message.Message
+	2,  // 5: message.MessageService.GetConversations:input_type -> message.GetConversationsRequest
+	4,  // 6: message.MessageService.GetMessages:input_type -> message.GetMessagesRequest
+	6,  // 7: message.MessageService.SendMessage:input_type -> message.SendMessageRequest
+	8,  // 8: message.MessageService.CreateConversation:input_type -> message.CreateConversationRequest
+	9,  // 9: message.MessageService.UnsendMessage:input_type -> message.UnsendMessageRequest
+	11, // 10: message.MessageService.DeleteConversation:input_type -> message.DeleteConversationRequest
+	13, // 11: message.MessageService.GetVideoCallToken:input_type -> message.GetVideoCallTokenRequest
+	3,  // 12: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
+	5,  // 13: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
+	7,  // 14: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
+	0,  // 15: message.MessageService.CreateConversation:output_type -> message.Conversation
+	10, // 16: message.MessageService.UnsendMessage:output_type -> message.UnsendMessageResponse
+	12, // 17: message.MessageService.DeleteConversation:output_type -> message.DeleteConversationResponse
+	14, // 18: message.MessageService.GetVideoCallToken:output_type -> message.GetVideoCallTokenResponse
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -690,7 +1021,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_message_proto_rawDesc), len(file_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

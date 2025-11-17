@@ -64,6 +64,9 @@ services:
     build:
       context: .
       dockerfile: ./backend/message-service/Dockerfile.dev
+    environment:
+      - VIDEOSDK_API_KEY=${VIDEOSDK_API_KEY}
+      - VIDEOSDK_API_SECRET=${VIDEOSDK_API_SECRET}
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/message-service

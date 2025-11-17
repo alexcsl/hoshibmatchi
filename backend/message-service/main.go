@@ -10,11 +10,15 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"gorm.io/gorm/clause"
+	"os"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
     "google.golang.org/grpc/status"
@@ -49,6 +53,11 @@ type Message struct {
 	ConversationID uint  `gorm:"index"` // Foreign key to Conversation
 	SenderID       int64 `gorm:"index"` // The UserID of the sender
 	Content        string
+}
+
+type HiddenConversation struct {
+	UserID         int64 `gorm:"primaryKey"`
+	ConversationID uint  `gorm:"primaryKey"`
 }
 
 // upgrader specifies the parameters for upgrading an HTTP connection to a WebSocket
@@ -131,6 +140,7 @@ func main() {
 	}
 
 	db.AutoMigrate(&Conversation{}, &Participant{}, &Message{})
+	db.AutoMigrate(&HiddenConversation{})
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -488,7 +498,13 @@ func (s *server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*
 func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsRequest) (*pb.GetConversationsResponse, error) {
 	log.Printf("GetConversations request received for user %d", req.UserId)
 
-	// --- Step 1: Find all Conversation IDs the user is a part of ---
+	// --- THIS IS THE FIX ---
+	// 1. Get list of conversations user has "hidden" (soft-deleted)
+	var hiddenConvoIDs []uint
+	s.db.Model(&HiddenConversation{}).Where("user_id = ?", req.UserId).Pluck("conversation_id", &hiddenConvoIDs)
+	// --- END FIX ---
+
+	// --- Step 2: Find all Conversation IDs the user is a part of ---
 	var conversationIDs []uint
 	if err := s.db.Model(&Participant{}).
 		Where("user_id = ?", req.UserId).
@@ -498,22 +514,27 @@ func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsR
 	}
 
 	if len(conversationIDs) == 0 {
-		// User has no conversations, return empty list
 		return &pb.GetConversationsResponse{Conversations: []*pb.Conversation{}}, nil
 	}
 
-	// --- Step 2: Fetch those conversations, sorted by most recent activity ---
+	// --- Step 3: Fetch those conversations, sorted by most recent activity
+	// --- AND FILTERING OUT THE HIDDEN ONES ---
 	var conversations []Conversation
-	if err := s.db.Where("id IN ?", conversationIDs).
-		Order("updated_at DESC"). // Sort by most recent message
+	query := s.db.Where("id IN ?", conversationIDs).
+		Order("updated_at DESC").
 		Limit(int(req.PageSize)).
-		Offset(int(req.PageOffset)).
-		Find(&conversations).Error; err != nil {
+		Offset(int(req.PageOffset))
+
+	if len(hiddenConvoIDs) > 0 {
+		query = query.Where("id NOT IN ?", hiddenConvoIDs) // <-- ADD THIS
+	}
+
+	if err := query.Find(&conversations).Error; err != nil {
 		log.Printf("Failed to get conversations for user %d: %v", req.UserId, err)
 		return nil, status.Error(codes.Internal, "Failed to retrieve conversations")
 	}
 
-	// --- Step 3: Convert GORM models to gRPC responses ---
+	// --- Step 4: Convert GORM models to gRPC responses ---
 	var grpcConversations []*pb.Conversation
 	for _, convo := range conversations {
 		grpcConvo, err := s.gormToGrpcConversation(ctx, &convo)
@@ -670,4 +691,131 @@ func (c *Client) writePump() {
 			}
 		}
 	}
+}
+
+// --- ADDED: Phase 6 Completion RPCs ---
+
+func (s *server) UnsendMessage(ctx context.Context, req *pb.UnsendMessageRequest) (*pb.UnsendMessageResponse, error) {
+	log.Printf("UnsendMessage request from user %d for msg %s", req.UserId, req.MessageId)
+
+	msgID, _ := strconv.ParseUint(req.MessageId, 10, 64)
+	if msgID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid message ID format")
+	}
+
+	// 1. Find the message
+	var msg Message
+	if err := s.db.First(&msg, msgID).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Message not found")
+	}
+
+	// 2. Security Check: Are you the sender?
+	if msg.SenderID != req.UserId {
+		return nil, status.Error(codes.PermissionDenied, "You are not the sender of this message")
+	}
+
+	// 3. Business Logic: Can only unsend within 1 minute
+	if time.Since(msg.CreatedAt) > (1 * time.Minute) {
+		return nil, status.Error(codes.FailedPrecondition, "Cannot unsend a message after 1 minute")
+	}
+
+	// 4. Delete the message
+	if err := s.db.Delete(&msg).Error; err != nil {
+		log.Printf("Failed to delete message %d: %v", msgID, err)
+		return nil, status.Error(codes.Internal, "Failed to delete message")
+	}
+
+	// 5. Publish to Redis for real-time update
+	// We send a special "delete" type message
+	deletePayload := map[string]string{
+		"type":       "DELETE",
+		"message_id": req.MessageId,
+		"convo_id":   strconv.FormatUint(uint64(msg.ConversationID), 10),
+	}
+	msgBody, _ := json.Marshal(deletePayload)
+	channelName := fmt.Sprintf("chat:%d", msg.ConversationID)
+
+	if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+		log.Printf("Failed to publish unsend message to redis channel %s: %v", channelName, err)
+	}
+
+	return &pb.UnsendMessageResponse{Message: "Message deleted"}, nil
+}
+
+func (s *server) DeleteConversation(ctx context.Context, req *pb.DeleteConversationRequest) (*pb.DeleteConversationResponse, error) {
+	log.Printf("DeleteConversation (soft) request from user %d for convo %s", req.UserId, req.ConversationId)
+
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
+	}
+
+	// This is a soft delete. We just add an entry to the HiddenConversation table.
+	// Our GetConversations RPC will now filter this out.
+	hiddenEntry := HiddenConversation{
+		UserID:         req.UserId,
+		ConversationID: uint(convoID),
+	}
+
+	// Use 'clause.OnConflict{DoNothing: true}' in case they try to delete it twice
+	if err := s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&hiddenEntry).Error; err != nil {
+		log.Printf("Failed to soft-delete conversation %d for user %d: %v", convoID, req.UserId, err)
+		return nil, status.Error(codes.Internal, "Failed to hide conversation")
+	}
+
+	return &pb.DeleteConversationResponse{Message: "Conversation hidden"}, nil
+}
+
+func (s *server) GetVideoCallToken(ctx context.Context, req *pb.GetVideoCallTokenRequest) (*pb.GetVideoCallTokenResponse, error) {
+	log.Printf("GetVideoCallToken request from user %d for convo %s", req.UserId, req.ConversationId)
+
+	// --- Step 1: Validation (Security Check) ---
+	var participantCount int64
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
+	}
+
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&participantCount)
+	if participantCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "User is not a participant of this conversation")
+	}
+
+	// --- Step 2: Get API Keys from Environment ---
+	apiKey := os.Getenv("VIDEOSDK_API_KEY")
+	apiSecret := os.Getenv("VIDEOSDK_API_SECRET")
+
+	if apiKey == "" || apiSecret == "" || strings.Contains(apiKey, "YOUR_") {
+		log.Println("VIDEOSDK_API_KEY or VIDEOSDK_API_SECRET is not set in environment")
+		return nil, status.Error(codes.Internal, "Video service is not configured on the server")
+	}
+
+	// --- Step 3: Create VideoSDK JWT Token ---
+	// This token is valid for 10 minutes
+	expirationTime := time.Now().Add(10 * time.Minute).Unix()
+
+	claims := jwt.MapClaims{
+		"apikey":        apiKey,
+		"permissions":   []string{"allow_join"}, // User can join a room
+		"version":       2,                      // Use v2 of VideoSDK tokens
+		"roomId":        req.ConversationId,     // Use our convo ID as the room ID
+		"participantId": strconv.FormatInt(req.UserId, 10), // User's ID as a string
+		"iat":           time.Now().Unix(),
+		"exp":           expirationTime,
+	}
+
+	// Create a new token object, specifying signing method and claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign and get the complete encoded token as a string using the secret
+	signedToken, err := token.SignedString([]byte(apiSecret))
+	if err != nil {
+		log.Printf("Failed to sign VideoSDK token: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to generate video token")
+	}
+
+	return &pb.GetVideoCallTokenResponse{
+		Token:  signedToken,
+		RoomId: req.ConversationId,
+	}, nil
 }
