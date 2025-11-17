@@ -7,6 +7,9 @@ option go_package = "github.com/hoshibmatchi/media-service/proto";
 service MediaService {
   // Requests a secure URL to upload a file
   rpc GetUploadURL (GetUploadURLRequest) returns (GetUploadURLResponse);
+  
+  // Upload media with automatic thumbnail generation for videos
+  rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse);
 }
 
 message GetUploadURLRequest {
@@ -18,4 +21,16 @@ message GetUploadURLRequest {
 message GetUploadURLResponse {
   string upload_url = 1; // The pre-signed URL to PUT the file to
   string final_media_url = 2; // The URL to save in the Post/Story database
+}
+
+message UploadMediaRequest {
+  string filename = 1;
+  string content_type = 2;
+  int64 user_id = 3;
+  bytes file_data = 4; // The actual file content
+}
+
+message UploadMediaResponse {
+  string media_url = 1; // The URL of the uploaded media
+  string thumbnail_url = 2; // The URL of the generated thumbnail (empty for non-videos)
 }

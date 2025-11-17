@@ -1,8 +1,8 @@
 # This is a development-only Dockerfile
 FROM golang:1.25-alpine
 
-# Install git (needed for go mod) and air for hot-reloading
-RUN apk add --no-cache git && \
+# Install git (needed for go mod), FFmpeg (for video transcoding), and air for hot-reloading
+RUN apk add --no-cache git ffmpeg && \
     go install github.com/air-verse/air@latest
 
 WORKDIR /app

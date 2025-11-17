@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"os"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -41,15 +42,16 @@ var messageClient messagePb.MessageServiceClient
 var reportClient reportPb.ReportServiceClient
 var hashtagClient hashtagPb.HashtagServiceClient
 
-// ADD THIS (must match user-service)
-// TODO: Load this from an environment variable, not hardcoded
-var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type contextKey string
 
 const userIDKey contextKey = "userID"
 
 func main() {
+	if os.Getenv("JWT_SECRET") == "" { 
+        log.Fatal("JWT_SECRET environment variable is not set")
+    }
 	// --- Connect to all gRPC Services ---
 	mustConnect(&client, "user-service:9000")
 	mustConnect(&postClient, "post-service:9001")
@@ -75,6 +77,7 @@ func main() {
 		authRoutes.POST("/register", gin.WrapF(handleRegister))
 		authRoutes.POST("/send-otp", gin.WrapF(handleSendOtp))
 		authRoutes.POST("/verify-otp", gin.WrapF(handleVerifyRegistrationOtp))
+		authRoutes.POST("/google/callback", handleGoogleCallback_Gin)
 		authRoutes.POST("/login", gin.WrapF(handleLogin))
 		authRoutes.POST("/login/verify-2fa", gin.WrapF(handleVerify2FA))
 		authRoutes.POST("/password-reset/request", gin.WrapF(handleSendPasswordReset))
@@ -2187,4 +2190,30 @@ func handleGetVideoToken_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGoogleCallback ---
+func handleGoogleCallback_Gin(c *gin.Context) {
+	var req struct {
+		AuthCode string `json:"auth_code"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.AuthCode == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'auth_code'"})
+		return
+	}
+
+	grpcReq := &pb.HandleGoogleAuthRequest{AuthCode: req.AuthCode}
+	grpcRes, err := client.HandleGoogleAuth(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	// Return the same as login: tokens
+	c.JSON(http.StatusOK, gin.H{
+		"message":        grpcRes.Message,
+		"access_token":   grpcRes.AccessToken,
+		"refresh_token":  grpcRes.RefreshToken,
+	})
 }

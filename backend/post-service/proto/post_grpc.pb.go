@@ -39,6 +39,9 @@ const (
 	PostService_RenameCollection_FullMethodName         = "/post.PostService/RenameCollection"
 	PostService_GetPost_FullMethodName                  = "/post.PostService/GetPost"
 	PostService_DeletePost_FullMethodName               = "/post.PostService/DeletePost"
+	PostService_SharePost_FullMethodName                = "/post.PostService/SharePost"
+	PostService_UnsharePost_FullMethodName              = "/post.PostService/UnsharePost"
+	PostService_GetSharedPosts_FullMethodName           = "/post.PostService/GetSharedPosts"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -65,6 +68,9 @@ type PostServiceClient interface {
 	RenameCollection(ctx context.Context, in *RenameCollectionRequest, opts ...grpc.CallOption) (*Collection, error)
 	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*Post, error)
 	DeletePost(ctx context.Context, in *DeletePostRequest, opts ...grpc.CallOption) (*DeletePostResponse, error)
+	SharePost(ctx context.Context, in *SharePostRequest, opts ...grpc.CallOption) (*SharePostResponse, error)
+	UnsharePost(ctx context.Context, in *UnsharePostRequest, opts ...grpc.CallOption) (*UnsharePostResponse, error)
+	GetSharedPosts(ctx context.Context, in *GetSharedPostsRequest, opts ...grpc.CallOption) (*GetSharedPostsResponse, error)
 }
 
 type postServiceClient struct {
@@ -275,6 +281,36 @@ func (c *postServiceClient) DeletePost(ctx context.Context, in *DeletePostReques
 	return out, nil
 }
 
+func (c *postServiceClient) SharePost(ctx context.Context, in *SharePostRequest, opts ...grpc.CallOption) (*SharePostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SharePostResponse)
+	err := c.cc.Invoke(ctx, PostService_SharePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnsharePost(ctx context.Context, in *UnsharePostRequest, opts ...grpc.CallOption) (*UnsharePostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnsharePostResponse)
+	err := c.cc.Invoke(ctx, PostService_UnsharePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetSharedPosts(ctx context.Context, in *GetSharedPostsRequest, opts ...grpc.CallOption) (*GetSharedPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSharedPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetSharedPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -299,6 +335,9 @@ type PostServiceServer interface {
 	RenameCollection(context.Context, *RenameCollectionRequest) (*Collection, error)
 	GetPost(context.Context, *GetPostRequest) (*Post, error)
 	DeletePost(context.Context, *DeletePostRequest) (*DeletePostResponse, error)
+	SharePost(context.Context, *SharePostRequest) (*SharePostResponse, error)
+	UnsharePost(context.Context, *UnsharePostRequest) (*UnsharePostResponse, error)
+	GetSharedPosts(context.Context, *GetSharedPostsRequest) (*GetSharedPostsResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -368,6 +407,15 @@ func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) 
 }
 func (UnimplementedPostServiceServer) DeletePost(context.Context, *DeletePostRequest) (*DeletePostResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeletePost not implemented")
+}
+func (UnimplementedPostServiceServer) SharePost(context.Context, *SharePostRequest) (*SharePostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SharePost not implemented")
+}
+func (UnimplementedPostServiceServer) UnsharePost(context.Context, *UnsharePostRequest) (*UnsharePostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnsharePost not implemented")
+}
+func (UnimplementedPostServiceServer) GetSharedPosts(context.Context, *GetSharedPostsRequest) (*GetSharedPostsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSharedPosts not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -750,6 +798,60 @@ func _PostService_DeletePost_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SharePost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SharePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SharePost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SharePost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SharePost(ctx, req.(*SharePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnsharePost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsharePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnsharePost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnsharePost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnsharePost(ctx, req.(*UnsharePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetSharedPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSharedPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetSharedPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetSharedPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetSharedPosts(ctx, req.(*GetSharedPostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -836,6 +938,18 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePost",
 			Handler:    _PostService_DeletePost_Handler,
+		},
+		{
+			MethodName: "SharePost",
+			Handler:    _PostService_SharePost_Handler,
+		},
+		{
+			MethodName: "UnsharePost",
+			Handler:    _PostService_UnsharePost_Handler,
+		},
+		{
+			MethodName: "GetSharedPosts",
+			Handler:    _PostService_GetSharedPosts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

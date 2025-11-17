@@ -33,6 +33,10 @@ service PostService {
   rpc GetPost (GetPostRequest) returns (Post);
 
   rpc DeletePost (DeletePostRequest) returns (DeletePostResponse);
+
+  rpc SharePost (SharePostRequest) returns (SharePostResponse);
+  rpc UnsharePost (UnsharePostRequest) returns (UnsharePostResponse);
+  rpc GetSharedPosts (GetSharedPostsRequest) returns (GetSharedPostsResponse);
 }
 
 // Data from the API Gateway
@@ -68,6 +72,7 @@ message Post {
   // Counts (we'll implement the logic for these later)
   int64 like_count = 12;
   int64 comment_count = 13;
+  int64 share_count = 14;
 }
 
 message CreatePostResponse {
@@ -131,9 +136,10 @@ message GetHomeFeedResponse {
 
 // --- Get User's Posts/Reels ---
 message GetUserContentRequest {
-  int64 user_id = 1;
+  int64 user_id = 1; // The profile owner
   int32 page_size = 2;
   int32 page_offset = 3;
+  int64 requester_id = 4; // Who is viewing (from JWT)
 }
 
 message GetUserContentCountRequest {
@@ -225,4 +231,45 @@ message DeletePostRequest {
 
 message DeletePostResponse {
   string message = 1; // e.g., "Post deleted successfully"
+}
+
+// --- Share Post ---
+message SharePostRequest {
+  int64 user_id = 1; // From JWT - who is sharing
+  int64 post_id = 2; // The post being shared
+  string caption = 3; // Optional comment when sharing
+}
+
+message SharePostResponse {
+  string message = 1;
+  int64 shared_post_id = 2; // ID of the SharedPost record
+}
+
+// --- Unshare Post ---
+message UnsharePostRequest {
+  int64 user_id = 1; // From JWT
+  int64 post_id = 2; // The post to unshare
+}
+
+message UnsharePostResponse {
+  string message = 1;
+}
+
+// --- Get Shared Posts ---
+message GetSharedPostsRequest {
+  int64 user_id = 1; // Get posts shared by this user
+  int32 page_size = 2;
+  int32 page_offset = 3;
+}
+
+message SharedPostItem {
+  string id = 1;
+  Post original_post = 2;
+  string shared_by_username = 3;
+  string shared_caption = 4;
+  string shared_at = 5;
+}
+
+message GetSharedPostsResponse {
+  repeated SharedPostItem shared_posts = 1;
 }

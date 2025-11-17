@@ -50,23 +50,31 @@ func main() {
 		log.Printf("Failed to connect to RabbitMQ: %v. Retrying...", err)
 		time.Sleep(retryDelay)
 	}
-	if amqpConn == nil { log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries) }
+	if amqpConn == nil {
+		log.Fatalf("Could not connect to RabbitMQ after %d retries", maxRetries)
+	}
 	defer amqpConn.Close()
 
 	amqpCh, err := amqpConn.Channel()
-	if err != nil { log.Fatalf("Failed to open RabbitMQ channel: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to open RabbitMQ channel: %v", err)
+	}
 	defer amqpCh.Close()
 
 	q, err := amqpCh.QueueDeclare(
 		"notification_queue", true, false, false, false, nil,
 	)
-	if err != nil { log.Fatalf("Failed to declare notification_queue: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to declare notification_queue: %v", err)
+	}
 
 	// --- Step 3: Start consuming messages ---
 	msgs, err := amqpCh.Consume(
 		q.Name, "", false, false, false, false, nil, // auto-ack = false
 	)
-	if err != nil { log.Fatalf("Failed to register consumer: %v", err) }
+	if err != nil {
+		log.Fatalf("Failed to register consumer: %v", err)
+	}
 
 	log.Println("Notification service is running. Waiting for messages...")
 
@@ -78,6 +86,7 @@ func main() {
 			d.Ack(false) // Acknowledge the message
 		}
 	}()
+	forever = make(chan struct{})
 	<-forever // Block forever
 }
 
@@ -110,6 +119,6 @@ func (s *server) processNotification(body []byte) {
 		log.Printf("Failed to save notification to db: %v", result.Error)
 		return
 	}
-	
+
 	log.Printf("Successfully saved notification for user %d", notification.UserID)
 }

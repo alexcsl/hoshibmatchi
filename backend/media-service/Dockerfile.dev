@@ -1,8 +1,9 @@
 # This is a development-only Dockerfile
 FROM golang:1.25-alpine
 
-# Install air for hot-reloading
-RUN go install github.com/air-verse/air@latest
+# Install FFmpeg for video processing, ImageMagick for image optimization, and air for hot-reloading
+RUN apk add --no-cache ffmpeg imagemagick && \
+    go install github.com/air-verse/air@latest
 
 WORKDIR /app
 

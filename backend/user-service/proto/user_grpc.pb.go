@@ -29,6 +29,7 @@ const (
 	UserService_GetUserData_FullMethodName                = "/user.UserService/GetUserData"
 	UserService_FollowUser_FullMethodName                 = "/user.UserService/FollowUser"
 	UserService_UnfollowUser_FullMethodName               = "/user.UserService/UnfollowUser"
+	UserService_IsFollowing_FullMethodName                = "/user.UserService/IsFollowing"
 	UserService_GetFollowingList_FullMethodName           = "/user.UserService/GetFollowingList"
 	UserService_GetUserProfile_FullMethodName             = "/user.UserService/GetUserProfile"
 	UserService_UpdateUserProfile_FullMethodName          = "/user.UserService/UpdateUserProfile"
@@ -42,6 +43,7 @@ const (
 	UserService_SubmitVerificationRequest_FullMethodName  = "/user.UserService/SubmitVerificationRequest"
 	UserService_GetVerificationRequests_FullMethodName    = "/user.UserService/GetVerificationRequests"
 	UserService_ResolveVerificationRequest_FullMethodName = "/user.UserService/ResolveVerificationRequest"
+	UserService_HandleGoogleAuth_FullMethodName           = "/user.UserService/HandleGoogleAuth"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -63,6 +65,7 @@ type UserServiceClient interface {
 	GetUserData(ctx context.Context, in *GetUserDataRequest, opts ...grpc.CallOption) (*GetUserDataResponse, error)
 	FollowUser(ctx context.Context, in *FollowUserRequest, opts ...grpc.CallOption) (*FollowUserResponse, error)
 	UnfollowUser(ctx context.Context, in *UnfollowUserRequest, opts ...grpc.CallOption) (*UnfollowUserResponse, error)
+	IsFollowing(ctx context.Context, in *IsFollowingRequest, opts ...grpc.CallOption) (*IsFollowingResponse, error)
 	GetFollowingList(ctx context.Context, in *GetFollowingListRequest, opts ...grpc.CallOption) (*GetFollowingListResponse, error)
 	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
 	UpdateUserProfile(ctx context.Context, in *UpdateUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
@@ -79,6 +82,8 @@ type UserServiceClient interface {
 	SubmitVerificationRequest(ctx context.Context, in *SubmitVerificationRequestRequest, opts ...grpc.CallOption) (*SubmitVerificationRequestResponse, error)
 	GetVerificationRequests(ctx context.Context, in *GetVerificationRequestsRequest, opts ...grpc.CallOption) (*GetVerificationRequestsResponse, error)
 	ResolveVerificationRequest(ctx context.Context, in *ResolveVerificationRequestRequest, opts ...grpc.CallOption) (*ResolveVerificationRequestResponse, error)
+	// Googel OAuth
+	HandleGoogleAuth(ctx context.Context, in *HandleGoogleAuthRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 }
 
 type userServiceClient struct {
@@ -183,6 +188,16 @@ func (c *userServiceClient) UnfollowUser(ctx context.Context, in *UnfollowUserRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UnfollowUserResponse)
 	err := c.cc.Invoke(ctx, UserService_UnfollowUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) IsFollowing(ctx context.Context, in *IsFollowingRequest, opts ...grpc.CallOption) (*IsFollowingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IsFollowingResponse)
+	err := c.cc.Invoke(ctx, UserService_IsFollowing_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -319,6 +334,16 @@ func (c *userServiceClient) ResolveVerificationRequest(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *userServiceClient) HandleGoogleAuth(ctx context.Context, in *HandleGoogleAuthRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoginResponse)
+	err := c.cc.Invoke(ctx, UserService_HandleGoogleAuth_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -338,6 +363,7 @@ type UserServiceServer interface {
 	GetUserData(context.Context, *GetUserDataRequest) (*GetUserDataResponse, error)
 	FollowUser(context.Context, *FollowUserRequest) (*FollowUserResponse, error)
 	UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error)
+	IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error)
 	GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error)
 	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
 	UpdateUserProfile(context.Context, *UpdateUserProfileRequest) (*GetUserProfileResponse, error)
@@ -354,6 +380,8 @@ type UserServiceServer interface {
 	SubmitVerificationRequest(context.Context, *SubmitVerificationRequestRequest) (*SubmitVerificationRequestResponse, error)
 	GetVerificationRequests(context.Context, *GetVerificationRequestsRequest) (*GetVerificationRequestsResponse, error)
 	ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error)
+	// Googel OAuth
+	HandleGoogleAuth(context.Context, *HandleGoogleAuthRequest) (*LoginResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -394,6 +422,9 @@ func (UnimplementedUserServiceServer) FollowUser(context.Context, *FollowUserReq
 func (UnimplementedUserServiceServer) UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnfollowUser not implemented")
 }
+func (UnimplementedUserServiceServer) IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IsFollowing not implemented")
+}
 func (UnimplementedUserServiceServer) GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFollowingList not implemented")
 }
@@ -432,6 +463,9 @@ func (UnimplementedUserServiceServer) GetVerificationRequests(context.Context, *
 }
 func (UnimplementedUserServiceServer) ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveVerificationRequest not implemented")
+}
+func (UnimplementedUserServiceServer) HandleGoogleAuth(context.Context, *HandleGoogleAuthRequest) (*LoginResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HandleGoogleAuth not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -630,6 +664,24 @@ func _UserService_UnfollowUser_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).UnfollowUser(ctx, req.(*UnfollowUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_IsFollowing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsFollowingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).IsFollowing(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_IsFollowing_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).IsFollowing(ctx, req.(*IsFollowingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -868,6 +920,24 @@ func _UserService_ResolveVerificationRequest_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_HandleGoogleAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HandleGoogleAuthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).HandleGoogleAuth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_HandleGoogleAuth_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).HandleGoogleAuth(ctx, req.(*HandleGoogleAuthRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -914,6 +984,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnfollowUser",
 			Handler:    _UserService_UnfollowUser_Handler,
+		},
+		{
+			MethodName: "IsFollowing",
+			Handler:    _UserService_IsFollowing_Handler,
 		},
 		{
 			MethodName: "GetFollowingList",
@@ -966,6 +1040,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveVerificationRequest",
 			Handler:    _UserService_ResolveVerificationRequest_Handler,
+		},
+		{
+			MethodName: "HandleGoogleAuth",
+			Handler:    _UserService_HandleGoogleAuth_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

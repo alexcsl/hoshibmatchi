@@ -25,6 +25,7 @@ service UserService {
 
   rpc FollowUser (FollowUserRequest) returns (FollowUserResponse);
   rpc UnfollowUser (UnfollowUserRequest) returns (UnfollowUserResponse);
+  rpc IsFollowing (IsFollowingRequest) returns (IsFollowingResponse);
 
   rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
@@ -48,6 +49,10 @@ service UserService {
   rpc SubmitVerificationRequest (SubmitVerificationRequestRequest) returns (SubmitVerificationRequestResponse);
   rpc GetVerificationRequests (GetVerificationRequestsRequest) returns (GetVerificationRequestsResponse);
   rpc ResolveVerificationRequest (ResolveVerificationRequestRequest) returns (ResolveVerificationRequestResponse);
+
+
+  // Googel OAuth
+  rpc HandleGoogleAuth (HandleGoogleAuthRequest) returns (LoginResponse); 
 }
 
 // --- Register ---
@@ -78,6 +83,10 @@ message SendOtpRequest {
 message SendOtpResponse {
   string message = 1;
   int32 rate_limit_seconds = 2;
+}
+
+message HandleGoogleAuthRequest {
+  string auth_code = 1;
 }
 
 // --- NEW: Verify Registration OTP ---
@@ -167,6 +176,16 @@ message UnfollowUserResponse {
   string message = 1; // "Successfully unfollowed user"
 }
 
+// --- Check if Following ---
+message IsFollowingRequest {
+  int64 follower_id = 1; // The user who might be following
+  int64 following_id = 2; // The user to check
+}
+
+message IsFollowingResponse {
+  bool is_following = 1;
+}
+
 message GetFollowingListRequest {
   int64 user_id = 1; // The user who is asking
 }
@@ -193,6 +212,7 @@ message GetUserProfileResponse {
   bool is_followed_by_self = 9; // Does the person viewing follow this profile?
   int64 mutual_follower_count = 10;
   string gender = 11;
+  bool is_private = 12;
 }
 
 // --- Edit User Profile ---

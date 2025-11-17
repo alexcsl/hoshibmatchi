@@ -4,25 +4,30 @@ import (
 	"context"
 	"log"
 	"net"
+	"os"
 	"regexp"
-	"strings"
-	"time"
 	"sort"
 	"strconv"
+	"strings"
+	"time"
 
 	"fmt"
 	"math/rand"
 
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/adrg/strutil"
 	"github.com/adrg/strutil/metrics"
+	"github.com/golang-jwt/jwt/v5"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -46,13 +51,15 @@ type User struct {
 	Gender            string    `gorm:"type:varchar(10);not null"`
 	Bio               string    `gorm:"type:varchar(255)"`
 
-	IsActive     bool `gorm:"default:false"` // For account deactivation
-	IsBanned     bool `gorm:"default:false"` // For admin to ban users
-	Is2FAEnabled bool `gorm:"default:false"` // For 2FA login
-	IsSubscribed bool `gorm:"default:false"` // For newsletters
-	IsPrivate    bool `gorm:"default:false"` // For private accounts
+	IsActive     bool   `gorm:"default:false"` // For account deactivation
+	IsBanned     bool   `gorm:"default:false"` // For admin to ban users
+	Is2FAEnabled bool   `gorm:"default:false"` // For 2FA login
+	IsSubscribed bool   `gorm:"default:false"` // For newsletters
+	IsPrivate    bool   `gorm:"default:false"` // For private accounts
 	Role         string `gorm:"type:varchar(10);default:'user'"`
-	IsVerified   bool `gorm:"default:false"` // For verified checkmark
+	IsVerified   bool   `gorm:"default:false"` // For verified checkmark
+	Provider     string `gorm:"type:varchar(20);default:'local'"`
+	ProviderID   string `gorm:"type:varchar(255);index"`
 }
 
 // Follow defines the relationship between two users
@@ -82,11 +89,11 @@ type Block struct {
 // For verification requests
 type VerificationRequest struct {
 	gorm.Model
-	UserID        int64  `gorm:"index;unique"` // A user can only have one open request
-	IdCardNumber  string // National ID card number
+	UserID         int64  `gorm:"index;unique"` // A user can only have one open request
+	IdCardNumber   string // National ID card number
 	FacePictureURL string
-	Reason        string
-	Status        string `gorm:"type:varchar(10);default:'pending'"` // 'pending', 'approved', 'rejected'
+	Reason         string
+	Status         string `gorm:"type:varchar(10);default:'pending'"` // 'pending', 'approved', 'rejected'
 	ResolvedByID   int64  // Admin User ID who resolved it
 }
 
@@ -97,10 +104,12 @@ type searchResult struct {
 }
 
 // Not secure
-var jwtSecret = []byte("my-super-secret-key-that-is-not-secure")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 // emailRegex for validation
 var emailRegex = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+
+var googleOauthConfig *oauth2.Config
 
 // OTP Function
 func generateOtp() string {
@@ -108,6 +117,19 @@ func generateOtp() string {
 }
 
 func main() {
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
+	// Initialize Google OAuth
+	googleOauthConfig = &oauth2.Config{
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		RedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
+		Endpoint:     google.Endpoint,
+	}
+
 	// --- Step 1: Connect to PostgreSQL ---
 	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=UTC"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -673,6 +695,20 @@ func (s *server) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) 
 	return &pb.UnfollowUserResponse{Message: "Successfully unfollowed user"}, nil
 }
 
+// --- GPRC: IsFollowing ---
+func (s *server) IsFollowing(ctx context.Context, req *pb.IsFollowingRequest) (*pb.IsFollowingResponse, error) {
+	var count int64
+	err := s.db.Model(&Follow{}).
+		Where("follower_id = ? AND following_id = ?", req.FollowerId, req.FollowingId).
+		Count(&count).Error
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to check follow status")
+	}
+
+	return &pb.IsFollowingResponse{IsFollowing: count > 0}, nil
+}
+
 // --- GPRC: GetFollowingList ---
 func (s *server) GetFollowingList(ctx context.Context, req *pb.GetFollowingListRequest) (*pb.GetFollowingListResponse, error) {
 	var followingIDs []int64
@@ -751,6 +787,7 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 		IsFollowedBySelf:    isFollowedBySelf,
 		MutualFollowerCount: mutualFollowerCount,
 		Gender:              user.Gender,
+		IsPrivate:           user.IsPrivate,
 	}, nil
 }
 
@@ -962,7 +999,7 @@ func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*
 	})
 
 	// --- Step 4: Get top 5 and convert to gRPC response ---
-	// PDF requires "5 recommended user profiles" 
+	// PDF requires "5 recommended user profiles"
 	var grpcUsers []*pb.GetUserProfileResponse
 	limit := 5
 	if len(results) < 5 {
@@ -1083,7 +1120,12 @@ func (s *server) SubmitVerificationRequest(ctx context.Context, req *pb.SubmitVe
 		return nil, status.Error(codes.Internal, "Failed to submit request")
 	}
 
-	// TODO: Publish a "verification.submitted" message to RabbitMQ for admin notifications
+	msgBody, _ := json.Marshal(map[string]string{
+		"type":       "new_verification_request",
+		"user_id":    strconv.FormatInt(newRequest.UserID, 10),
+		"request_id": strconv.FormatUint(uint64(newRequest.ID), 10),
+	})
+	s.publishToQueue(ctx, "admin_notification_queue", msgBody)
 
 	// We can't use a helper here as we need to return the request model
 	return &pb.SubmitVerificationRequestResponse{
@@ -1118,7 +1160,7 @@ func (s *server) GetVerificationRequests(ctx context.Context, req *pb.GetVerific
 	// We need user data (usernames) for each request
 	var grpcRequests []*pb.VerificationRequest
 	for _, req := range requests {
-		
+
 		// --- THIS IS THE FIX ---
 		// Get username for this request directly from our own DB
 		var user User
@@ -1201,4 +1243,79 @@ func (s *server) ResolveVerificationRequest(ctx context.Context, req *pb.Resolve
 	}
 
 	return &pb.ResolveVerificationRequestResponse{Message: "Request resolved successfully"}, nil
+}
+
+// --- GPRC: HandleGoogleAuth ---
+func (s *server) HandleGoogleAuth(ctx context.Context, req *pb.HandleGoogleAuthRequest) (*pb.LoginResponse, error) {
+	// 1. Exchange auth code for Google token
+	token, err := googleOauthConfig.Exchange(ctx, req.AuthCode)
+	if err != nil {
+		log.Printf("Failed to exchange Google auth code: %v", err)
+		return nil, status.Error(codes.InvalidArgument, "Invalid Google authorization code")
+	}
+
+	// 2. Get user info from Google
+	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get user info from Google")
+	}
+	defer response.Body.Close()
+
+	var googleUser struct {
+		ID      string `json:"id"`
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&googleUser); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to parse Google user info")
+	}
+
+	// 3. Find or Create user in our DB
+	var user User
+	err = s.db.Where("provider = 'google' AND provider_id = ?", googleUser.ID).First(&user).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// User not found, create them
+		log.Printf("Creating new user for Google login: %s", googleUser.Email)
+		newUser := User{
+			Name:              googleUser.Name,
+			Username:          googleUser.Email, // Can be changed later
+			Email:             googleUser.Email,
+			Password:          "", // No password for OAuth users
+			Provider:          "google",
+			ProviderID:        googleUser.ID,
+			ProfilePictureURL: googleUser.Picture,
+			IsActive:          true, // Google emails are pre-verified
+			IsVerified:        false,
+			Role:              "user",
+		}
+
+		if err := s.db.Create(&newUser).Error; err != nil {
+			// Handle username/email conflict
+			if strings.Contains(err.Error(), "unique constraint") {
+				return nil, status.Error(codes.AlreadyExists, "A user with this email or username already exists. Please log in normally.")
+			}
+			return nil, status.Error(codes.Internal, "Failed to create user")
+		}
+		user = newUser // Use the new user
+
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "Database error")
+	}
+
+	// 4. User exists, check if banned
+	if user.IsBanned {
+		return nil, status.Error(codes.PermissionDenied, "This account is banned")
+	}
+
+	// 5. Create tokens and return login response
+	accessToken, _ := createToken(user, 1*time.Hour)
+	refreshToken, _ := createToken(user, 7*24*time.Hour)
+
+	return &pb.LoginResponse{
+		Message:      "Google login successful",
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }

@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"regexp"
 
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -34,12 +36,23 @@ type Post struct {
 	MediaURLs        pq.StringArray `gorm:"type:text[]"`
 	IsReel           bool           `gorm:"default:false"`
 	CommentsDisabled bool           `gorm:"default:false"`
-	ThumbnailURL     string         `gorm:"type:varchar(255)"` // New
+	ThumbnailURL     string         `gorm:"type:varchar(255)"`
+	LikeCount        int64          `gorm:"default:0"`
+	CommentCount     int64          `gorm:"default:0"`
+	ShareCount       int64          `gorm:"default:0"`
 
 	// Denormalized fields from user-service
 	AuthorUsername   string
 	AuthorProfileURL string
 	AuthorIsVerified bool
+}
+
+// SharedPost tracks when a user shares a post
+type SharedPost struct {
+	gorm.Model
+	UserID         int64  // Who shared it
+	OriginalPostID int64  // The post being shared
+	Caption        string // Optional comment when sharing
 }
 
 // PostLike defines the GORM model for a like on a post
@@ -67,9 +80,10 @@ type Comment struct {
 
 type server struct {
 	pb.UnimplementedPostServiceServer
-	db         *gorm.DB
-	userClient userPb.UserServiceClient
-	amqpCh     *amqp.Channel
+	db          *gorm.DB
+	userClient  userPb.UserServiceClient
+	amqpCh      *amqp.Channel
+	minioClient *minio.Client
 }
 
 // Collection defines a user's named collection of posts
@@ -106,6 +120,7 @@ func main() {
 	db.AutoMigrate(&Collection{})
 	db.AutoMigrate(&SavedPost{})
 	db.AutoMigrate(&PostCollaborator{})
+	db.AutoMigrate(&SharedPost{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -182,6 +197,21 @@ func main() {
 	}
 	log.Println("RabbitMQ hashtag_queue declared")
 
+	// --- ADDED: Connect to MinIO ---
+	endpoint := "minio:9000"
+	accessKeyID := "minioadmin"
+	secretAccessKey := "minioadmin"
+	useSSL := false
+
+	minioClient, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
+		Secure: useSSL,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to minio: %v", err)
+	}
+	log.Println("Post-service successfully connected to MinIO")
+
 	// --- Step 4: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9001") // Port 9001
 	if err != nil {
@@ -193,9 +223,10 @@ func main() {
 	// --- THIS IS THE FIX ---
 	// We must pass the amqpCh to the server struct
 	pb.RegisterPostServiceServer(s, &server{
-		db:         db,
-		userClient: userClient,
-		amqpCh:     amqpCh, // <-- This was missing
+		db:          db,
+		userClient:  userClient,
+		amqpCh:      amqpCh,
+		minioClient: minioClient,
 	})
 	// --- END FIX ---
 
@@ -218,6 +249,52 @@ func (s *server) publishToQueue(ctx context.Context, queueName string, body []by
 			Body:         body,
 		},
 	)
+}
+
+// canViewPost checks if a user can view a post based on privacy settings
+func (s *server) canViewPost(ctx context.Context, post *Post, viewerID int64) bool {
+	// User can always view their own posts
+	if post.AuthorID == viewerID {
+		return true
+	}
+
+	// Get the author's profile to check privacy settings
+	profileResp, err := s.userClient.GetUserProfile(ctx, &userPb.GetUserProfileRequest{
+		Username:   post.AuthorUsername,
+		SelfUserId: viewerID,
+	})
+	if err != nil {
+		log.Printf("Failed to get author profile: %v", err)
+		return false
+	}
+
+	// If account is public, anyone can view
+	if !profileResp.IsPrivate {
+		return true
+	}
+
+	// If account is private, check if viewer is following
+	followResp, err := s.userClient.IsFollowing(ctx, &userPb.IsFollowingRequest{
+		FollowerId:  viewerID,
+		FollowingId: post.AuthorID,
+	})
+	if err != nil {
+		log.Printf("Failed to check follow status: %v", err)
+		return false
+	}
+
+	return followResp.IsFollowing
+}
+
+// filterPostsByPrivacy filters a slice of posts based on privacy settings
+func (s *server) filterPostsByPrivacy(ctx context.Context, posts []Post, viewerID int64) []Post {
+	var visiblePosts []Post
+	for _, post := range posts {
+		if s.canViewPost(ctx, &post, viewerID) {
+			visiblePosts = append(visiblePosts, post)
+		}
+	}
+	return visiblePosts
 }
 
 // --- Implement CreatePost ---
@@ -327,7 +404,7 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		for _, match := range matches {
 			if len(match) > 1 {
 				tag := strings.ToLower(match[1]) // Get the tag (group 1) and lowercase it
-				if !uniqueTags[tag] { // Ensure tags are unique per post
+				if !uniqueTags[tag] {            // Ensure tags are unique per post
 					uniqueTags[tag] = true
 					hashtagNames = append(hashtagNames, tag)
 				}
@@ -376,9 +453,20 @@ func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.Lik
 		PostID: req.PostId,
 	}
 
-	// GORM's Create will fail if the composite primary key already exists
-	if result := s.db.Create(&like); result.Error != nil {
-		if strings.Contains(result.Error.Error(), "unique constraint") {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the like
+		if err := tx.Create(&like).Error; err != nil {
+			return err
+		}
+		// 2. Increment the post's like_count
+		if err := tx.Model(&Post{}).Where("id = ?", req.PostId).Update("like_count", gorm.Expr("like_count + 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if strings.Contains(err.Error(), "unique constraint") || strings.Contains(err.Error(), "duplicate key") {
 			return nil, status.Error(codes.AlreadyExists, "Post already liked")
 		}
 		return nil, status.Error(codes.Internal, "Failed to like post")
@@ -411,10 +499,24 @@ func (s *server) UnlikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.U
 		PostID: req.PostId,
 	}
 
-	if result := s.db.Delete(&like); result.Error != nil {
-		return nil, status.Error(codes.Internal, "Failed to unlike post")
-	} else if result.RowsAffected == 0 {
-		return nil, status.Error(codes.NotFound, "Post was not liked")
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete the like
+		result := tx.Delete(&like)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return status.Error(codes.NotFound, "Post was not liked")
+		}
+		// 2. Decrement the post's like_count
+		if err := tx.Model(&Post{}).Where("id = ?", req.PostId).Update("like_count", gorm.Expr("like_count - 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return &pb.UnlikePostResponse{Message: "Post unliked"}, nil
@@ -438,6 +540,18 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the comment
+		if err := tx.Create(&newComment).Error; err != nil {
+			return err
+		}
+		// 2. Increment the post's comment_count
+		if err := tx.Model(&Post{}).Where("id = ?", req.PostId).Update("comment_count", gorm.Expr("comment_count + 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 
 	if result := s.db.Create(&newComment); result.Error != nil {
 		return nil, status.Error(codes.Internal, "Failed to save comment")
@@ -480,14 +594,25 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 		return nil, status.Error(codes.NotFound, "Comment not found")
 	}
 
-	// PDF Requirement: "Users can delete the replies they have posted"
 	// This means we must check ownership
 	if comment.UserID != req.UserId {
 		// TODO: Also allow post author to delete comments
 		return nil, status.Error(codes.PermissionDenied, "You do not have permission to delete this comment")
 	}
 
-	if result := s.db.Delete(&comment); result.Error != nil {
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete the comment
+		if err := tx.Delete(&comment).Error; err != nil {
+			return err
+		}
+		// 2. Decrement the post's comment_count
+		if err := tx.Model(&Post{}).Where("id = ?", comment.PostID).Update("comment_count", gorm.Expr("comment_count - 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to delete comment")
 	}
 
@@ -536,7 +661,10 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
 	}
 
-	// --- Step 4: Convert GORM models to gRPC responses ---
+	// --- Step 4: Filter posts by privacy settings ---
+	posts = s.filterPostsByPrivacy(ctx, posts, req.UserId)
+
+	// --- Step 5: Convert GORM models to gRPC responses ---
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&post))
@@ -559,6 +687,9 @@ func (s *server) GetExploreFeed(ctx context.Context, req *pb.GetHomeFeedRequest)
 		Find(&posts).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
 	}
+
+	// Filter by privacy settings
+	posts = s.filterPostsByPrivacy(ctx, posts, req.UserId)
 
 	// Convert GORM models to gRPC responses
 	var grpcPosts []*pb.Post
@@ -592,6 +723,9 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
 	}
 
+	// Filter by privacy settings
+	posts = s.filterPostsByPrivacy(ctx, posts, req.UserId)
+
 	// Convert GORM models to gRPC responses
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
@@ -623,6 +757,9 @@ func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest
 		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
 	}
 
+	// Filter by privacy settings
+	posts = s.filterPostsByPrivacy(ctx, posts, req.RequesterId)
+
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
@@ -651,6 +788,9 @@ func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest
 		Find(&posts).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to retrieve reels")
 	}
+
+	// Filter by privacy settings
+	posts = s.filterPostsByPrivacy(ctx, posts, req.RequesterId)
 
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
@@ -871,8 +1011,8 @@ func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 		AuthorIsVerified: post.AuthorIsVerified,
 
 		// Placeholder counts
-		LikeCount:    0, // TODO: Add real count
-		CommentCount: 0, // TODO: Add real count
+		LikeCount:    post.LikeCount,
+		CommentCount: post.CommentCount,
 	}
 }
 
@@ -892,6 +1032,11 @@ func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post,
 // --- GPRC: DeletePost (Admin) ---
 func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb.DeletePostResponse, error) {
 	log.Printf("Admin action: DeletePost request from admin %d for post %d", req.AdminUserId, req.PostId)
+
+	var post Post
+	if err := s.db.First(&post, req.PostId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Post not found")
+	}
 
 	// We can't delete a composite primary key (like PostLike) with just GORM,
 	// so we'll use a transaction and delete related data manually.
@@ -931,8 +1076,169 @@ func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 		return nil, status.Error(codes.Internal, "Failed to delete post and associated data")
 	}
 
-	// TODO: Delete media from MinIO
+	// --- ADDED: Delete media from MinIO ---
+	if len(post.MediaURLs) > 0 {
+		bucketName := "hoshi-media" // As defined in media-service
+		for _, url := range post.MediaURLs {
+			// Extract object name from URL
+			// Assumes URL is like "http://minio:9000/hoshi-media/object-name"
+			objectName := url[strings.LastIndex(url, "/")+1:]
+			if objectName != "" {
+				err := s.minioClient.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
+				if err != nil {
+					log.Printf("Failed to delete object %s from MinIO: %v", objectName, err)
+					// Do not fail the whole request, just log it
+				}
+			}
+		}
+	}
 	log.Printf("Successfully deleted post %d and its associations", req.PostId)
 
 	return &pb.DeletePostResponse{Message: "Post deleted successfully"}, nil
+}
+
+// --- Implement SharePost ---
+func (s *server) SharePost(ctx context.Context, req *pb.SharePostRequest) (*pb.SharePostResponse, error) {
+	// Verify post exists
+	var post Post
+	if err := s.db.First(&post, req.PostId).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, status.Error(codes.NotFound, "Post not found")
+		}
+		return nil, status.Error(codes.Internal, "Failed to fetch post")
+	}
+
+	// Create SharedPost record
+	sharedPost := SharedPost{
+		UserID:         req.UserId,
+		OriginalPostID: req.PostId,
+		Caption:        req.Caption,
+	}
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the share
+		if err := tx.Create(&sharedPost).Error; err != nil {
+			return err
+		}
+		// 2. Increment the post's share_count
+		if err := tx.Model(&Post{}).Where("id = ?", req.PostId).Update("share_count", gorm.Expr("share_count + 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("Failed to share post: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to share post")
+	}
+
+	// Send notification to post author (if not sharing own post)
+	if post.AuthorID != req.UserId {
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"type":      "post.shared",
+			"actor_id":  req.UserId,
+			"user_id":   post.AuthorID,
+			"entity_id": req.PostId,
+		})
+		s.publishToQueue(ctx, "notification_queue", msgBody)
+	}
+
+	return &pb.SharePostResponse{
+		Message:      "Post shared successfully",
+		SharedPostId: int64(sharedPost.ID),
+	}, nil
+}
+
+// --- Implement UnsharePost ---
+func (s *server) UnsharePost(ctx context.Context, req *pb.UnsharePostRequest) (*pb.UnsharePostResponse, error) {
+	var sharedPost SharedPost
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Find and delete the SharedPost
+		result := tx.Where("user_id = ? AND original_post_id = ?", req.UserId, req.PostId).Delete(&sharedPost)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return status.Error(codes.NotFound, "Shared post not found")
+		}
+
+		// 2. Decrement the post's share_count
+		if err := tx.Model(&Post{}).Where("id = ?", req.PostId).Update("share_count", gorm.Expr("share_count - 1")).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+			return nil, st.Err()
+		}
+		log.Printf("Failed to unshare post: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to unshare post")
+	}
+
+	return &pb.UnsharePostResponse{Message: "Post unshared successfully"}, nil
+}
+
+// --- Implement GetSharedPosts ---
+func (s *server) GetSharedPosts(ctx context.Context, req *pb.GetSharedPostsRequest) (*pb.GetSharedPostsResponse, error) {
+	var sharedPosts []SharedPost
+
+	// Fetch shared posts with pagination
+	offset := int(req.PageOffset * req.PageSize)
+	if err := s.db.Where("user_id = ?", req.UserId).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(offset).
+		Find(&sharedPosts).Error; err != nil {
+		log.Printf("Failed to fetch shared posts: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to fetch shared posts")
+	}
+
+	// Get user info for the sharer
+	userResp, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.UserId})
+	if err != nil {
+		log.Printf("Failed to fetch user info: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to fetch user info")
+	}
+
+	// Build response
+	var items []*pb.SharedPostItem
+	for _, sp := range sharedPosts {
+		// Fetch the original post
+		var post Post
+		if err := s.db.First(&post, sp.OriginalPostID).Error; err != nil {
+			log.Printf("Warning: Shared post %d references non-existent post %d", sp.ID, sp.OriginalPostID)
+			continue
+		}
+
+		// Convert to proto Post
+		protoPost := &pb.Post{
+			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			AuthorId:         post.AuthorID,
+			Caption:          post.Caption,
+			AuthorUsername:   post.AuthorUsername,
+			AuthorProfileUrl: post.AuthorProfileURL,
+			AuthorIsVerified: post.AuthorIsVerified,
+			MediaUrls:        post.MediaURLs,
+			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+			IsReel:           post.IsReel,
+			CommentsDisabled: post.CommentsDisabled,
+			ThumbnailUrl:     post.ThumbnailURL,
+			LikeCount:        post.LikeCount,
+			CommentCount:     post.CommentCount,
+			ShareCount:       post.ShareCount,
+		}
+
+		items = append(items, &pb.SharedPostItem{
+			Id:               strconv.FormatUint(uint64(sp.ID), 10),
+			OriginalPost:     protoPost,
+			SharedByUsername: userResp.Username,
+			SharedCaption:    sp.Caption,
+			SharedAt:         sp.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &pb.GetSharedPostsResponse{SharedPosts: items}, nil
 }

@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MediaService_GetUploadURL_FullMethodName = "/media.MediaService/GetUploadURL"
+	MediaService_UploadMedia_FullMethodName  = "/media.MediaService/UploadMedia"
 )
 
 // MediaServiceClient is the client API for MediaService service.
@@ -28,6 +29,8 @@ const (
 type MediaServiceClient interface {
 	// Requests a secure URL to upload a file
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
+	// Upload media with automatic thumbnail generation for videos
+	UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*UploadMediaResponse, error)
 }
 
 type mediaServiceClient struct {
@@ -48,12 +51,24 @@ func (c *mediaServiceClient) GetUploadURL(ctx context.Context, in *GetUploadURLR
 	return out, nil
 }
 
+func (c *mediaServiceClient) UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*UploadMediaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadMediaResponse)
+	err := c.cc.Invoke(ctx, MediaService_UploadMedia_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MediaServiceServer is the server API for MediaService service.
 // All implementations must embed UnimplementedMediaServiceServer
 // for forward compatibility.
 type MediaServiceServer interface {
 	// Requests a secure URL to upload a file
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
+	// Upload media with automatic thumbnail generation for videos
+	UploadMedia(context.Context, *UploadMediaRequest) (*UploadMediaResponse, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
 
@@ -66,6 +81,9 @@ type UnimplementedMediaServiceServer struct{}
 
 func (UnimplementedMediaServiceServer) GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUploadURL not implemented")
+}
+func (UnimplementedMediaServiceServer) UploadMedia(context.Context, *UploadMediaRequest) (*UploadMediaResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadMedia not implemented")
 }
 func (UnimplementedMediaServiceServer) mustEmbedUnimplementedMediaServiceServer() {}
 func (UnimplementedMediaServiceServer) testEmbeddedByValue()                      {}
@@ -106,6 +124,24 @@ func _MediaService_GetUploadURL_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_UploadMedia_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadMediaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).UploadMedia(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_UploadMedia_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).UploadMedia(ctx, req.(*UploadMediaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MediaService_ServiceDesc is the grpc.ServiceDesc for MediaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +152,10 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUploadURL",
 			Handler:    _MediaService_GetUploadURL_Handler,
+		},
+		{
+			MethodName: "UploadMedia",
+			Handler:    _MediaService_UploadMedia_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

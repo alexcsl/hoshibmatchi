@@ -134,6 +134,7 @@ type Post struct {
 	// Counts (we'll implement the logic for these later)
 	LikeCount     int64 `protobuf:"varint,12,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
 	CommentCount  int64 `protobuf:"varint,13,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
+	ShareCount    int64 `protobuf:"varint,14,opt,name=share_count,json=shareCount,proto3" json:"share_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -255,6 +256,13 @@ func (x *Post) GetLikeCount() int64 {
 func (x *Post) GetCommentCount() int64 {
 	if x != nil {
 		return x.CommentCount
+	}
+	return 0
+}
+
+func (x *Post) GetShareCount() int64 {
+	if x != nil {
+		return x.ShareCount
 	}
 	return 0
 }
@@ -864,9 +872,10 @@ func (x *GetHomeFeedResponse) GetPosts() []*Post {
 // --- Get User's Posts/Reels ---
 type GetUserContentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // The profile owner
 	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	PageOffset    int32                  `protobuf:"varint,3,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	RequesterId   int64                  `protobuf:"varint,4,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"` // Who is viewing (from JWT)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -918,6 +927,13 @@ func (x *GetUserContentRequest) GetPageSize() int32 {
 func (x *GetUserContentRequest) GetPageOffset() int32 {
 	if x != nil {
 		return x.PageOffset
+	}
+	return 0
+}
+
+func (x *GetUserContentRequest) GetRequesterId() int64 {
+	if x != nil {
+		return x.RequesterId
 	}
 	return 0
 }
@@ -1798,6 +1814,397 @@ func (x *DeletePostResponse) GetMessage() string {
 	return ""
 }
 
+// --- Share Post ---
+type SharePostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT - who is sharing
+	PostId        int64                  `protobuf:"varint,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"` // The post being shared
+	Caption       string                 `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`              // Optional comment when sharing
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SharePostRequest) Reset() {
+	*x = SharePostRequest{}
+	mi := &file_post_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SharePostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SharePostRequest) ProtoMessage() {}
+
+func (x *SharePostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SharePostRequest.ProtoReflect.Descriptor instead.
+func (*SharePostRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SharePostRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *SharePostRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+func (x *SharePostRequest) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
+type SharePostResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	SharedPostId  int64                  `protobuf:"varint,2,opt,name=shared_post_id,json=sharedPostId,proto3" json:"shared_post_id,omitempty"` // ID of the SharedPost record
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SharePostResponse) Reset() {
+	*x = SharePostResponse{}
+	mi := &file_post_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SharePostResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SharePostResponse) ProtoMessage() {}
+
+func (x *SharePostResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SharePostResponse.ProtoReflect.Descriptor instead.
+func (*SharePostResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *SharePostResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SharePostResponse) GetSharedPostId() int64 {
+	if x != nil {
+		return x.SharedPostId
+	}
+	return 0
+}
+
+// --- Unshare Post ---
+type UnsharePostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	PostId        int64                  `protobuf:"varint,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"` // The post to unshare
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsharePostRequest) Reset() {
+	*x = UnsharePostRequest{}
+	mi := &file_post_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsharePostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsharePostRequest) ProtoMessage() {}
+
+func (x *UnsharePostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsharePostRequest.ProtoReflect.Descriptor instead.
+func (*UnsharePostRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *UnsharePostRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UnsharePostRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+type UnsharePostResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsharePostResponse) Reset() {
+	*x = UnsharePostResponse{}
+	mi := &file_post_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsharePostResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsharePostResponse) ProtoMessage() {}
+
+func (x *UnsharePostResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsharePostResponse.ProtoReflect.Descriptor instead.
+func (*UnsharePostResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *UnsharePostResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// --- Get Shared Posts ---
+type GetSharedPostsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // Get posts shared by this user
+	PageSize      int32                  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageOffset    int32                  `protobuf:"varint,3,opt,name=page_offset,json=pageOffset,proto3" json:"page_offset,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSharedPostsRequest) Reset() {
+	*x = GetSharedPostsRequest{}
+	mi := &file_post_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSharedPostsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSharedPostsRequest) ProtoMessage() {}
+
+func (x *GetSharedPostsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSharedPostsRequest.ProtoReflect.Descriptor instead.
+func (*GetSharedPostsRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetSharedPostsRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetSharedPostsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetSharedPostsRequest) GetPageOffset() int32 {
+	if x != nil {
+		return x.PageOffset
+	}
+	return 0
+}
+
+type SharedPostItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OriginalPost     *Post                  `protobuf:"bytes,2,opt,name=original_post,json=originalPost,proto3" json:"original_post,omitempty"`
+	SharedByUsername string                 `protobuf:"bytes,3,opt,name=shared_by_username,json=sharedByUsername,proto3" json:"shared_by_username,omitempty"`
+	SharedCaption    string                 `protobuf:"bytes,4,opt,name=shared_caption,json=sharedCaption,proto3" json:"shared_caption,omitempty"`
+	SharedAt         string                 `protobuf:"bytes,5,opt,name=shared_at,json=sharedAt,proto3" json:"shared_at,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *SharedPostItem) Reset() {
+	*x = SharedPostItem{}
+	mi := &file_post_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SharedPostItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SharedPostItem) ProtoMessage() {}
+
+func (x *SharedPostItem) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SharedPostItem.ProtoReflect.Descriptor instead.
+func (*SharedPostItem) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *SharedPostItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SharedPostItem) GetOriginalPost() *Post {
+	if x != nil {
+		return x.OriginalPost
+	}
+	return nil
+}
+
+func (x *SharedPostItem) GetSharedByUsername() string {
+	if x != nil {
+		return x.SharedByUsername
+	}
+	return ""
+}
+
+func (x *SharedPostItem) GetSharedCaption() string {
+	if x != nil {
+		return x.SharedCaption
+	}
+	return ""
+}
+
+func (x *SharedPostItem) GetSharedAt() string {
+	if x != nil {
+		return x.SharedAt
+	}
+	return ""
+}
+
+type GetSharedPostsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SharedPosts   []*SharedPostItem      `protobuf:"bytes,1,rep,name=shared_posts,json=sharedPosts,proto3" json:"shared_posts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSharedPostsResponse) Reset() {
+	*x = GetSharedPostsResponse{}
+	mi := &file_post_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSharedPostsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSharedPostsResponse) ProtoMessage() {}
+
+func (x *GetSharedPostsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSharedPostsResponse.ProtoReflect.Descriptor instead.
+func (*GetSharedPostsResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *GetSharedPostsResponse) GetSharedPosts() []*SharedPostItem {
+	if x != nil {
+		return x.SharedPosts
+	}
+	return nil
+}
+
 var File_post_proto protoreflect.FileDescriptor
 
 const file_post_proto_rawDesc = "" +
@@ -1813,7 +2220,7 @@ const file_post_proto_rawDesc = "" +
 	"\x11comments_disabled\x18\x04 \x01(\bR\x10commentsDisabled\x12\x17\n" +
 	"\ais_reel\x18\x05 \x01(\bR\x06isReel\x12)\n" +
 	"\x10collaborator_ids\x18\x06 \x03(\x03R\x0fcollaboratorIds\x12#\n" +
-	"\rthumbnail_url\x18\a \x01(\tR\fthumbnailUrl\"\xbf\x03\n" +
+	"\rthumbnail_url\x18\a \x01(\tR\fthumbnailUrl\"\xe0\x03\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\x03R\bauthorId\x12\x18\n" +
@@ -1831,7 +2238,9 @@ const file_post_proto_rawDesc = "" +
 	"\rthumbnail_url\x18\v \x01(\tR\fthumbnailUrl\x12\x1d\n" +
 	"\n" +
 	"like_count\x18\f \x01(\x03R\tlikeCount\x12#\n" +
-	"\rcomment_count\x18\r \x01(\x03R\fcommentCount\"4\n" +
+	"\rcomment_count\x18\r \x01(\x03R\fcommentCount\x12\x1f\n" +
+	"\vshare_count\x18\x0e \x01(\x03R\n" +
+	"shareCount\"4\n" +
 	"\x12CreatePostResponse\x12\x1e\n" +
 	"\x04post\x18\x01 \x01(\v2\n" +
 	".post.PostR\x04post\"C\n" +
@@ -1872,12 +2281,13 @@ const file_post_proto_rawDesc = "" +
 	"pageOffset\"7\n" +
 	"\x13GetHomeFeedResponse\x12 \n" +
 	"\x05posts\x18\x01 \x03(\v2\n" +
-	".post.PostR\x05posts\"n\n" +
+	".post.PostR\x05posts\"\x91\x01\n" +
 	"\x15GetUserContentRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
 	"\vpage_offset\x18\x03 \x01(\x05R\n" +
-	"pageOffset\"5\n" +
+	"pageOffset\x12!\n" +
+	"\frequester_id\x18\x04 \x01(\x03R\vrequesterId\"5\n" +
 	"\x1aGetUserContentCountRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\"[\n" +
 	"\x1bGetUserContentCountResponse\x12\x1d\n" +
@@ -1930,7 +2340,33 @@ const file_post_proto_rawDesc = "" +
 	"\apost_id\x18\x01 \x01(\x03R\x06postId\x12\"\n" +
 	"\radmin_user_id\x18\x02 \x01(\x03R\vadminUserId\".\n" +
 	"\x12DeletePostResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xd6\v\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"^\n" +
+	"\x10SharePostRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x17\n" +
+	"\apost_id\x18\x02 \x01(\x03R\x06postId\x12\x18\n" +
+	"\acaption\x18\x03 \x01(\tR\acaption\"S\n" +
+	"\x11SharePostResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12$\n" +
+	"\x0eshared_post_id\x18\x02 \x01(\x03R\fsharedPostId\"F\n" +
+	"\x12UnsharePostRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x17\n" +
+	"\apost_id\x18\x02 \x01(\x03R\x06postId\"/\n" +
+	"\x13UnsharePostResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"n\n" +
+	"\x15GetSharedPostsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
+	"\vpage_offset\x18\x03 \x01(\x05R\n" +
+	"pageOffset\"\xc3\x01\n" +
+	"\x0eSharedPostItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
+	"\roriginal_post\x18\x02 \x01(\v2\n" +
+	".post.PostR\foriginalPost\x12,\n" +
+	"\x12shared_by_username\x18\x03 \x01(\tR\x10sharedByUsername\x12%\n" +
+	"\x0eshared_caption\x18\x04 \x01(\tR\rsharedCaption\x12\x1b\n" +
+	"\tshared_at\x18\x05 \x01(\tR\bsharedAt\"Q\n" +
+	"\x16GetSharedPostsResponse\x127\n" +
+	"\fshared_posts\x18\x01 \x03(\v2\x14.post.SharedPostItemR\vsharedPosts2\xa5\r\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -1955,7 +2391,10 @@ const file_post_proto_rawDesc = "" +
 	"\aGetPost\x12\x14.post.GetPostRequest\x1a\n" +
 	".post.Post\x12?\n" +
 	"\n" +
-	"DeletePost\x12\x17.post.DeletePostRequest\x1a\x18.post.DeletePostResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"DeletePost\x12\x17.post.DeletePostRequest\x1a\x18.post.DeletePostResponse\x12<\n" +
+	"\tSharePost\x12\x16.post.SharePostRequest\x1a\x17.post.SharePostResponse\x12B\n" +
+	"\vUnsharePost\x12\x18.post.UnsharePostRequest\x1a\x19.post.UnsharePostResponse\x12K\n" +
+	"\x0eGetSharedPosts\x12\x1b.post.GetSharedPostsRequest\x1a\x1c.post.GetSharedPostsResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -1969,7 +2408,7 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),                // 0: post.CreatePostRequest
 	(*Post)(nil),                             // 1: post.Post
@@ -2002,56 +2441,71 @@ var file_post_proto_goTypes = []any{
 	(*GetPostRequest)(nil),                   // 28: post.GetPostRequest
 	(*DeletePostRequest)(nil),                // 29: post.DeletePostRequest
 	(*DeletePostResponse)(nil),               // 30: post.DeletePostResponse
+	(*SharePostRequest)(nil),                 // 31: post.SharePostRequest
+	(*SharePostResponse)(nil),                // 32: post.SharePostResponse
+	(*UnsharePostRequest)(nil),               // 33: post.UnsharePostRequest
+	(*UnsharePostResponse)(nil),              // 34: post.UnsharePostResponse
+	(*GetSharedPostsRequest)(nil),            // 35: post.GetSharedPostsRequest
+	(*SharedPostItem)(nil),                   // 36: post.SharedPostItem
+	(*GetSharedPostsResponse)(nil),           // 37: post.GetSharedPostsResponse
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
 	1,  // 1: post.GetHomeFeedResponse.posts:type_name -> post.Post
 	16, // 2: post.GetUserCollectionsResponse.collections:type_name -> post.Collection
-	0,  // 3: post.PostService.CreatePost:input_type -> post.CreatePostRequest
-	3,  // 4: post.PostService.LikePost:input_type -> post.LikePostRequest
-	3,  // 5: post.PostService.UnlikePost:input_type -> post.LikePostRequest
-	7,  // 6: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
-	9,  // 7: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
-	11, // 8: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
-	11, // 9: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
-	11, // 10: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
-	13, // 11: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
-	13, // 12: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
-	14, // 13: post.PostService.GetUserContentCount:input_type -> post.GetUserContentCountRequest
-	17, // 14: post.PostService.CreateCollection:input_type -> post.CreateCollectionRequest
-	18, // 15: post.PostService.GetUserCollections:input_type -> post.GetUserCollectionsRequest
-	20, // 16: post.PostService.GetPostsInCollection:input_type -> post.GetPostsInCollectionRequest
-	21, // 17: post.PostService.SavePostToCollection:input_type -> post.SavePostToCollectionRequest
-	23, // 18: post.PostService.UnsavePostFromCollection:input_type -> post.UnsavePostFromCollectionRequest
-	25, // 19: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
-	27, // 20: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
-	28, // 21: post.PostService.GetPost:input_type -> post.GetPostRequest
-	29, // 22: post.PostService.DeletePost:input_type -> post.DeletePostRequest
-	2,  // 23: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 24: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 25: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 26: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	10, // 27: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 28: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	12, // 29: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	12, // 30: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	12, // 31: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	12, // 32: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	15, // 33: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
-	16, // 34: post.PostService.CreateCollection:output_type -> post.Collection
-	19, // 35: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
-	12, // 36: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
-	22, // 37: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
-	24, // 38: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
-	26, // 39: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
-	16, // 40: post.PostService.RenameCollection:output_type -> post.Collection
-	1,  // 41: post.PostService.GetPost:output_type -> post.Post
-	30, // 42: post.PostService.DeletePost:output_type -> post.DeletePostResponse
-	23, // [23:43] is the sub-list for method output_type
-	3,  // [3:23] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	1,  // 3: post.SharedPostItem.original_post:type_name -> post.Post
+	36, // 4: post.GetSharedPostsResponse.shared_posts:type_name -> post.SharedPostItem
+	0,  // 5: post.PostService.CreatePost:input_type -> post.CreatePostRequest
+	3,  // 6: post.PostService.LikePost:input_type -> post.LikePostRequest
+	3,  // 7: post.PostService.UnlikePost:input_type -> post.LikePostRequest
+	7,  // 8: post.PostService.CommentOnPost:input_type -> post.CommentOnPostRequest
+	9,  // 9: post.PostService.DeleteComment:input_type -> post.DeleteCommentRequest
+	11, // 10: post.PostService.GetHomeFeed:input_type -> post.GetHomeFeedRequest
+	11, // 11: post.PostService.GetExploreFeed:input_type -> post.GetHomeFeedRequest
+	11, // 12: post.PostService.GetReelsFeed:input_type -> post.GetHomeFeedRequest
+	13, // 13: post.PostService.GetUserPosts:input_type -> post.GetUserContentRequest
+	13, // 14: post.PostService.GetUserReels:input_type -> post.GetUserContentRequest
+	14, // 15: post.PostService.GetUserContentCount:input_type -> post.GetUserContentCountRequest
+	17, // 16: post.PostService.CreateCollection:input_type -> post.CreateCollectionRequest
+	18, // 17: post.PostService.GetUserCollections:input_type -> post.GetUserCollectionsRequest
+	20, // 18: post.PostService.GetPostsInCollection:input_type -> post.GetPostsInCollectionRequest
+	21, // 19: post.PostService.SavePostToCollection:input_type -> post.SavePostToCollectionRequest
+	23, // 20: post.PostService.UnsavePostFromCollection:input_type -> post.UnsavePostFromCollectionRequest
+	25, // 21: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
+	27, // 22: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
+	28, // 23: post.PostService.GetPost:input_type -> post.GetPostRequest
+	29, // 24: post.PostService.DeletePost:input_type -> post.DeletePostRequest
+	31, // 25: post.PostService.SharePost:input_type -> post.SharePostRequest
+	33, // 26: post.PostService.UnsharePost:input_type -> post.UnsharePostRequest
+	35, // 27: post.PostService.GetSharedPosts:input_type -> post.GetSharedPostsRequest
+	2,  // 28: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 29: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 30: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 31: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	10, // 32: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 33: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	12, // 34: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	12, // 35: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	12, // 36: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	12, // 37: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	15, // 38: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
+	16, // 39: post.PostService.CreateCollection:output_type -> post.Collection
+	19, // 40: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
+	12, // 41: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
+	22, // 42: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
+	24, // 43: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
+	26, // 44: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
+	16, // 45: post.PostService.RenameCollection:output_type -> post.Collection
+	1,  // 46: post.PostService.GetPost:output_type -> post.Post
+	30, // 47: post.PostService.DeletePost:output_type -> post.DeletePostResponse
+	32, // 48: post.PostService.SharePost:output_type -> post.SharePostResponse
+	34, // 49: post.PostService.UnsharePost:output_type -> post.UnsharePostResponse
+	37, // 50: post.PostService.GetSharedPosts:output_type -> post.GetSharedPostsResponse
+	28, // [28:51] is the sub-list for method output_type
+	5,  // [5:28] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_post_proto_init() }
@@ -2065,7 +2519,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   31,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

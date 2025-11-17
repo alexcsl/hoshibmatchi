@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/api-gateway/Dockerfile.dev
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./backend:/app/backend # Mount local backend code
     working_dir: /app/backend/api-gateway
@@ -28,6 +30,11 @@ services:
     build:
       context: .
       dockerfile: ./backend/user-service/Dockerfile.dev
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}   
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET} 
+      - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/user-service
@@ -111,6 +118,9 @@ services:
         condition: service_started
 
   ai-service:
+    build:
+      context: ./backend/ai-service
+      dockerfile: Dockerfile
     command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9008", "--reload"]
     volumes:
       - ./backend/ai-service:/app

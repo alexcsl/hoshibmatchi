@@ -5,10 +5,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,6 +47,7 @@ type server struct {
 	postDB        *gorm.DB // Connection to post-db
 	amqpCh        *amqp.Channel
 	hashtagClient hashtagPb.HashtagServiceClient
+	minioClient   *minio.Client
 }
 
 func main() {
@@ -96,12 +104,23 @@ func main() {
 	hashtagClient := hashtagPb.NewHashtagServiceClient(hashtagConn)
 	log.Println("Worker successfully connected to hashtag-service")
 
+	// --- Step 3.5: Connect to MinIO ---
+	minioClient, err := minio.New("minio:9000", &minio.Options{
+		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+		Secure: false,
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to MinIO: %v", err)
+	}
+	log.Println("Worker successfully connected to MinIO")
+
 	// --- Step 4: Create Server Struct ---
 	s := &server{
 		storyDB:       storyDB,
 		postDB:        postDB,
 		amqpCh:        amqpCh,
 		hashtagClient: hashtagClient,
+		minioClient:   minioClient,
 	}
 
 	// --- Step 5: Declare All Queues ---
@@ -167,6 +186,7 @@ func main() {
 	}()
 
 	log.Println("Worker service is running. Waiting for jobs...")
+	forever = make(chan struct{})
 	<-forever // Block forever
 }
 
@@ -193,7 +213,7 @@ func (s *server) processStoryDeletion(body []byte) {
 	log.Printf("Successfully deleted story %d", storyID)
 }
 
-// processVideoTranscoding simulates transcoding and updates the post-db
+// processVideoTranscoding transcodes videos using FFmpeg
 func (s *server) processVideoTranscoding(body []byte) {
 	var job map[string]interface{}
 	if err := json.Unmarshal(body, &job); err != nil {
@@ -209,37 +229,186 @@ func (s *server) processVideoTranscoding(body []byte) {
 	}
 	postID := uint(postIDFloat)
 
-	log.Printf("--- STARTING VIDEO JOB for Post ID: %d ---", postID)
+	log.Printf("--- STARTING VIDEO TRANSCODING for Post ID: %d ---", postID)
 
 	// 1. Find the post in the post-db
 	var post Post
 	if err := s.postDB.First(&post, postID).Error; err != nil {
 		log.Printf("Failed to find post %d for transcoding: %v", postID, err)
-		return // Can't process if post doesn't exist
-	}
-
-	// 2. Simulate a long-running transcode job
-	log.Printf("Transcoding video(s): %v", post.MediaURLs)
-	time.Sleep(5 * time.Second) // Simulates ffmpeg work
-
-	// 3. Simulate updating the URL to an HLS playlist
-	newMediaURLs := []string{}
-	for _, url := range post.MediaURLs {
-		if strings.HasSuffix(strings.ToLower(url), ".mp4") {
-			newURL := strings.Replace(url, ".mp4", ".m3u8", 1)
-			newMediaURLs = append(newMediaURLs, newURL)
-		} else {
-			newMediaURLs = append(newMediaURLs, url) // Keep non-mp4 files as-is
-		}
-	}
-
-	// 4. Update the post in the post-db
-	if err := s.postDB.Model(&post).Update("media_urls", pq.StringArray(newMediaURLs)).Error; err != nil {
-		log.Printf("Failed to update post %d with new HLS URLs: %v", postID, err)
 		return
 	}
 
-	log.Printf("--- FINISHED VIDEO JOB for Post ID: %d. New URLs: %v ---", postID, newMediaURLs)
+	if len(post.MediaURLs) == 0 {
+		log.Printf("No media URLs found for Post ID: %d", postID)
+		return
+	}
+
+	// 2. Create temp directory for processing
+	tempDir, err := os.MkdirTemp("", "transcode-*")
+	if err != nil {
+		log.Printf("Failed to create temp directory: %v", err)
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
+	var transcodedURLs []string
+
+	// 3. Process each media URL
+	for idx, mediaURL := range post.MediaURLs {
+		if !isVideoFile(mediaURL) {
+			// Keep non-video files as-is
+			transcodedURLs = append(transcodedURLs, mediaURL)
+			continue
+		}
+
+		log.Printf("Transcoding video %d/%d: %s", idx+1, len(post.MediaURLs), mediaURL)
+
+		// Extract filename from URL (e.g., "videos/abc123.mp4" -> "abc123")
+		parts := strings.Split(mediaURL, "/")
+		if len(parts) < 2 {
+			log.Printf("Invalid media URL format: %s", mediaURL)
+			transcodedURLs = append(transcodedURLs, mediaURL)
+			continue
+		}
+		filename := parts[len(parts)-1]
+		filenameNoExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+		// 4. Download video from MinIO
+		inputPath := filepath.Join(tempDir, filename)
+		if err := s.downloadFromMinio("hoshibmatchi", mediaURL, inputPath); err != nil {
+			log.Printf("Failed to download video from MinIO: %v", err)
+			transcodedURLs = append(transcodedURLs, mediaURL)
+			continue
+		}
+
+		// 5. Transcode to multiple resolutions (720p, 480p, 360p)
+		resolutions := []struct {
+			name   string
+			width  int
+			height int
+		}{
+			{"720p", 1280, 720},
+			{"480p", 854, 480},
+			{"360p", 640, 360},
+		}
+
+		successfulTranscode := false
+		for _, res := range resolutions {
+			outputFilename := fmt.Sprintf("%s_%s.mp4", filenameNoExt, res.name)
+			outputPath := filepath.Join(tempDir, outputFilename)
+
+			// Run FFmpeg transcoding
+			cmd := exec.Command("ffmpeg",
+				"-i", inputPath,
+				"-vf", fmt.Sprintf("scale=%d:%d", res.width, res.height),
+				"-c:v", "libx264",
+				"-preset", "fast",
+				"-crf", "23",
+				"-c:a", "aac",
+				"-b:a", "128k",
+				"-movflags", "+faststart",
+				"-y", // Overwrite output file
+				outputPath,
+			)
+
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				log.Printf("FFmpeg failed for %s: %v\nOutput: %s", res.name, err, string(output))
+				continue
+			}
+
+			log.Printf("Successfully transcoded to %s", res.name)
+
+			// 6. Upload transcoded video to MinIO
+			minioPath := fmt.Sprintf("videos/transcoded/%s", outputFilename)
+			if err := s.uploadToMinio("hoshibmatchi", minioPath, outputPath); err != nil {
+				log.Printf("Failed to upload %s to MinIO: %v", res.name, err)
+				continue
+			}
+
+			log.Printf("Uploaded %s to MinIO: %s", res.name, minioPath)
+			transcodedURLs = append(transcodedURLs, minioPath)
+			successfulTranscode = true
+		}
+
+		// If transcoding failed, keep the original
+		if !successfulTranscode {
+			log.Printf("All transcoding failed for %s, keeping original", mediaURL)
+			transcodedURLs = append(transcodedURLs, mediaURL)
+		}
+	}
+
+	// 7. Update the post with transcoded URLs
+	if err := s.postDB.Model(&post).Update("media_urls", pq.StringArray(transcodedURLs)).Error; err != nil {
+		log.Printf("Failed to update post with transcoded URLs: %v", err)
+		return
+	}
+
+	log.Printf("--- FINISHED VIDEO TRANSCODING for Post ID: %d. New URLs: %v ---", postID, transcodedURLs)
+}
+
+// downloadFromMinio downloads a file from MinIO to local filesystem
+func (s *server) downloadFromMinio(bucketName, objectName, filePath string) error {
+	ctx := context.Background()
+
+	// Get object from MinIO
+	object, err := s.minioClient.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get object: %w", err)
+	}
+	defer object.Close()
+
+	// Create local file
+	outFile, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Copy data
+	if _, err := io.Copy(outFile, object); err != nil {
+		return fmt.Errorf("failed to copy data: %w", err)
+	}
+
+	return nil
+}
+
+// uploadToMinio uploads a local file to MinIO
+func (s *server) uploadToMinio(bucketName, objectName, filePath string) error {
+	ctx := context.Background()
+
+	// Open local file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Get file size
+	stat, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	// Upload to MinIO
+	_, err = s.minioClient.PutObject(ctx, bucketName, objectName, file, stat.Size(), minio.PutObjectOptions{
+		ContentType: "video/mp4",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to upload: %w", err)
+	}
+
+	return nil
+}
+
+// isVideoFile checks if a URL is a video based on extension
+func isVideoFile(url string) bool {
+	lowerURL := strings.ToLower(url)
+	return strings.HasSuffix(lowerURL, ".mp4") ||
+		strings.HasSuffix(lowerURL, ".mov") ||
+		strings.HasSuffix(lowerURL, ".avi") ||
+		strings.HasSuffix(lowerURL, ".webm") ||
+		strings.HasSuffix(lowerURL, ".mkv")
 }
 
 // processHashtagJob calls the hashtag-service
