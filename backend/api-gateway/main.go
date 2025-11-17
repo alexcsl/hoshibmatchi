@@ -582,10 +582,17 @@ func handleCreatePost_Gin(c *gin.Context) {
 		MediaURLs        []string `json:"media_urls"`
 		CommentsDisabled bool     `json:"comments_disabled"`
 		IsReel           bool     `json:"is_reel"`
+		CollaboratorIDs  []int64  `json:"collaborator_ids"` // Added
+		ThumbnailURL     string   `json:"thumbnail_url"`    // Added
 	}
-	// Use ShouldBindJSON for Gin
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.MediaURLs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one media_url is required"})
 		return
 	}
 
@@ -595,16 +602,18 @@ func handleCreatePost_Gin(c *gin.Context) {
 		MediaUrls:        req.MediaURLs,
 		CommentsDisabled: req.CommentsDisabled,
 		IsReel:           req.IsReel,
+		CollaboratorIds:  req.CollaboratorIDs, // Added
+		ThumbnailUrl:     req.ThumbnailURL,    // Added
 	}
 
 	grpcRes, err := postClient.CreatePost(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
-		log.Printf("gRPC call to CreatePost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	c.JSON(http.StatusCreated, grpcRes.Post)
+
+	c.JSON(http.StatusCreated, grpcRes.Post) // Return the Post object inside the response
 }
 
 // --- GIN-NATIVE HANDLER: handleCreateStory ---

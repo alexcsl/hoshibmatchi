@@ -32,11 +32,14 @@ type Post struct {
 	AuthorID         int64
 	Caption          string
 	MediaURLs        pq.StringArray `gorm:"type:text[]"`
-	CommentsDisabled bool
+	IsReel           bool           `gorm:"default:false"`
+	CommentsDisabled bool           `gorm:"default:false"`
+	ThumbnailURL     string         `gorm:"type:varchar(255)"` // New
+
+	// Denormalized fields from user-service
 	AuthorUsername   string
 	AuthorProfileURL string
 	AuthorIsVerified bool
-	IsReel           bool `gorm:"default:false"`
 }
 
 // PostLike defines the GORM model for a like on a post
@@ -76,6 +79,11 @@ type Collection struct {
 	Name   string `gorm:"type:varchar(100)"`
 }
 
+type PostCollaborator struct {
+	PostID int64 `gorm:"primaryKey"`
+	UserID int64 `gorm:"primaryKey"`
+}
+
 // SavedPost is the join table for the many-to-many relationship
 // between collections and posts
 type SavedPost struct {
@@ -97,6 +105,7 @@ func main() {
 	db.AutoMigrate(&Comment{})
 	db.AutoMigrate(&Collection{})
 	db.AutoMigrate(&SavedPost{})
+	db.AutoMigrate(&PostCollaborator{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -227,14 +236,47 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		AuthorID:         req.AuthorId,
 		Caption:          req.Caption,
 		MediaURLs:        req.MediaUrls,
+		IsReel:           req.IsReel,
 		CommentsDisabled: req.CommentsDisabled,
+		ThumbnailURL:     req.ThumbnailUrl,
+		// Add denormalized data
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 		AuthorIsVerified: userData.IsVerified,
-		IsReel:           req.IsReel,
 	}
 
-	if result := s.db.Create(&newPost); result.Error != nil {
+	// --- Step 3: Create Post and Collaborators in a transaction ---
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the Post
+		if result := tx.Create(&newPost); result.Error != nil {
+			return result.Error
+		}
+
+		// 2. Add author and collaborators to the join table
+		collaborators := []PostCollaborator{}
+		// Add the author (so their posts appear in their own profile)
+		collaborators = append(collaborators, PostCollaborator{PostID: int64(newPost.ID), UserID: req.AuthorId})
+
+		if len(req.CollaboratorIds) > 0 {
+			for _, userID := range req.CollaboratorIds {
+				if userID != req.AuthorId { // Avoid duplicates
+					collaborators = append(collaborators, PostCollaborator{
+						PostID: int64(newPost.ID),
+						UserID: userID,
+					})
+				}
+			}
+		}
+
+		// 3. Save collaborators
+		if err := tx.Create(&collaborators).Error; err != nil {
+			return err // Rollback
+		}
+
+		return nil // Commit
+	})
+	if err != nil {
+		log.Printf("Failed to create post in transaction: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to save post to database")
 	}
 
@@ -323,16 +365,7 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 
 	// --- Step 3: Return the created post ---
 	return &pb.CreatePostResponse{
-		Post: &pb.Post{
-			Id:               strconv.FormatUint(uint64(newPost.ID), 10),
-			Caption:          newPost.Caption,
-			AuthorUsername:   newPost.AuthorUsername,
-			AuthorProfileUrl: newPost.AuthorProfileURL,
-			AuthorIsVerified: newPost.AuthorIsVerified,
-			MediaUrls:        newPost.MediaURLs,
-			CreatedAt:        newPost.CreatedAt.Format(time.RFC3339),
-			IsReel:           newPost.IsReel,
-		},
+		Post: s.gormToGrpcPost(&newPost),
 	}, nil
 }
 
@@ -461,41 +494,52 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
 }
 
-// --- Implement GetHomeFeed ---
+// --- GPRC: GetHomeFeed ---
 func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
-	log.Println("GetHomeFeed request received")
+	log.Printf("GetHomeFeed request received for user %d", req.UserId)
 
-	// --- Step 1: Call User Service to get the list of followed users ---
+	// --- Step 1: Get user's following list ---
 	followingRes, err := s.userClient.GetFollowingList(ctx, &userPb.GetFollowingListRequest{UserId: req.UserId})
 	if err != nil {
 		log.Printf("Failed to get following list from user-service: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to retrieve user feed")
 	}
-
 	followingIDs := followingRes.FollowingUserIds
 
-	// --- Step 2: Query our DB for posts *only* from those users ---
+	// --- Step 2: Get posts where user is a collaborator ---
+	var collaboratorPostIDs []int64
+	// We *don't* want to re-show the user's *own* posts, so we filter them out
+	s.db.Model(&PostCollaborator{}).
+		Where("user_id = ? AND user_id NOT IN (SELECT author_id FROM posts WHERE id = post_collaborators.post_id)", req.UserId).
+		Pluck("post_id", &collaboratorPostIDs)
+
+	// --- Step 3: Query our DB for posts ---
 	var posts []Post
-	if err := s.db.Where("author_id IN ?", followingIDs).
-		Order("created_at DESC"). // PDF: "starting from the most recent posts"
+	query := s.db.Order("created_at DESC").
 		Limit(int(req.PageSize)).
-		Offset(int(req.PageOffset)).
-		Find(&posts).Error; err != nil {
+		Offset(int(req.PageOffset))
+
+	// Build the complex WHERE clause:
+	// (author_id IN [followingIDs]) OR (id IN [collaboratorPostIDs])
+	if len(followingIDs) > 0 && len(collaboratorPostIDs) > 0 {
+		query = query.Where("author_id IN ? OR id IN ?", followingIDs, collaboratorPostIDs)
+	} else if len(followingIDs) > 0 {
+		query = query.Where("author_id IN ?", followingIDs)
+	} else if len(collaboratorPostIDs) > 0 {
+		query = query.Where("id IN ?", collaboratorPostIDs)
+	} else {
+		// Not following anyone and not a collaborator on any posts
+		return &pb.GetHomeFeedResponse{Posts: []*pb.Post{}}, nil
+	}
+
+	if err := query.Find(&posts).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
 	}
 
-	// --- Step 3: Convert GORM models to gRPC responses ---
+	// --- Step 4: Convert GORM models to gRPC responses ---
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
-		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:               strconv.FormatUint(uint64(post.ID), 10),
-			Caption:          post.Caption,
-			AuthorUsername:   post.AuthorUsername,
-			AuthorProfileUrl: post.AuthorProfileURL,
-			AuthorIsVerified: post.AuthorIsVerified,
-			MediaUrls:        post.MediaURLs,
-			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
-		})
+		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&post))
 	}
 
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
@@ -803,18 +847,32 @@ func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionR
 	return s.gormToGrpcCollection(&collection), nil
 }
 
-// --- Helper function: gormToGrpcPost (You need to add this) ---
-// We need this for GetPostsInCollection
+// gormToGrpcPost converts our GORM Post model to the gRPC Post message
 func (s *server) gormToGrpcPost(post *Post) *pb.Post {
+	// TODO: Get real LikeCount and CommentCount
+	// var likeCount int64
+	// s.db.Model(&PostLike{}).Where("post_id = ?", post.ID).Count(&likeCount)
+	// var commentCount int64
+	// s.db.Model(&Comment{}).Where("post_id = ?", post.ID).Count(&commentCount)
+
 	return &pb.Post{
 		Id:               strconv.FormatUint(uint64(post.ID), 10),
+		AuthorId:         post.AuthorID,
 		Caption:          post.Caption,
-		AuthorUsername:   post.AuthorUsername,
-		AuthorProfileUrl: post.AuthorProfileURL,
-		AuthorIsVerified: post.AuthorIsVerified,
 		MediaUrls:        post.MediaURLs,
 		CreatedAt:        post.CreatedAt.Format(time.RFC3339),
 		IsReel:           post.IsReel,
+		CommentsDisabled: post.CommentsDisabled,
+		ThumbnailUrl:     post.ThumbnailURL,
+
+		// Use the saved denormalized data
+		AuthorUsername:   post.AuthorUsername,
+		AuthorProfileUrl: post.AuthorProfileURL,
+		AuthorIsVerified: post.AuthorIsVerified,
+
+		// Placeholder counts
+		LikeCount:    0, // TODO: Add real count
+		CommentCount: 0, // TODO: Add real count
 	}
 }
 

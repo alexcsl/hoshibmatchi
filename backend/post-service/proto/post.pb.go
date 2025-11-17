@@ -30,6 +30,8 @@ type CreatePostRequest struct {
 	MediaUrls        []string               `protobuf:"bytes,3,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`
 	CommentsDisabled bool                   `protobuf:"varint,4,opt,name=comments_disabled,json=commentsDisabled,proto3" json:"comments_disabled,omitempty"`
 	IsReel           bool                   `protobuf:"varint,5,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
+	CollaboratorIds  []int64                `protobuf:"varint,6,rep,packed,name=collaborator_ids,json=collaboratorIds,proto3" json:"collaborator_ids,omitempty"`
+	ThumbnailUrl     string                 `protobuf:"bytes,7,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -99,20 +101,41 @@ func (x *CreatePostRequest) GetIsReel() bool {
 	return false
 }
 
+func (x *CreatePostRequest) GetCollaboratorIds() []int64 {
+	if x != nil {
+		return x.CollaboratorIds
+	}
+	return nil
+}
+
+func (x *CreatePostRequest) GetThumbnailUrl() string {
+	if x != nil {
+		return x.ThumbnailUrl
+	}
+	return ""
+}
+
 // The created Post
 type Post struct {
-	state   protoimpl.MessageState `protogen:"open.v1"`
-	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Caption string                 `protobuf:"bytes,2,opt,name=caption,proto3" json:"caption,omitempty"`
-	// Denormalized data from user-service
-	AuthorUsername   string   `protobuf:"bytes,3,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
-	AuthorProfileUrl string   `protobuf:"bytes,4,opt,name=author_profile_url,json=authorProfileUrl,proto3" json:"author_profile_url,omitempty"`
-	AuthorIsVerified bool     `protobuf:"varint,5,opt,name=author_is_verified,json=authorIsVerified,proto3" json:"author_is_verified,omitempty"`
-	MediaUrls        []string `protobuf:"bytes,6,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`
-	CreatedAt        string   `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	IsReel           bool     `protobuf:"varint,8,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorId int64                  `protobuf:"varint,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"` // Added
+	Caption  string                 `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`
+	// Denormalized data
+	AuthorUsername   string   `protobuf:"bytes,4,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorProfileUrl string   `protobuf:"bytes,5,opt,name=author_profile_url,json=authorProfileUrl,proto3" json:"author_profile_url,omitempty"`
+	AuthorIsVerified bool     `protobuf:"varint,6,opt,name=author_is_verified,json=authorIsVerified,proto3" json:"author_is_verified,omitempty"`
+	MediaUrls        []string `protobuf:"bytes,7,rep,name=media_urls,json=mediaUrls,proto3" json:"media_urls,omitempty"`
+	CreatedAt        string   `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	IsReel           bool     `protobuf:"varint,9,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
+	// Added fields
+	CommentsDisabled bool   `protobuf:"varint,10,opt,name=comments_disabled,json=commentsDisabled,proto3" json:"comments_disabled,omitempty"`
+	ThumbnailUrl     string `protobuf:"bytes,11,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
+	// Counts (we'll implement the logic for these later)
+	LikeCount     int64 `protobuf:"varint,12,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
+	CommentCount  int64 `protobuf:"varint,13,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Post) Reset() {
@@ -150,6 +173,13 @@ func (x *Post) GetId() string {
 		return x.Id
 	}
 	return ""
+}
+
+func (x *Post) GetAuthorId() int64 {
+	if x != nil {
+		return x.AuthorId
+	}
+	return 0
 }
 
 func (x *Post) GetCaption() string {
@@ -199,6 +229,34 @@ func (x *Post) GetIsReel() bool {
 		return x.IsReel
 	}
 	return false
+}
+
+func (x *Post) GetCommentsDisabled() bool {
+	if x != nil {
+		return x.CommentsDisabled
+	}
+	return false
+}
+
+func (x *Post) GetThumbnailUrl() string {
+	if x != nil {
+		return x.ThumbnailUrl
+	}
+	return ""
+}
+
+func (x *Post) GetLikeCount() int64 {
+	if x != nil {
+		return x.LikeCount
+	}
+	return 0
+}
+
+func (x *Post) GetCommentCount() int64 {
+	if x != nil {
+		return x.CommentCount
+	}
+	return 0
 }
 
 type CreatePostResponse struct {
@@ -1746,25 +1804,34 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
 	"post.proto\x12\x04post\x1a\n" +
-	"user.proto\"\xaf\x01\n" +
+	"user.proto\"\xff\x01\n" +
 	"\x11CreatePostRequest\x12\x1b\n" +
 	"\tauthor_id\x18\x01 \x01(\x03R\bauthorId\x12\x18\n" +
 	"\acaption\x18\x02 \x01(\tR\acaption\x12\x1d\n" +
 	"\n" +
 	"media_urls\x18\x03 \x03(\tR\tmediaUrls\x12+\n" +
 	"\x11comments_disabled\x18\x04 \x01(\bR\x10commentsDisabled\x12\x17\n" +
-	"\ais_reel\x18\x05 \x01(\bR\x06isReel\"\x8c\x02\n" +
+	"\ais_reel\x18\x05 \x01(\bR\x06isReel\x12)\n" +
+	"\x10collaborator_ids\x18\x06 \x03(\x03R\x0fcollaboratorIds\x12#\n" +
+	"\rthumbnail_url\x18\a \x01(\tR\fthumbnailUrl\"\xbf\x03\n" +
 	"\x04Post\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
-	"\acaption\x18\x02 \x01(\tR\acaption\x12'\n" +
-	"\x0fauthor_username\x18\x03 \x01(\tR\x0eauthorUsername\x12,\n" +
-	"\x12author_profile_url\x18\x04 \x01(\tR\x10authorProfileUrl\x12,\n" +
-	"\x12author_is_verified\x18\x05 \x01(\bR\x10authorIsVerified\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tauthor_id\x18\x02 \x01(\x03R\bauthorId\x12\x18\n" +
+	"\acaption\x18\x03 \x01(\tR\acaption\x12'\n" +
+	"\x0fauthor_username\x18\x04 \x01(\tR\x0eauthorUsername\x12,\n" +
+	"\x12author_profile_url\x18\x05 \x01(\tR\x10authorProfileUrl\x12,\n" +
+	"\x12author_is_verified\x18\x06 \x01(\bR\x10authorIsVerified\x12\x1d\n" +
 	"\n" +
-	"media_urls\x18\x06 \x03(\tR\tmediaUrls\x12\x1d\n" +
+	"media_urls\x18\a \x03(\tR\tmediaUrls\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x17\n" +
-	"\ais_reel\x18\b \x01(\bR\x06isReel\"4\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\ais_reel\x18\t \x01(\bR\x06isReel\x12+\n" +
+	"\x11comments_disabled\x18\n" +
+	" \x01(\bR\x10commentsDisabled\x12#\n" +
+	"\rthumbnail_url\x18\v \x01(\tR\fthumbnailUrl\x12\x1d\n" +
+	"\n" +
+	"like_count\x18\f \x01(\x03R\tlikeCount\x12#\n" +
+	"\rcomment_count\x18\r \x01(\x03R\fcommentCount\"4\n" +
 	"\x12CreatePostResponse\x12\x1e\n" +
 	"\x04post\x18\x01 \x01(\v2\n" +
 	".post.PostR\x04post\"C\n" +

@@ -42,22 +42,32 @@ message CreatePostRequest {
   repeated string media_urls = 3;
   bool comments_disabled = 4;
   bool is_reel = 5;
+  repeated int64 collaborator_ids = 6;
+  string thumbnail_url = 7;
 }
 
 // The created Post
 message Post {
   string id = 1;
-  string caption = 2;
+  int64 author_id = 2; // Added
+  string caption = 3;
   
-  // Denormalized data from user-service
-  string author_username = 3;
-  string author_profile_url = 4;
-  bool author_is_verified = 5;
+  // Denormalized data
+  string author_username = 4;
+  string author_profile_url = 5;
+  bool author_is_verified = 6;
   
-  repeated string media_urls = 6;
-  string created_at = 7;
+  repeated string media_urls = 7;
+  string created_at = 8;
+  bool is_reel = 9;
 
-  bool is_reel = 8;
+  // Added fields
+  bool comments_disabled = 10;
+  string thumbnail_url = 11;
+  
+  // Counts (we'll implement the logic for these later)
+  int64 like_count = 12;
+  int64 comment_count = 13;
 }
 
 message CreatePostResponse {
