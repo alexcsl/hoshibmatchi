@@ -76,7 +76,11 @@ func main() {
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		amqpURI := os.Getenv("RABBITMQ_URI")
+		if amqpURI == "" {
+			amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
+		}
+		amqpConn, err = amqp.Dial(amqpURI)
 		if err == nil {
 			log.Println("Worker successfully connected to RabbitMQ")
 			break
@@ -105,8 +109,22 @@ func main() {
 	log.Println("Worker successfully connected to hashtag-service")
 
 	// --- Step 3.5: Connect to MinIO ---
-	minioClient, err := minio.New("minio:9000", &minio.Options{
-		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+	// Get MinIO credentials from environment
+	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+	if minioEndpoint == "" {
+		minioEndpoint = "minio:9000" // Default
+	}
+	minioAccessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	if minioAccessKeyID == "" {
+		minioAccessKeyID = "minioadmin" // Default
+	}
+	minioSecretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	if minioSecretAccessKey == "" {
+		minioSecretAccessKey = "minioadmin" // Default
+	}
+
+	minioClient, err := minio.New(minioEndpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(minioAccessKeyID, minioSecretAccessKey, ""),
 		Secure: false,
 	})
 	if err != nil {

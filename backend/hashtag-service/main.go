@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"strconv"
+
 	// "strings"
 	"time"
 
@@ -129,7 +130,7 @@ func (s *server) AddHashtagsToPost(ctx context.Context, req *pb.AddHashtagsToPos
 // GetTrendingHashtags is a PUBLIC RPC
 func (s *server) GetTrendingHashtags(ctx context.Context, req *pb.GetTrendingHashtagsRequest) (*pb.GetTrendingHashtagsResponse, error) {
 	log.Printf("GetTrendingHashtags request, limit %d", req.Limit)
-	
+
 	var hashtags []Hashtag
 	if err := s.db.Order("post_count DESC").Limit(int(req.Limit)).Find(&hashtags).Error; err != nil {
 		log.Printf("Failed to get trending hashtags: %v", err)
@@ -174,21 +175,14 @@ func (s *server) SearchByHashtag(ctx context.Context, req *pb.SearchByHashtagReq
 		return &pb.SearchByHashtagResponse{Posts: []*postPb.Post{}, TotalPostCount: hashtag.PostCount}, nil
 	}
 
-	// 3. Get the actual Post data from post-service
-	// TODO: This should be a batched gRPC call `GetPosts(post_ids)` on post-service
-	// For now, we will call `GetPost` in a loop.
-	var grpcPosts []*postPb.Post
-	for _, postID := range postIDs {
-		postData, err := s.postClient.GetPost(ctx, &postPb.GetPostRequest{PostId: postID})
-		if err != nil {
-			log.Printf("Failed to get post %d data from post-service: %v", postID, err)
-			continue // Skip this post if it's missing or errors
-		}
-		grpcPosts = append(grpcPosts, postData)
+	// 3. Get the actual Post data from post-service using batched call
+	postsResp, err := s.postClient.GetPosts(ctx, &postPb.GetPostsRequest{PostIds: postIDs})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get posts from post-service: %v", err)
 	}
 
 	return &pb.SearchByHashtagResponse{
-		Posts:          grpcPosts,
+		Posts:          postsResp.Posts,
 		TotalPostCount: hashtag.PostCount,
 	}, nil
 }

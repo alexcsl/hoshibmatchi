@@ -26,6 +26,10 @@ const (
 	MessageService_UnsendMessage_FullMethodName      = "/message.MessageService/UnsendMessage"
 	MessageService_DeleteConversation_FullMethodName = "/message.MessageService/DeleteConversation"
 	MessageService_GetVideoCallToken_FullMethodName  = "/message.MessageService/GetVideoCallToken"
+	MessageService_AddParticipant_FullMethodName     = "/message.MessageService/AddParticipant"
+	MessageService_RemoveParticipant_FullMethodName  = "/message.MessageService/RemoveParticipant"
+	MessageService_UpdateGroupInfo_FullMethodName    = "/message.MessageService/UpdateGroupInfo"
+	MessageService_LeaveGroup_FullMethodName         = "/message.MessageService/LeaveGroup"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -44,6 +48,11 @@ type MessageServiceClient interface {
 	UnsendMessage(ctx context.Context, in *UnsendMessageRequest, opts ...grpc.CallOption) (*UnsendMessageResponse, error)
 	DeleteConversation(ctx context.Context, in *DeleteConversationRequest, opts ...grpc.CallOption) (*DeleteConversationResponse, error)
 	GetVideoCallToken(ctx context.Context, in *GetVideoCallTokenRequest, opts ...grpc.CallOption) (*GetVideoCallTokenResponse, error)
+	// Group Management
+	AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error)
+	RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error)
+	UpdateGroupInfo(ctx context.Context, in *UpdateGroupInfoRequest, opts ...grpc.CallOption) (*UpdateGroupInfoResponse, error)
+	LeaveGroup(ctx context.Context, in *LeaveGroupRequest, opts ...grpc.CallOption) (*LeaveGroupResponse, error)
 }
 
 type messageServiceClient struct {
@@ -124,6 +133,46 @@ func (c *messageServiceClient) GetVideoCallToken(ctx context.Context, in *GetVid
 	return out, nil
 }
 
+func (c *messageServiceClient) AddParticipant(ctx context.Context, in *AddParticipantRequest, opts ...grpc.CallOption) (*AddParticipantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddParticipantResponse)
+	err := c.cc.Invoke(ctx, MessageService_AddParticipant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) RemoveParticipant(ctx context.Context, in *RemoveParticipantRequest, opts ...grpc.CallOption) (*RemoveParticipantResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveParticipantResponse)
+	err := c.cc.Invoke(ctx, MessageService_RemoveParticipant_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) UpdateGroupInfo(ctx context.Context, in *UpdateGroupInfoRequest, opts ...grpc.CallOption) (*UpdateGroupInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateGroupInfoResponse)
+	err := c.cc.Invoke(ctx, MessageService_UpdateGroupInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) LeaveGroup(ctx context.Context, in *LeaveGroupRequest, opts ...grpc.CallOption) (*LeaveGroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LeaveGroupResponse)
+	err := c.cc.Invoke(ctx, MessageService_LeaveGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
@@ -140,6 +189,11 @@ type MessageServiceServer interface {
 	UnsendMessage(context.Context, *UnsendMessageRequest) (*UnsendMessageResponse, error)
 	DeleteConversation(context.Context, *DeleteConversationRequest) (*DeleteConversationResponse, error)
 	GetVideoCallToken(context.Context, *GetVideoCallTokenRequest) (*GetVideoCallTokenResponse, error)
+	// Group Management
+	AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error)
+	RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error)
+	UpdateGroupInfo(context.Context, *UpdateGroupInfoRequest) (*UpdateGroupInfoResponse, error)
+	LeaveGroup(context.Context, *LeaveGroupRequest) (*LeaveGroupResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -170,6 +224,18 @@ func (UnimplementedMessageServiceServer) DeleteConversation(context.Context, *De
 }
 func (UnimplementedMessageServiceServer) GetVideoCallToken(context.Context, *GetVideoCallTokenRequest) (*GetVideoCallTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVideoCallToken not implemented")
+}
+func (UnimplementedMessageServiceServer) AddParticipant(context.Context, *AddParticipantRequest) (*AddParticipantResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddParticipant not implemented")
+}
+func (UnimplementedMessageServiceServer) RemoveParticipant(context.Context, *RemoveParticipantRequest) (*RemoveParticipantResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveParticipant not implemented")
+}
+func (UnimplementedMessageServiceServer) UpdateGroupInfo(context.Context, *UpdateGroupInfoRequest) (*UpdateGroupInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateGroupInfo not implemented")
+}
+func (UnimplementedMessageServiceServer) LeaveGroup(context.Context, *LeaveGroupRequest) (*LeaveGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LeaveGroup not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
@@ -318,6 +384,78 @@ func _MessageService_GetVideoCallToken_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_AddParticipant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddParticipantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).AddParticipant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_AddParticipant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).AddParticipant(ctx, req.(*AddParticipantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_RemoveParticipant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveParticipantRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).RemoveParticipant(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_RemoveParticipant_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).RemoveParticipant(ctx, req.(*RemoveParticipantRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_UpdateGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateGroupInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).UpdateGroupInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_UpdateGroupInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).UpdateGroupInfo(ctx, req.(*UpdateGroupInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_LeaveGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).LeaveGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_LeaveGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).LeaveGroup(ctx, req.(*LeaveGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -352,6 +490,22 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetVideoCallToken",
 			Handler:    _MessageService_GetVideoCallToken_Handler,
+		},
+		{
+			MethodName: "AddParticipant",
+			Handler:    _MessageService_AddParticipant_Handler,
+		},
+		{
+			MethodName: "RemoveParticipant",
+			Handler:    _MessageService_RemoveParticipant_Handler,
+		},
+		{
+			MethodName: "UpdateGroupInfo",
+			Handler:    _MessageService_UpdateGroupInfo_Handler,
+		},
+		{
+			MethodName: "LeaveGroup",
+			Handler:    _MessageService_LeaveGroup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

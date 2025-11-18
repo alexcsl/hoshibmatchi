@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
@@ -62,7 +63,11 @@ func main() {
 	log.Println("Report-service successfully connected to report-db")
 
 	// --- Step 2: Connect to RabbitMQ ---
-	amqpConn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+	amqpURI := os.Getenv("RABBITMQ_URI")
+	if amqpURI == "" {
+		amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
+	}
+	amqpConn, err := amqp.Dial(amqpURI)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}

@@ -161,7 +161,11 @@ func main() {
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		amqpURI := os.Getenv("RABBITMQ_URI")
+		if amqpURI == "" {
+			amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
+		}
+		amqpConn, err = amqp.Dial(amqpURI)
 		if err == nil {
 			log.Println("Successfully connected to RabbitMQ")
 			break
@@ -219,6 +223,14 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 	}
 	if len(req.Name) <= 4 {
 		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
+	}
+	// Username validation
+	if len(req.Username) < 3 || len(req.Username) > 30 {
+		return nil, status.Error(codes.InvalidArgument, "Username must be between 3 and 30 characters")
+	}
+	usernameRegex := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	if !usernameRegex.MatchString(req.Username) {
+		return nil, status.Error(codes.InvalidArgument, "Username can only contain letters, numbers, and underscores")
 	}
 	if !emailRegex.MatchString(req.Email) {
 		return nil, status.Error(codes.InvalidArgument, "Invalid email format")
@@ -624,6 +636,20 @@ func (s *server) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest
 
 // --- GPRC 3: GetUserData ---
 func (s *server) GetUserData(ctx context.Context, req *pb.GetUserDataRequest) (*pb.GetUserDataResponse, error) {
+	// Try to get from cache first
+	cacheKey := fmt.Sprintf("user:profile:%d", req.UserId)
+	cachedData, err := s.rdb.Get(ctx, cacheKey).Result()
+
+	if err == nil {
+		// Cache hit - unmarshal and return
+		var response pb.GetUserDataResponse
+		if json.Unmarshal([]byte(cachedData), &response) == nil {
+			log.Printf("Cache hit for user %d", req.UserId)
+			return &response, nil
+		}
+	}
+
+	// Cache miss - query database
 	var user User
 	if err := s.db.First(&user, req.UserId).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "User not found")
@@ -631,11 +657,18 @@ func (s *server) GetUserData(ctx context.Context, req *pb.GetUserDataRequest) (*
 		return nil, status.Error(codes.Internal, "Database error")
 	}
 
-	return &pb.GetUserDataResponse{
+	response := &pb.GetUserDataResponse{
 		Username:          user.Username,
 		ProfilePictureUrl: user.ProfilePictureURL,
-		IsVerified:        false, // Placeholder for now
-	}, nil
+		IsVerified:        user.IsVerified,
+	}
+
+	// Store in cache with 15 minute TTL
+	if responseJSON, err := json.Marshal(response); err == nil {
+		s.rdb.Set(ctx, cacheKey, responseJSON, 15*time.Minute)
+	}
+
+	return response, nil
 }
 
 // --- GPRC: FollowUser ---
@@ -803,6 +836,9 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 	if len(req.Name) <= 4 {
 		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
 	}
+	if len(req.Bio) > 150 {
+		return nil, status.Error(codes.InvalidArgument, "Bio must not exceed 150 characters")
+	}
 	if req.Gender != "male" && req.Gender != "female" {
 		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
 	}
@@ -815,6 +851,10 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 	if err := s.db.Save(&user).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update profile")
 	}
+
+	// Invalidate cache
+	cacheKey := fmt.Sprintf("user:profile:%d", req.UserId)
+	s.rdb.Del(ctx, cacheKey)
 
 	log.Printf("User profile updated for user_id: %d", req.UserId)
 

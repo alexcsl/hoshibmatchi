@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	pb "github.com/hoshibmatchi/post-service/proto"
 	userPb "github.com/hoshibmatchi/user-service/proto"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/lib/pq" // For string arrays
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -84,6 +86,7 @@ type server struct {
 	userClient  userPb.UserServiceClient
 	amqpCh      *amqp.Channel
 	minioClient *minio.Client
+	rdb         *redis.Client
 }
 
 // Collection defines a user's named collection of posts
@@ -137,7 +140,11 @@ func main() {
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		amqpURI := os.Getenv("RABBITMQ_URI")
+		if amqpURI == "" {
+			amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
+		}
+		amqpConn, err = amqp.Dial(amqpURI)
 		if err == nil {
 			log.Println("Successfully connected to RabbitMQ")
 			break
@@ -198,9 +205,19 @@ func main() {
 	log.Println("RabbitMQ hashtag_queue declared")
 
 	// --- ADDED: Connect to MinIO ---
-	endpoint := "minio:9000"
-	accessKeyID := "minioadmin"
-	secretAccessKey := "minioadmin"
+	// Get MinIO credentials from environment
+	endpoint := os.Getenv("MINIO_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "minio:9000" // Default
+	}
+	accessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	if accessKeyID == "" {
+		accessKeyID = "minioadmin" // Default
+	}
+	secretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	if secretAccessKey == "" {
+		secretAccessKey = "minioadmin" // Default
+	}
 	useSSL := false
 
 	minioClient, err := minio.New(endpoint, &minio.Options{
@@ -212,7 +229,18 @@ func main() {
 	}
 	log.Println("Post-service successfully connected to MinIO")
 
-	// --- Step 4: Start this gRPC Server ---
+	// --- Step 5: Connect to Redis ---
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "redis:6379",
+		Password: "",
+		DB:       0,
+	})
+	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
+		log.Fatalf("Failed to connect to redis: %v", err)
+	}
+	log.Println("Post-service successfully connected to Redis")
+
+	// --- Step 6: Start this gRPC Server ---
 	lis, err := net.Listen("tcp", ":9001") // Port 9001
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
@@ -227,6 +255,7 @@ func main() {
 		userClient:  userClient,
 		amqpCh:      amqpCh,
 		minioClient: minioClient,
+		rdb:         rdb,
 	})
 	// --- END FIX ---
 
@@ -300,6 +329,14 @@ func (s *server) filterPostsByPrivacy(ctx context.Context, posts []Post, viewerI
 // --- Implement CreatePost ---
 func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb.CreatePostResponse, error) {
 	log.Println("CreatePost request received")
+
+	// Input validation
+	if len(req.Caption) > 2200 {
+		return nil, status.Error(codes.InvalidArgument, "Caption must not exceed 2200 characters")
+	}
+	if len(req.MediaUrls) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "At least one media URL is required")
+	}
 
 	// --- Step 1: Call User Service for Denormalization ---
 	userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.AuthorId})
@@ -524,6 +561,14 @@ func (s *server) UnlikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.U
 
 // --- Implement CommentOnPost ---
 func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest) (*pb.CommentResponse, error) {
+	// Input validation
+	if len(strings.TrimSpace(req.Content)) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Comment content cannot be empty")
+	}
+	if len(req.Content) > 500 {
+		return nil, status.Error(codes.InvalidArgument, "Comment must not exceed 500 characters")
+	}
+
 	// --- Step 1: Call User Service for Denormalization (like in CreatePost) ---
 	userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.UserId})
 	if err != nil {
@@ -594,9 +639,16 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 		return nil, status.Error(codes.NotFound, "Comment not found")
 	}
 
-	// This means we must check ownership
-	if comment.UserID != req.UserId {
-		// TODO: Also allow post author to delete comments
+	// Check if user is comment owner OR post author
+	var post Post
+	if err := s.db.First(&post, comment.PostID).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve post")
+	}
+
+	isCommentOwner := comment.UserID == req.UserId
+	isPostAuthor := post.AuthorID == req.UserId
+
+	if !isCommentOwner && !isPostAuthor {
 		return nil, status.Error(codes.PermissionDenied, "You do not have permission to delete this comment")
 	}
 
@@ -622,6 +674,20 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 // --- GPRC: GetHomeFeed ---
 func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
 	log.Printf("GetHomeFeed request received for user %d", req.UserId)
+
+	// Try cache first
+	cacheKey := strconv.FormatInt(req.UserId, 10) + ":" + strconv.FormatInt(int64(req.PageSize), 10) + ":" + strconv.FormatInt(int64(req.PageOffset), 10)
+	cacheKey = "feed:home:" + cacheKey
+	cachedData, err := s.rdb.Get(ctx, cacheKey).Result()
+
+	if err == nil {
+		// Cache hit
+		var response pb.GetHomeFeedResponse
+		if json.Unmarshal([]byte(cachedData), &response) == nil {
+			log.Printf("Cache hit for home feed user %d", req.UserId)
+			return &response, nil
+		}
+	}
 
 	// --- Step 1: Get user's following list ---
 	followingRes, err := s.userClient.GetFollowingList(ctx, &userPb.GetFollowingListRequest{UserId: req.UserId})
@@ -670,7 +736,14 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&post))
 	}
 
-	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+	response := &pb.GetHomeFeedResponse{Posts: grpcPosts}
+
+	// Cache with 5 minute TTL
+	if responseJSON, err := json.Marshal(response); err == nil {
+		s.rdb.Set(ctx, cacheKey, responseJSON, 5*time.Minute)
+	}
+
+	return response, nil
 }
 
 // --- Implement GetExploreFeed ---
@@ -989,11 +1062,11 @@ func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionR
 
 // gormToGrpcPost converts our GORM Post model to the gRPC Post message
 func (s *server) gormToGrpcPost(post *Post) *pb.Post {
-	// TODO: Get real LikeCount and CommentCount
-	// var likeCount int64
-	// s.db.Model(&PostLike{}).Where("post_id = ?", post.ID).Count(&likeCount)
-	// var commentCount int64
-	// s.db.Model(&Comment{}).Where("post_id = ?", post.ID).Count(&commentCount)
+	// Get real LikeCount and CommentCount
+	var likeCount int64
+	s.db.Model(&PostLike{}).Where("post_id = ?", post.ID).Count(&likeCount)
+	var commentCount int64
+	s.db.Model(&Comment{}).Where("post_id = ?", post.ID).Count(&commentCount)
 
 	return &pb.Post{
 		Id:               strconv.FormatUint(uint64(post.ID), 10),
@@ -1010,9 +1083,9 @@ func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 		AuthorProfileUrl: post.AuthorProfileURL,
 		AuthorIsVerified: post.AuthorIsVerified,
 
-		// Placeholder counts
-		LikeCount:    post.LikeCount,
-		CommentCount: post.CommentCount,
+		// Real-time counts from database
+		LikeCount:    likeCount,
+		CommentCount: commentCount,
 	}
 }
 
@@ -1027,6 +1100,26 @@ func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post,
 
 	// Use our existing helper
 	return s.gormToGrpcPost(&post), nil
+}
+
+// --- GPRC: GetPosts (Batched) ---
+func (s *server) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.GetPostsResponse, error) {
+	if len(req.PostIds) == 0 {
+		return &pb.GetPostsResponse{Posts: []*pb.Post{}}, nil
+	}
+
+	var posts []Post
+	if err := s.db.Where("id IN ?", req.PostIds).Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve posts")
+	}
+
+	// Convert to gRPC posts
+	grpcPosts := make([]*pb.Post, 0, len(posts))
+	for i := range posts {
+		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&posts[i]))
+	}
+
+	return &pb.GetPostsResponse{Posts: grpcPosts}, nil
 }
 
 // --- GPRC: DeletePost (Admin) ---

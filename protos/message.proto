@@ -24,6 +24,12 @@ service MessageService {
   rpc UnsendMessage (UnsendMessageRequest) returns (UnsendMessageResponse);
   rpc DeleteConversation (DeleteConversationRequest) returns (DeleteConversationResponse);
   rpc GetVideoCallToken (GetVideoCallTokenRequest) returns (GetVideoCallTokenResponse);
+
+  // Group Management
+  rpc AddParticipant (AddParticipantRequest) returns (AddParticipantResponse);
+  rpc RemoveParticipant (RemoveParticipantRequest) returns (RemoveParticipantResponse);
+  rpc UpdateGroupInfo (UpdateGroupInfoRequest) returns (UpdateGroupInfoResponse);
+  rpc LeaveGroup (LeaveGroupRequest) returns (LeaveGroupResponse);
 }
 
 // Represents a single chat conversation
@@ -36,6 +42,7 @@ message Conversation {
   string created_at = 4;
   bool is_group = 5;
   string group_name = 6; // Empty if not a group
+  string group_image_url = 7; // Group profile picture
 }
 
 // Represents a single chat message
@@ -87,6 +94,7 @@ message CreateConversationRequest {
   int64 creator_id = 1; // From JWT
   repeated int64 participant_ids = 2; // List of *other* user IDs
   string group_name = 3; // If present, creates a group
+  string group_image_url = 4; // Group profile picture
 }
 
 // --- UnsendMessage ---
@@ -118,4 +126,45 @@ message GetVideoCallTokenRequest {
 message GetVideoCallTokenResponse {
   string token = 1;   // The token for the video SDK
   string room_id = 2; // The room ID
+}
+
+// --- Group Management ---
+message AddParticipantRequest {
+  int64 user_id = 1; // From JWT - must be group member
+  string conversation_id = 2;
+  int64 participant_id = 3; // User to add
+}
+
+message AddParticipantResponse {
+  string message = 1;
+}
+
+message RemoveParticipantRequest {
+  int64 user_id = 1; // From JWT - must be group member
+  string conversation_id = 2;
+  int64 participant_id = 3; // User to remove
+}
+
+message RemoveParticipantResponse {
+  string message = 1;
+}
+
+message UpdateGroupInfoRequest {
+  int64 user_id = 1; // From JWT - must be group member
+  string conversation_id = 2;
+  string group_name = 3;
+  string group_image_url = 4;
+}
+
+message UpdateGroupInfoResponse {
+  string message = 1;
+}
+
+message LeaveGroupRequest {
+  int64 user_id = 1; // From JWT
+  string conversation_id = 2;
+}
+
+message LeaveGroupResponse {
+  string message = 1;
 }

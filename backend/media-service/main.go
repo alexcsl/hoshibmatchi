@@ -26,18 +26,30 @@ import (
 
 type server struct {
 	pb.UnimplementedMediaServiceServer
-	minioClient *minio.Client
+	minioClient   *minio.Client
+	minioEndpoint string
 }
 
 const (
-	minioEndpoint        = "minio:9000" // From docker-compose
-	minioAccessKeyID     = "minioadmin" // From docker-compose
-	minioSecretAccessKey = "minioadmin" // From docker-compose
-	minioUseSSL          = false
-	minioBucketName      = "media" // We'll have to create this
+	minioUseSSL     = false
+	minioBucketName = "media"
 )
 
 func main() {
+	// Get MinIO credentials from environment
+	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
+	if minioEndpoint == "" {
+		minioEndpoint = "minio:9000" // Default
+	}
+	minioAccessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	if minioAccessKeyID == "" {
+		minioAccessKeyID = "minioadmin" // Default
+	}
+	minioSecretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	if minioSecretAccessKey == "" {
+		minioSecretAccessKey = "minioadmin" // Default
+	}
+
 	// --- Step 1: Connect to MinIO (with retries) ---
 	var minioClient *minio.Client
 	var err error
@@ -78,7 +90,10 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterMediaServiceServer(s, &server{minioClient: minioClient})
+	pb.RegisterMediaServiceServer(s, &server{
+		minioClient:   minioClient,
+		minioEndpoint: minioEndpoint,
+	})
 
 	log.Println("Media service listening on port 9005...")
 	if err := s.Serve(lis); err != nil {
@@ -236,7 +251,7 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to upload file")
 	}
 
-	mediaURL := fmt.Sprintf("http://%s/%s/%s", minioEndpoint, minioBucketName, objectName)
+	mediaURL := fmt.Sprintf("http://%s/%s/%s", s.minioEndpoint, minioBucketName, objectName)
 	thumbnailURL := ""
 
 	// Process based on file type
@@ -252,7 +267,7 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 			if err := s.uploadFileToMinio(ctx, thumbnailPath, thumbnailName, "image/jpeg"); err != nil {
 				log.Printf("Warning: Failed to upload thumbnail: %v", err)
 			} else {
-				thumbnailURL = fmt.Sprintf("http://%s/%s/%s", minioEndpoint, minioBucketName, thumbnailName)
+				thumbnailURL = fmt.Sprintf("http://%s/%s/%s", s.minioEndpoint, minioBucketName, thumbnailName)
 				log.Printf("Successfully generated thumbnail for video: %s", thumbnailURL)
 			}
 		}
@@ -272,11 +287,11 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 
 					// Use the large version as the primary media URL
 					if sizeName == "large" {
-						mediaURL = fmt.Sprintf("http://%s/%s/%s", minioEndpoint, minioBucketName, optimizedObjectName)
+						mediaURL = fmt.Sprintf("http://%s/%s/%s", s.minioEndpoint, minioBucketName, optimizedObjectName)
 					}
 					// Use thumb as thumbnail
 					if sizeName == "thumb" {
-						thumbnailURL = fmt.Sprintf("http://%s/%s/%s", minioEndpoint, minioBucketName, optimizedObjectName)
+						thumbnailURL = fmt.Sprintf("http://%s/%s/%s", s.minioEndpoint, minioBucketName, optimizedObjectName)
 					}
 				}
 			}
@@ -313,7 +328,7 @@ func (s *server) GetUploadURL(ctx context.Context, req *pb.GetUploadURLRequest) 
 	// The `upload_url` is what the frontend will POST to.
 	// But the `final_media_url` is the simple S3-compatible URL
 	// we want to save in our Postgres database.
-	finalURL := fmt.Sprintf("%s/%s/%s", minioEndpoint, minioBucketName, objectName)
+	finalURL := fmt.Sprintf("%s/%s/%s", s.minioEndpoint, minioBucketName, objectName)
 
 	_ = formData // We'd send this to the frontend too
 

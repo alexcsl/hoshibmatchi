@@ -32,7 +32,8 @@ type Conversation struct {
 	LastMessage   *Message `protobuf:"bytes,3,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
 	CreatedAt     string   `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	IsGroup       bool     `protobuf:"varint,5,opt,name=is_group,json=isGroup,proto3" json:"is_group,omitempty"`
-	GroupName     string   `protobuf:"bytes,6,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"` // Empty if not a group
+	GroupName     string   `protobuf:"bytes,6,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`               // Empty if not a group
+	GroupImageUrl string   `protobuf:"bytes,7,opt,name=group_image_url,json=groupImageUrl,proto3" json:"group_image_url,omitempty"` // Group profile picture
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -105,6 +106,13 @@ func (x *Conversation) GetIsGroup() bool {
 func (x *Conversation) GetGroupName() string {
 	if x != nil {
 		return x.GroupName
+	}
+	return ""
+}
+
+func (x *Conversation) GetGroupImageUrl() string {
+	if x != nil {
+		return x.GroupImageUrl
 	}
 	return ""
 }
@@ -523,6 +531,7 @@ type CreateConversationRequest struct {
 	CreatorId      int64                  `protobuf:"varint,1,opt,name=creator_id,json=creatorId,proto3" json:"creator_id,omitempty"`                       // From JWT
 	ParticipantIds []int64                `protobuf:"varint,2,rep,packed,name=participant_ids,json=participantIds,proto3" json:"participant_ids,omitempty"` // List of *other* user IDs
 	GroupName      string                 `protobuf:"bytes,3,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`                        // If present, creates a group
+	GroupImageUrl  string                 `protobuf:"bytes,4,opt,name=group_image_url,json=groupImageUrl,proto3" json:"group_image_url,omitempty"`          // Group profile picture
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -574,6 +583,13 @@ func (x *CreateConversationRequest) GetParticipantIds() []int64 {
 func (x *CreateConversationRequest) GetGroupName() string {
 	if x != nil {
 		return x.GroupName
+	}
+	return ""
+}
+
+func (x *CreateConversationRequest) GetGroupImageUrl() string {
+	if x != nil {
+		return x.GroupImageUrl
 	}
 	return ""
 }
@@ -877,12 +893,429 @@ func (x *GetVideoCallTokenResponse) GetRoomId() string {
 	return ""
 }
 
+// --- Group Management ---
+type AddParticipantRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT - must be group member
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	ParticipantId  int64                  `protobuf:"varint,3,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // User to add
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AddParticipantRequest) Reset() {
+	*x = AddParticipantRequest{}
+	mi := &file_message_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddParticipantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddParticipantRequest) ProtoMessage() {}
+
+func (x *AddParticipantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddParticipantRequest.ProtoReflect.Descriptor instead.
+func (*AddParticipantRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AddParticipantRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *AddParticipantRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *AddParticipantRequest) GetParticipantId() int64 {
+	if x != nil {
+		return x.ParticipantId
+	}
+	return 0
+}
+
+type AddParticipantResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddParticipantResponse) Reset() {
+	*x = AddParticipantResponse{}
+	mi := &file_message_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddParticipantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddParticipantResponse) ProtoMessage() {}
+
+func (x *AddParticipantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddParticipantResponse.ProtoReflect.Descriptor instead.
+func (*AddParticipantResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AddParticipantResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type RemoveParticipantRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT - must be group member
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	ParticipantId  int64                  `protobuf:"varint,3,opt,name=participant_id,json=participantId,proto3" json:"participant_id,omitempty"` // User to remove
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RemoveParticipantRequest) Reset() {
+	*x = RemoveParticipantRequest{}
+	mi := &file_message_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveParticipantRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveParticipantRequest) ProtoMessage() {}
+
+func (x *RemoveParticipantRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveParticipantRequest.ProtoReflect.Descriptor instead.
+func (*RemoveParticipantRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *RemoveParticipantRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *RemoveParticipantRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *RemoveParticipantRequest) GetParticipantId() int64 {
+	if x != nil {
+		return x.ParticipantId
+	}
+	return 0
+}
+
+type RemoveParticipantResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveParticipantResponse) Reset() {
+	*x = RemoveParticipantResponse{}
+	mi := &file_message_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveParticipantResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveParticipantResponse) ProtoMessage() {}
+
+func (x *RemoveParticipantResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveParticipantResponse.ProtoReflect.Descriptor instead.
+func (*RemoveParticipantResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RemoveParticipantResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type UpdateGroupInfoRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT - must be group member
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	GroupName      string                 `protobuf:"bytes,3,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	GroupImageUrl  string                 `protobuf:"bytes,4,opt,name=group_image_url,json=groupImageUrl,proto3" json:"group_image_url,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UpdateGroupInfoRequest) Reset() {
+	*x = UpdateGroupInfoRequest{}
+	mi := &file_message_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateGroupInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateGroupInfoRequest) ProtoMessage() {}
+
+func (x *UpdateGroupInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateGroupInfoRequest.ProtoReflect.Descriptor instead.
+func (*UpdateGroupInfoRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *UpdateGroupInfoRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UpdateGroupInfoRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *UpdateGroupInfoRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *UpdateGroupInfoRequest) GetGroupImageUrl() string {
+	if x != nil {
+		return x.GroupImageUrl
+	}
+	return ""
+}
+
+type UpdateGroupInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateGroupInfoResponse) Reset() {
+	*x = UpdateGroupInfoResponse{}
+	mi := &file_message_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateGroupInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateGroupInfoResponse) ProtoMessage() {}
+
+func (x *UpdateGroupInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateGroupInfoResponse.ProtoReflect.Descriptor instead.
+func (*UpdateGroupInfoResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UpdateGroupInfoResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type LeaveGroupRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LeaveGroupRequest) Reset() {
+	*x = LeaveGroupRequest{}
+	mi := &file_message_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveGroupRequest) ProtoMessage() {}
+
+func (x *LeaveGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveGroupRequest.ProtoReflect.Descriptor instead.
+func (*LeaveGroupRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *LeaveGroupRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *LeaveGroupRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+type LeaveGroupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LeaveGroupResponse) Reset() {
+	*x = LeaveGroupResponse{}
+	mi := &file_message_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LeaveGroupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LeaveGroupResponse) ProtoMessage() {}
+
+func (x *LeaveGroupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LeaveGroupResponse.ProtoReflect.Descriptor instead.
+func (*LeaveGroupResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *LeaveGroupResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_message_proto protoreflect.FileDescriptor
 
 const file_message_proto_rawDesc = "" +
 	"\n" +
 	"\rmessage.proto\x12\amessage\x1a\n" +
-	"user.proto\"\xeb\x01\n" +
+	"user.proto\"\x93\x02\n" +
 	"\fConversation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
 	"\fparticipants\x18\x02 \x03(\v2\x19.user.GetUserDataResponseR\fparticipants\x123\n" +
@@ -891,7 +1324,8 @@ const file_message_proto_rawDesc = "" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x19\n" +
 	"\bis_group\x18\x05 \x01(\bR\aisGroup\x12\x1d\n" +
 	"\n" +
-	"group_name\x18\x06 \x01(\tR\tgroupName\"\xbb\x01\n" +
+	"group_name\x18\x06 \x01(\tR\tgroupName\x12&\n" +
+	"\x0fgroup_image_url\x18\a \x01(\tR\rgroupImageUrl\"\xbb\x01\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1b\n" +
@@ -919,13 +1353,14 @@ const file_message_proto_rawDesc = "" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\"A\n" +
 	"\x13SendMessageResponse\x12*\n" +
-	"\amessage\x18\x01 \x01(\v2\x10.message.MessageR\amessage\"\x82\x01\n" +
+	"\amessage\x18\x01 \x01(\v2\x10.message.MessageR\amessage\"\xaa\x01\n" +
 	"\x19CreateConversationRequest\x12\x1d\n" +
 	"\n" +
 	"creator_id\x18\x01 \x01(\x03R\tcreatorId\x12'\n" +
 	"\x0fparticipant_ids\x18\x02 \x03(\x03R\x0eparticipantIds\x12\x1d\n" +
 	"\n" +
-	"group_name\x18\x03 \x01(\tR\tgroupName\"N\n" +
+	"group_name\x18\x03 \x01(\tR\tgroupName\x12&\n" +
+	"\x0fgroup_image_url\x18\x04 \x01(\tR\rgroupImageUrl\"N\n" +
 	"\x14UnsendMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1d\n" +
 	"\n" +
@@ -942,7 +1377,32 @@ const file_message_proto_rawDesc = "" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\"J\n" +
 	"\x19GetVideoCallTokenResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
-	"\aroom_id\x18\x02 \x01(\tR\x06roomId2\xd9\x04\n" +
+	"\aroom_id\x18\x02 \x01(\tR\x06roomId\"\x80\x01\n" +
+	"\x15AddParticipantRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12%\n" +
+	"\x0eparticipant_id\x18\x03 \x01(\x03R\rparticipantId\"2\n" +
+	"\x16AddParticipantResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\x83\x01\n" +
+	"\x18RemoveParticipantRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12%\n" +
+	"\x0eparticipant_id\x18\x03 \x01(\x03R\rparticipantId\"5\n" +
+	"\x19RemoveParticipantResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\xa1\x01\n" +
+	"\x16UpdateGroupInfoRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x03 \x01(\tR\tgroupName\x12&\n" +
+	"\x0fgroup_image_url\x18\x04 \x01(\tR\rgroupImageUrl\"3\n" +
+	"\x17UpdateGroupInfoResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"U\n" +
+	"\x11LeaveGroupRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\".\n" +
+	"\x12LeaveGroupResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xa5\a\n" +
 	"\x0eMessageService\x12W\n" +
 	"\x10GetConversations\x12 .message.GetConversationsRequest\x1a!.message.GetConversationsResponse\x12H\n" +
 	"\vGetMessages\x12\x1b.message.GetMessagesRequest\x1a\x1c.message.GetMessagesResponse\x12H\n" +
@@ -950,7 +1410,12 @@ const file_message_proto_rawDesc = "" +
 	"\x12CreateConversation\x12\".message.CreateConversationRequest\x1a\x15.message.Conversation\x12N\n" +
 	"\rUnsendMessage\x12\x1d.message.UnsendMessageRequest\x1a\x1e.message.UnsendMessageResponse\x12]\n" +
 	"\x12DeleteConversation\x12\".message.DeleteConversationRequest\x1a#.message.DeleteConversationResponse\x12Z\n" +
-	"\x11GetVideoCallToken\x12!.message.GetVideoCallTokenRequest\x1a\".message.GetVideoCallTokenResponseB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
+	"\x11GetVideoCallToken\x12!.message.GetVideoCallTokenRequest\x1a\".message.GetVideoCallTokenResponse\x12Q\n" +
+	"\x0eAddParticipant\x12\x1e.message.AddParticipantRequest\x1a\x1f.message.AddParticipantResponse\x12Z\n" +
+	"\x11RemoveParticipant\x12!.message.RemoveParticipantRequest\x1a\".message.RemoveParticipantResponse\x12T\n" +
+	"\x0fUpdateGroupInfo\x12\x1f.message.UpdateGroupInfoRequest\x1a .message.UpdateGroupInfoResponse\x12E\n" +
+	"\n" +
+	"LeaveGroup\x12\x1a.message.LeaveGroupRequest\x1a\x1b.message.LeaveGroupResponseB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
 
 var (
 	file_message_proto_rawDescOnce sync.Once
@@ -964,7 +1429,7 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_message_proto_goTypes = []any{
 	(*Conversation)(nil),               // 0: message.Conversation
 	(*Message)(nil),                    // 1: message.Message
@@ -981,10 +1446,18 @@ var file_message_proto_goTypes = []any{
 	(*DeleteConversationResponse)(nil), // 12: message.DeleteConversationResponse
 	(*GetVideoCallTokenRequest)(nil),   // 13: message.GetVideoCallTokenRequest
 	(*GetVideoCallTokenResponse)(nil),  // 14: message.GetVideoCallTokenResponse
-	(*proto.GetUserDataResponse)(nil),  // 15: user.GetUserDataResponse
+	(*AddParticipantRequest)(nil),      // 15: message.AddParticipantRequest
+	(*AddParticipantResponse)(nil),     // 16: message.AddParticipantResponse
+	(*RemoveParticipantRequest)(nil),   // 17: message.RemoveParticipantRequest
+	(*RemoveParticipantResponse)(nil),  // 18: message.RemoveParticipantResponse
+	(*UpdateGroupInfoRequest)(nil),     // 19: message.UpdateGroupInfoRequest
+	(*UpdateGroupInfoResponse)(nil),    // 20: message.UpdateGroupInfoResponse
+	(*LeaveGroupRequest)(nil),          // 21: message.LeaveGroupRequest
+	(*LeaveGroupResponse)(nil),         // 22: message.LeaveGroupResponse
+	(*proto.GetUserDataResponse)(nil),  // 23: user.GetUserDataResponse
 }
 var file_message_proto_depIdxs = []int32{
-	15, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
+	23, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
 	1,  // 1: message.Conversation.last_message:type_name -> message.Message
 	0,  // 2: message.GetConversationsResponse.conversations:type_name -> message.Conversation
 	1,  // 3: message.GetMessagesResponse.messages:type_name -> message.Message
@@ -996,15 +1469,23 @@ var file_message_proto_depIdxs = []int32{
 	9,  // 9: message.MessageService.UnsendMessage:input_type -> message.UnsendMessageRequest
 	11, // 10: message.MessageService.DeleteConversation:input_type -> message.DeleteConversationRequest
 	13, // 11: message.MessageService.GetVideoCallToken:input_type -> message.GetVideoCallTokenRequest
-	3,  // 12: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
-	5,  // 13: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
-	7,  // 14: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
-	0,  // 15: message.MessageService.CreateConversation:output_type -> message.Conversation
-	10, // 16: message.MessageService.UnsendMessage:output_type -> message.UnsendMessageResponse
-	12, // 17: message.MessageService.DeleteConversation:output_type -> message.DeleteConversationResponse
-	14, // 18: message.MessageService.GetVideoCallToken:output_type -> message.GetVideoCallTokenResponse
-	12, // [12:19] is the sub-list for method output_type
-	5,  // [5:12] is the sub-list for method input_type
+	15, // 12: message.MessageService.AddParticipant:input_type -> message.AddParticipantRequest
+	17, // 13: message.MessageService.RemoveParticipant:input_type -> message.RemoveParticipantRequest
+	19, // 14: message.MessageService.UpdateGroupInfo:input_type -> message.UpdateGroupInfoRequest
+	21, // 15: message.MessageService.LeaveGroup:input_type -> message.LeaveGroupRequest
+	3,  // 16: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
+	5,  // 17: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
+	7,  // 18: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
+	0,  // 19: message.MessageService.CreateConversation:output_type -> message.Conversation
+	10, // 20: message.MessageService.UnsendMessage:output_type -> message.UnsendMessageResponse
+	12, // 21: message.MessageService.DeleteConversation:output_type -> message.DeleteConversationResponse
+	14, // 22: message.MessageService.GetVideoCallToken:output_type -> message.GetVideoCallTokenResponse
+	16, // 23: message.MessageService.AddParticipant:output_type -> message.AddParticipantResponse
+	18, // 24: message.MessageService.RemoveParticipant:output_type -> message.RemoveParticipantResponse
+	20, // 25: message.MessageService.UpdateGroupInfo:output_type -> message.UpdateGroupInfoResponse
+	22, // 26: message.MessageService.LeaveGroup:output_type -> message.LeaveGroupResponse
+	16, // [16:27] is the sub-list for method output_type
+	5,  // [5:16] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -1021,7 +1502,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_message_proto_rawDesc), len(file_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

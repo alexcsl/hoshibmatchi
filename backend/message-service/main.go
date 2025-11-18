@@ -2,27 +2,28 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net"
-	"time"
-    "strconv"
-    "encoding/json"
-	"fmt"
 	"net/http"
-	"sync"
-	"gorm.io/gorm/clause"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
+
+	"gorm.io/gorm/clause"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"github.com/golang-jwt/jwt/v5"
+	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-    "google.golang.org/grpc/status"
-	"google.golang.org/grpc/codes"
 
 	// This service's generated proto
 	pb "github.com/hoshibmatchi/message-service/proto"
@@ -35,8 +36,9 @@ import (
 // Conversation represents a single chat, either 1-on-1 or a group.
 type Conversation struct {
 	gorm.Model
-	IsGroup   bool   `gorm:"default:false"`
-	GroupName string // e.g., "Study Group"
+	IsGroup       bool   `gorm:"default:false"`
+	GroupName     string // e.g., "Study Group"
+	GroupImageURL string // Group profile picture URL
 }
 
 // Participant is the join table between Conversation and User.
@@ -117,7 +119,7 @@ type server struct {
 	db         *gorm.DB                 // Postgres connection
 	rdb        *redis.Client            // Redis connection
 	userClient userPb.UserServiceClient // gRPC client for user-service
-	hub 	  *Hub                     // Hub for managing WebSocket clients
+	hub        *Hub                     // Hub for managing WebSocket clients
 }
 
 func main() {
@@ -245,8 +247,9 @@ func (s *server) CreateConversation(ctx context.Context, req *pb.CreateConversat
 
 	// --- Step 3: Create new conversation in a transaction ---
 	newConversation := Conversation{
-		IsGroup:   isGroup,
-		GroupName: req.GroupName,
+		IsGroup:       isGroup,
+		GroupName:     req.GroupName,
+		GroupImageURL: req.GroupImageUrl,
 	}
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -552,13 +555,26 @@ func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsR
 
 // handleWebSocket upgrades the HTTP request to a WebSocket connection
 func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// TODO: Auth!
-	// We MUST get the userID from the auth token.
-	// For now, we'll fake it with a query param: /ws?user_id=1
-	userIDStr := r.URL.Query().Get("user_id")
-	userID, _ := strconv.ParseInt(userIDStr, 10, 64)
-	if userID == 0 {
-		http.Error(w, "Unauthorized: Missing user_id query parameter", http.StatusUnauthorized)
+	// Extract JWT token from query parameter or header
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		// Try Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			token = authHeader[7:]
+		}
+	}
+
+	if token == "" {
+		http.Error(w, "Unauthorized: Missing authentication token", http.StatusUnauthorized)
+		return
+	}
+
+	// Validate JWT token and extract userID
+	userID, err := s.validateJWTToken(token)
+	if err != nil {
+		log.Printf("Invalid token: %v", err)
+		http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
 		return
 	}
 
@@ -587,6 +603,38 @@ func (s *server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Start goroutines to handle reading and writing for this client
 	go client.writePump()
 	go client.readPump(s.hub)
+}
+
+// validateJWTToken validates the JWT token and returns the user ID
+func (s *server) validateJWTToken(tokenString string) (int64, error) {
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	if len(jwtSecret) == 0 {
+		return 0, fmt.Errorf("JWT_SECRET not configured")
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+
+	if err != nil || !token.Valid {
+		return 0, fmt.Errorf("invalid token: %v", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return 0, fmt.Errorf("invalid token claims")
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, fmt.Errorf("user_id not found in token")
+	}
+
+	return int64(userIDFloat), nil
 }
 
 // getConversationIDsForUser is a helper to find all convos a user is in
@@ -796,9 +844,9 @@ func (s *server) GetVideoCallToken(ctx context.Context, req *pb.GetVideoCallToke
 
 	claims := jwt.MapClaims{
 		"apikey":        apiKey,
-		"permissions":   []string{"allow_join"}, // User can join a room
-		"version":       2,                      // Use v2 of VideoSDK tokens
-		"roomId":        req.ConversationId,     // Use our convo ID as the room ID
+		"permissions":   []string{"allow_join"},            // User can join a room
+		"version":       2,                                 // Use v2 of VideoSDK tokens
+		"roomId":        req.ConversationId,                // Use our convo ID as the room ID
 		"participantId": strconv.FormatInt(req.UserId, 10), // User's ID as a string
 		"iat":           time.Now().Unix(),
 		"exp":           expirationTime,
@@ -818,4 +866,265 @@ func (s *server) GetVideoCallToken(ctx context.Context, req *pb.GetVideoCallToke
 		Token:  signedToken,
 		RoomId: req.ConversationId,
 	}, nil
+}
+
+// AddParticipant adds a user to a group conversation
+func (s *server) AddParticipant(ctx context.Context, req *pb.AddParticipantRequest) (*pb.AddParticipantResponse, error) {
+	log.Printf("AddParticipant: User %d adding %d to conversation %s", req.UserId, req.ParticipantId, req.ConversationId)
+
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID")
+	}
+
+	// Validate conversation is a group
+	var convo Conversation
+	if err := s.db.First(&convo, convoID).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Conversation not found")
+	}
+	if !convo.IsGroup {
+		return nil, status.Error(codes.InvalidArgument, "Cannot add participants to non-group conversations")
+	}
+
+	// Validate requester is a member
+	var requesterCount int64
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&requesterCount)
+	if requesterCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "Only group members can add participants")
+	}
+
+	// Check if user is already a participant
+	var existingCount int64
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.ParticipantId).Count(&existingCount)
+	if existingCount > 0 {
+		return nil, status.Error(codes.AlreadyExists, "User is already a participant")
+	}
+
+	// Add participant
+	participant := Participant{
+		ConversationID: uint(convoID),
+		UserID:         req.ParticipantId,
+		JoinedAt:       time.Now(),
+	}
+	if err := s.db.Create(&participant).Error; err != nil {
+		log.Printf("Failed to add participant: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to add participant")
+	}
+
+	// Create system message
+	systemMessage := fmt.Sprintf("User %d added user %d to the group", req.UserId, req.ParticipantId)
+	msg := Message{
+		ConversationID: uint(convoID),
+		SenderID:       req.UserId,
+		Content:        systemMessage,
+	}
+	s.db.Create(&msg)
+
+	// Notify via Redis Pub/Sub
+	notification := map[string]interface{}{
+		"type":            "participant_added",
+		"conversation_id": req.ConversationId,
+		"participant_id":  req.ParticipantId,
+		"added_by":        req.UserId,
+		"message":         systemMessage,
+	}
+	msgBody, _ := json.Marshal(notification)
+	channelName := fmt.Sprintf("chat:%s", req.ConversationId)
+	if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+		log.Printf("Failed to publish participant_added event: %v", err)
+	}
+
+	return &pb.AddParticipantResponse{}, nil
+}
+
+// RemoveParticipant removes a user from a group conversation
+func (s *server) RemoveParticipant(ctx context.Context, req *pb.RemoveParticipantRequest) (*pb.RemoveParticipantResponse, error) {
+	log.Printf("RemoveParticipant: User %d removing %d from conversation %s", req.UserId, req.ParticipantId, req.ConversationId)
+
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID")
+	}
+
+	// Validate conversation is a group
+	var convo Conversation
+	if err := s.db.First(&convo, convoID).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Conversation not found")
+	}
+	if !convo.IsGroup {
+		return nil, status.Error(codes.InvalidArgument, "Cannot remove participants from non-group conversations")
+	}
+
+	// Validate requester is a member
+	var requesterCount int64
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&requesterCount)
+	if requesterCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "Only group members can remove participants")
+	}
+
+	// Remove participant
+	result := s.db.Where("conversation_id = ? AND user_id = ?", convoID, req.ParticipantId).Delete(&Participant{})
+	if result.Error != nil {
+		log.Printf("Failed to remove participant: %v", result.Error)
+		return nil, status.Error(codes.Internal, "Failed to remove participant")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "User is not a participant")
+	}
+
+	// Create system message
+	systemMessage := fmt.Sprintf("User %d removed user %d from the group", req.UserId, req.ParticipantId)
+	msg := Message{
+		ConversationID: uint(convoID),
+		SenderID:       req.UserId,
+		Content:        systemMessage,
+	}
+	s.db.Create(&msg)
+
+	// Notify via Redis Pub/Sub
+	notification := map[string]interface{}{
+		"type":            "participant_removed",
+		"conversation_id": req.ConversationId,
+		"participant_id":  req.ParticipantId,
+		"removed_by":      req.UserId,
+		"message":         systemMessage,
+	}
+	msgBody, _ := json.Marshal(notification)
+	channelName := fmt.Sprintf("chat:%s", req.ConversationId)
+	if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+		log.Printf("Failed to publish participant_removed event: %v", err)
+	}
+
+	return &pb.RemoveParticipantResponse{Message: "Participant removed successfully"}, nil
+}
+
+// UpdateGroupInfo updates group name and/or image
+func (s *server) UpdateGroupInfo(ctx context.Context, req *pb.UpdateGroupInfoRequest) (*pb.UpdateGroupInfoResponse, error) {
+	log.Printf("UpdateGroupInfo: User %d updating conversation %s", req.UserId, req.ConversationId)
+
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID")
+	}
+
+	// Validate conversation is a group
+	var convo Conversation
+	if err := s.db.First(&convo, convoID).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Conversation not found")
+	}
+	if !convo.IsGroup {
+		return nil, status.Error(codes.InvalidArgument, "Cannot update non-group conversations")
+	}
+
+	// Validate requester is a member
+	var requesterCount int64
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&requesterCount)
+	if requesterCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "Only group members can update group info")
+	}
+
+	// Update fields
+	updates := map[string]interface{}{}
+	if req.GroupName != "" {
+		updates["group_name"] = req.GroupName
+	}
+	if req.GroupImageUrl != "" {
+		updates["group_image_url"] = req.GroupImageUrl
+	}
+
+	if len(updates) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "No updates provided")
+	}
+
+	if err := s.db.Model(&convo).Updates(updates).Error; err != nil {
+		log.Printf("Failed to update group info: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to update group info")
+	}
+
+	// Create system message
+	systemMessage := fmt.Sprintf("User %d updated the group info", req.UserId)
+	msg := Message{
+		ConversationID: uint(convoID),
+		SenderID:       req.UserId,
+		Content:        systemMessage,
+	}
+	s.db.Create(&msg)
+
+	// Notify via Redis Pub/Sub
+	notification := map[string]interface{}{
+		"type":            "group_updated",
+		"conversation_id": req.ConversationId,
+		"updated_by":      req.UserId,
+		"group_name":      req.GroupName,
+		"group_image_url": req.GroupImageUrl,
+		"message":         systemMessage,
+	}
+	msgBody, _ := json.Marshal(notification)
+	channelName := fmt.Sprintf("chat:%s", req.ConversationId)
+	if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+		log.Printf("Failed to publish group_updated event: %v", err)
+	}
+
+	return &pb.UpdateGroupInfoResponse{Message: "Group info updated successfully"}, nil
+}
+
+// LeaveGroup allows a user to leave a group conversation
+func (s *server) LeaveGroup(ctx context.Context, req *pb.LeaveGroupRequest) (*pb.LeaveGroupResponse, error) {
+	log.Printf("LeaveGroup: User %d leaving conversation %s", req.UserId, req.ConversationId)
+
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID")
+	}
+
+	// Validate conversation is a group
+	var convo Conversation
+	if err := s.db.First(&convo, convoID).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "Conversation not found")
+	}
+	if !convo.IsGroup {
+		return nil, status.Error(codes.InvalidArgument, "Cannot leave non-group conversations")
+	}
+
+	// Remove participant
+	result := s.db.Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Delete(&Participant{})
+	if result.Error != nil {
+		log.Printf("Failed to leave group: %v", result.Error)
+		return nil, status.Error(codes.Internal, "Failed to leave group")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "User is not a participant")
+	}
+
+	// Create system message
+	systemMessage := fmt.Sprintf("User %d left the group", req.UserId)
+	msg := Message{
+		ConversationID: uint(convoID),
+		SenderID:       req.UserId,
+		Content:        systemMessage,
+	}
+	s.db.Create(&msg)
+
+	// Notify via Redis Pub/Sub
+	notification := map[string]interface{}{
+		"type":            "participant_left",
+		"conversation_id": req.ConversationId,
+		"user_id":         req.UserId,
+		"message":         systemMessage,
+	}
+	msgBody, _ := json.Marshal(notification)
+	channelName := fmt.Sprintf("chat:%s", req.ConversationId)
+	if err := s.rdb.Publish(ctx, channelName, msgBody).Err(); err != nil {
+		log.Printf("Failed to publish participant_left event: %v", err)
+	}
+
+	// Check if group is empty - optionally delete it
+	var remainingCount int64
+	s.db.Model(&Participant{}).Where("conversation_id = ?", convoID).Count(&remainingCount)
+	if remainingCount == 0 {
+		log.Printf("Group %d is empty, deleting conversation", convoID)
+		s.db.Delete(&convo)
+	}
+
+	return &pb.LeaveGroupResponse{Message: "Left group successfully"}, nil
 }

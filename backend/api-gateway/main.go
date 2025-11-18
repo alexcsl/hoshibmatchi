@@ -6,12 +6,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"os"
+	"time"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
@@ -21,6 +23,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/time/rate"
 
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
@@ -44,14 +48,50 @@ var hashtagClient hashtagPb.HashtagServiceClient
 
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
+// Redis client for distributed rate limiting
+var rdb *redis.Client
+
+// Rate limiter for in-memory fallback
+var globalLimiter *rate.Limiter
+
 type contextKey string
 
 const userIDKey contextKey = "userID"
 
+// Rate limit configuration
+type RateLimit struct {
+	RequestsPerHour int
+	Burst           int
+}
+
+var (
+	anonymousLimit     = RateLimit{RequestsPerHour: 100, Burst: 20}
+	authenticatedLimit = RateLimit{RequestsPerHour: 1000, Burst: 50}
+	sensitiveLimit     = RateLimit{RequestsPerHour: 10, Burst: 3} // For login, registration
+)
+
 func main() {
-	if os.Getenv("JWT_SECRET") == "" { 
-        log.Fatal("JWT_SECRET environment variable is not set")
-    }
+	if os.Getenv("JWT_SECRET") == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
+	// Connect to Redis for distributed rate limiting
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "redis:6379"
+	}
+	rdb = redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+
+	ctx := context.Background()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Printf("Warning: Redis connection failed, rate limiting will use in-memory fallback: %v", err)
+		globalLimiter = rate.NewLimiter(rate.Limit(authenticatedLimit.RequestsPerHour/3600.0), authenticatedLimit.Burst)
+	} else {
+		log.Println("Successfully connected to Redis for rate limiting")
+	}
+
 	// --- Connect to all gRPC Services ---
 	mustConnect(&client, "user-service:9000")
 	mustConnect(&postClient, "post-service:9001")
@@ -71,7 +111,9 @@ func main() {
 		c.String(http.StatusOK, "API Gateway is running")
 	})
 
+	// Auth routes with sensitive rate limiting (10 req/hour)
 	authRoutes := router.Group("/auth")
+	authRoutes.Use(SensitiveEndpointLimiter())
 	{
 		// These handlers don't need params, so gin.WrapF is fine.
 		authRoutes.POST("/register", gin.WrapF(handleRegister))
@@ -84,9 +126,10 @@ func main() {
 		authRoutes.POST("/password-reset/submit", gin.WrapF(handleResetPassword))
 	}
 
-	// Protected routes (JWT auth required)
+	// Protected routes (JWT auth required + authenticated rate limit: 1000 req/hour)
 	protected := router.Group("/")
 	protected.Use(GinAuthMiddleware())
+	protected.Use(RateLimitMiddleware(authenticatedLimit))
 	{
 		// --- THIS IS THE FIX ---
 		// We are now calling the Gin-native handlers directly
@@ -309,6 +352,80 @@ func mustConnect(client interface{}, target string) {
 		log.Fatalf("Unknown client type")
 	}
 	log.Printf("Successfully connected to %s", target)
+}
+
+// RateLimitMiddleware implements distributed rate limiting using Redis
+func RateLimitMiddleware(limit RateLimit) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		identifier := c.ClientIP() // Default to IP
+
+		// If authenticated, use user ID instead
+		if userID, exists := c.Get("userID"); exists {
+			identifier = fmt.Sprintf("user:%v", userID)
+		}
+
+		// Check rate limit
+		if !checkRateLimit(c.Request.Context(), identifier, limit) {
+			resetTime := time.Now().Add(time.Hour).Unix()
+			c.Header("X-RateLimit-Limit", fmt.Sprintf("%d", limit.RequestsPerHour))
+			c.Header("X-RateLimit-Remaining", "0")
+			c.Header("X-RateLimit-Reset", fmt.Sprintf("%d", resetTime))
+			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+				"error":       "Rate limit exceeded. Please try again later.",
+				"retry_after": 3600,
+			})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// checkRateLimit checks if the request is within rate limits using Redis
+func checkRateLimit(ctx context.Context, identifier string, limit RateLimit) bool {
+	// If Redis is unavailable, use in-memory rate limiter
+	if rdb == nil {
+		if globalLimiter == nil {
+			return true // No rate limiting if both Redis and limiter failed
+		}
+		return globalLimiter.Allow()
+	}
+
+	key := fmt.Sprintf("rate_limit:%s", identifier)
+	now := time.Now()
+	windowStart := now.Add(-time.Hour).Unix()
+
+	// Use Redis sorted set for sliding window rate limiting
+	pipe := rdb.Pipeline()
+
+	// Remove old entries outside the window
+	pipe.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%d", windowStart))
+
+	// Count requests in current window
+	countCmd := pipe.ZCard(ctx, key)
+
+	// Add current request
+	pipe.ZAdd(ctx, key, redis.Z{
+		Score:  float64(now.Unix()),
+		Member: fmt.Sprintf("%d", now.UnixNano()),
+	})
+
+	// Set expiration
+	pipe.Expire(ctx, key, time.Hour*2)
+
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		log.Printf("Rate limit check failed: %v", err)
+		return true // Allow on error
+	}
+
+	count := countCmd.Val()
+	return count < int64(limit.RequestsPerHour)
+}
+
+// SensitiveEndpointLimiter is for login, registration, and other sensitive endpoints
+func SensitiveEndpointLimiter() gin.HandlerFunc {
+	return RateLimitMiddleware(sensitiveLimit)
 }
 
 // handleRegister translates the HTTP request to a gRPC call
@@ -2153,7 +2270,7 @@ func handleDeleteConversation_Gin(c *gin.Context) {
 	convoID := c.Param("id")
 
 	grpcReq := &messagePb.DeleteConversationRequest{
-		UserId:        userID,
+		UserId:         userID,
 		ConversationId: convoID,
 	}
 
@@ -2178,7 +2295,7 @@ func handleGetVideoToken_Gin(c *gin.Context) {
 	convoID := c.Param("id")
 
 	grpcReq := &messagePb.GetVideoCallTokenRequest{
-		UserId:        userID,
+		UserId:         userID,
 		ConversationId: convoID,
 	}
 
@@ -2212,8 +2329,8 @@ func handleGoogleCallback_Gin(c *gin.Context) {
 
 	// Return the same as login: tokens
 	c.JSON(http.StatusOK, gin.H{
-		"message":        grpcRes.Message,
-		"access_token":   grpcRes.AccessToken,
-		"refresh_token":  grpcRes.RefreshToken,
+		"message":       grpcRes.Message,
+		"access_token":  grpcRes.AccessToken,
+		"refresh_token": grpcRes.RefreshToken,
 	})
 }

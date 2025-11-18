@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"os"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -42,7 +43,11 @@ func main() {
 	retryDelay := 2 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+		amqpURI := os.Getenv("RABBITMQ_URI")
+		if amqpURI == "" {
+			amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
+		}
+		amqpConn, err = amqp.Dial(amqpURI)
 		if err == nil {
 			log.Println("Successfully connected to RabbitMQ")
 			break

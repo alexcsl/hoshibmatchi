@@ -35,6 +35,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}   
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET} 
       - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/user-service
@@ -44,6 +45,11 @@ services:
     build:
       context: .
       dockerfile: ./backend/post-service/Dockerfile.dev
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/post-service
@@ -53,6 +59,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/story-service/Dockerfile.dev
+    environment:
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/story-service
@@ -62,6 +70,10 @@ services:
     build:
       context: .
       dockerfile: ./backend/media-service/Dockerfile.dev
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/media-service
@@ -91,6 +103,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/notification-service/Dockerfile.dev
+    environment:
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/notification-service
@@ -100,6 +114,17 @@ services:
     build:
       context: .
       dockerfile: ./backend/email-service/Dockerfile.dev
+    environment:
+      # SMTP Configuration - Add your real SMTP credentials here
+      # For Gmail: smtp.gmail.com:587 with app password
+      # For SendGrid: smtp.sendgrid.net:587 with API key
+      # For AWS SES: email-smtp.us-east-1.amazonaws.com:587
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@hoshibmatchi.com}
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/email-service
@@ -109,6 +134,11 @@ services:
     build:
       context: .
       dockerfile: ./backend/worker-service/Dockerfile.dev
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/worker-service
@@ -129,6 +159,8 @@ services:
     build:
       context: .
       dockerfile: ./backend/report-service/Dockerfile.dev
+    environment:
+      - RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672/
     volumes:
       - ./backend:/app/backend
     working_dir: /app/backend/report-service
