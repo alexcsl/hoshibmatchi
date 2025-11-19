@@ -134,7 +134,10 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
-import { postAPI, mediaAPI } from '@/services/api'
+// We keep axios for the direct MinIO upload
+import axios from 'axios' 
+// We use your api service for the backend calls (it handles the token automatically)
+import apiClient, { postAPI } from '@/services/api'
 
 const emit = defineEmits<{
   close: []
@@ -206,38 +209,58 @@ const handlePost = async () => {
   isUploading.value = true
 
   try {
-    // Upload all files to media service
-    const uploadPromises = selectedFiles.value.map(file => mediaAPI.uploadMedia(file))
-    const uploadResults = await Promise.all(uploadPromises)
-    
-    // Extract media URLs from upload results
-    const mediaUrls = uploadResults.map(result => result.media_url)
+    const finalMediaUrls: string[] = []
 
-    const postData = {
-      caption: caption.value,
-      media_urls: mediaUrls,
-      comments_disabled: commentsDisabled.value,
-      is_reel: isReel.value
+    // 1. Loop through each selected file
+    for (const file of selectedFiles.value) {
+      
+      // A. Request Upload URL from Backend
+      // We use 'apiClient' here because it automatically attaches 'Authorization: Bearer <jwt_token>'
+      const { data: uploadData } = await apiClient.get('/media/upload-url', {
+        params: {
+          filename: file.name,
+          type: file.type
+        }
+      })
+
+      // B. Upload Binary to MinIO
+      // We use raw 'axios' here because we do NOT want the Authorization header (MinIO uses the URL signature)
+      await axios.put(uploadData.upload_url, file, {
+        headers: { 'Content-Type': file.type }
+      })
+
+      // C. Keep the final URL to save in the DB
+      finalMediaUrls.push(uploadData.final_media_url)
     }
 
-    const response = await postAPI.createPost(postData)
+    // 2. Create Post in Backend
+    // We use postAPI which also uses apiClient internally
+    const response = await postAPI.createPost({
+      caption: caption.value,
+      media_urls: finalMediaUrls,
+      comments_disabled: commentsDisabled.value,
+      is_reel: isReel.value
+    })
 
-    // Add the new post to the feed store
+    // 3. Update Feed
     if (response.post) {
       feedStore.addPost(response.post)
     }
 
     emit('posted')
     emit('close')
-  } catch (error) {
+    clearFiles()
+    alert('Post created successfully!')
+
+  } catch (error: any) {
     console.error('Failed to create post:', error)
-    alert('Failed to create post. Please try again.')
+    const msg = error.response?.data?.error || error.message || 'Failed to create post.'
+    alert(msg)
   } finally {
     isUploading.value = false
   }
 }
 
-// Cleanup preview URLs when component unmounts
 onUnmounted(() => {
   previewUrls.value.forEach(url => URL.revokeObjectURL(url))
 })

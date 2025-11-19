@@ -135,6 +135,7 @@ const handleLogout = () => {
 </script>
 
 <style scoped lang="scss">
+@import '@../../../styles/fonts.css';
 .sidebar {
   width: 244px;
   height: 100vh;
@@ -174,7 +175,7 @@ const handleLogout = () => {
   }
 
   .logo-text {
-    font-family: cursive;
+    font-family: 'Instagram', cursive;
     font-size: 20px;
     font-weight: 300;
   }

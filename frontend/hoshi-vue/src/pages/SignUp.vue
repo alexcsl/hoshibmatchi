@@ -286,6 +286,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped lang="scss">
+@import '../styles/fonts.css';
 .signup-container {
   width: 100%;
   min-height: 100vh;

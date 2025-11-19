@@ -151,6 +151,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+@import '../styles/fonts.css';
 .login-otp-container {
   width: 100%;
   min-height: 100vh;
