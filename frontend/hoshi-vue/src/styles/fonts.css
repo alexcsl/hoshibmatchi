@@ -1,0 +1,13 @@
+@font-face {
+  font-family: 'Branding';
+  src: url('../assets/fonts/GrandHotel-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Instagram';
+  src: url('../assets/fonts/GrandHotel-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}

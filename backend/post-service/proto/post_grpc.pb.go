@@ -23,6 +23,7 @@ const (
 	PostService_LikePost_FullMethodName                 = "/post.PostService/LikePost"
 	PostService_UnlikePost_FullMethodName               = "/post.PostService/UnlikePost"
 	PostService_CommentOnPost_FullMethodName            = "/post.PostService/CommentOnPost"
+	PostService_GetCommentsByPost_FullMethodName        = "/post.PostService/GetCommentsByPost"
 	PostService_DeleteComment_FullMethodName            = "/post.PostService/DeleteComment"
 	PostService_GetHomeFeed_FullMethodName              = "/post.PostService/GetHomeFeed"
 	PostService_GetExploreFeed_FullMethodName           = "/post.PostService/GetExploreFeed"
@@ -53,6 +54,7 @@ type PostServiceClient interface {
 	LikePost(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*LikePostResponse, error)
 	UnlikePost(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*UnlikePostResponse, error)
 	CommentOnPost(ctx context.Context, in *CommentOnPostRequest, opts ...grpc.CallOption) (*CommentResponse, error)
+	GetCommentsByPost(ctx context.Context, in *GetCommentsByPostRequest, opts ...grpc.CallOption) (*GetCommentsByPostResponse, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*DeleteCommentResponse, error)
 	GetHomeFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 	GetExploreFeed(ctx context.Context, in *GetHomeFeedRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
@@ -117,6 +119,16 @@ func (c *postServiceClient) CommentOnPost(ctx context.Context, in *CommentOnPost
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CommentResponse)
 	err := c.cc.Invoke(ctx, PostService_CommentOnPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetCommentsByPost(ctx context.Context, in *GetCommentsByPostRequest, opts ...grpc.CallOption) (*GetCommentsByPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCommentsByPostResponse)
+	err := c.cc.Invoke(ctx, PostService_GetCommentsByPost_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +343,7 @@ type PostServiceServer interface {
 	LikePost(context.Context, *LikePostRequest) (*LikePostResponse, error)
 	UnlikePost(context.Context, *LikePostRequest) (*UnlikePostResponse, error)
 	CommentOnPost(context.Context, *CommentOnPostRequest) (*CommentResponse, error)
+	GetCommentsByPost(context.Context, *GetCommentsByPostRequest) (*GetCommentsByPostResponse, error)
 	DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error)
 	GetHomeFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
 	GetExploreFeed(context.Context, *GetHomeFeedRequest) (*GetHomeFeedResponse, error)
@@ -372,6 +385,9 @@ func (UnimplementedPostServiceServer) UnlikePost(context.Context, *LikePostReque
 }
 func (UnimplementedPostServiceServer) CommentOnPost(context.Context, *CommentOnPostRequest) (*CommentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CommentOnPost not implemented")
+}
+func (UnimplementedPostServiceServer) GetCommentsByPost(context.Context, *GetCommentsByPostRequest) (*GetCommentsByPostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCommentsByPost not implemented")
 }
 func (UnimplementedPostServiceServer) DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteComment not implemented")
@@ -522,6 +538,24 @@ func _PostService_CommentOnPost_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).CommentOnPost(ctx, req.(*CommentOnPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetCommentsByPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCommentsByPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetCommentsByPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetCommentsByPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetCommentsByPost(ctx, req.(*GetCommentsByPostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -908,6 +942,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CommentOnPost",
 			Handler:    _PostService_CommentOnPost_Handler,
+		},
+		{
+			MethodName: "GetCommentsByPost",
+			Handler:    _PostService_GetCommentsByPost_Handler,
 		},
 		{
 			MethodName: "DeleteComment",

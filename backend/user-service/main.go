@@ -270,13 +270,14 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 
 	// --- Step 4: Create User in Database (as INACTIVE) ---
 	newUser := User{
-		Name:        req.Name,
-		Username:    req.Username,
-		Email:       req.Email,
-		Password:    string(hashedPassword),
-		DateOfBirth: dob,
-		Gender:      req.Gender,
-		IsActive:    false, // User is inactive until OTP is verified
+		Name:         req.Name,
+		Username:     req.Username,
+		Email:        req.Email,
+		Password:     string(hashedPassword),
+		DateOfBirth:  dob,
+		Gender:       req.Gender,
+		IsActive:     false,          // User is inactive until OTP is verified
+		Is2FAEnabled: req.Enable_2Fa, // Set 2FA status from request
 	}
 
 	result := s.db.Create(&newUser)

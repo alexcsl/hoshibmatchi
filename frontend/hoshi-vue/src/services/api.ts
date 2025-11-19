@@ -1,0 +1,520 @@
+import axios, { AxiosInstance, AxiosError } from 'axios'
+
+// API Base URL - points to your API Gateway
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+// Create axios instance
+const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 seconds
+})
+
+// Request interceptor - Add JWT token to requests
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('jwt_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Response interceptor - Handle errors globally
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Unauthorized - clear token and redirect to login
+      localStorage.removeItem('jwt_token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
+// Types
+export interface RegisterRequest {
+  name: string
+  username: string
+  email: string
+  password: string
+  confirm_password: string
+  gender: string
+  date_of_birth: string
+  enable_2fa?: boolean
+}
+
+export interface LoginRequest {
+  email_or_username: string // username, email, or phone
+  password: string
+}
+
+export interface LoginResponse {
+  message?: string
+  token?: string
+  access_token?: string
+  refresh_token?: string
+  requires_2fa?: boolean
+  is_2fa_required?: boolean
+  user_id?: number
+  username?: string
+  email?: string
+}
+
+export interface Verify2FARequest {
+  email: string
+  otp_code: string
+}
+
+export interface RequestOTPRequest {
+  email: string
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  otp_code: string
+  new_password: string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface GoogleAuthRequest {
+  auth_code: string
+}
+
+export interface UserProfile {
+  id: number
+  username: string
+  name: string
+  email: string
+  profile_picture_url: string
+  bio: string
+  is_verified: boolean
+  is_private: boolean
+  followers_count: number
+  following_count: number
+  posts_count: number
+}
+
+export interface UploadURLResponse {
+  upload_url: string;     // The URL to POST the file to
+  final_media_url: string; // The URL to save in our database
+}
+
+// API Functions
+
+// Auth APIs
+export const authAPI = {
+  // Register new user
+  register: async (data: RegisterRequest) => {
+    const response = await apiClient.post('/auth/register', data)
+    return response.data
+  },
+
+  // Login
+  login: async (data: LoginRequest) => {
+    const response = await apiClient.post<LoginResponse>('/auth/login', data)
+    return response.data
+  },
+
+  // Verify 2FA OTP
+  verify2FA: async (data: Verify2FARequest) => {
+    const response = await apiClient.post('/auth/login/verify-2fa', data)
+    return response.data
+  },
+
+  // Request OTP (for registration)
+  requestOTP: async (data: RequestOTPRequest) => {
+    const response = await apiClient.post('/auth/send-otp', data)
+    return response.data
+  },
+
+  // Verify registration OTP
+  verifyRegistrationOTP: async (data: { email: string; otp_code: string }) => {
+    const response = await apiClient.post('/auth/verify-otp', data)
+    return response.data
+  },
+
+  // Forgot password - request OTP
+  forgotPassword: async (data: ForgotPasswordRequest) => {
+    const response = await apiClient.post('/auth/password-reset/request', data)
+    return response.data
+  },
+
+  // Reset password with OTP
+  resetPassword: async (data: ResetPasswordRequest) => {
+    const response = await apiClient.post('/auth/password-reset/submit', data)
+    return response.data
+  },
+
+  // Google OAuth
+  googleAuth: async (data: GoogleAuthRequest) => {
+    const response = await apiClient.post<LoginResponse>('/auth/google/callback', data)
+    return response.data
+  },
+
+  // Logout
+  logout: () => {
+    localStorage.removeItem('jwt_token')
+    localStorage.removeItem('user')
+    window.location.href = '/login'
+  },
+}
+
+// User APIs
+export const userAPI = {
+  // Get current user profile
+  getProfile: async (username: string) => {
+    const response = await apiClient.get(`/users/${username}`)
+    return response.data
+  },
+
+  // Get user posts
+  getUserPosts: async (username: string, page: number = 1, limit: number = 12) => {
+    const response = await apiClient.get(`/users/${username}/posts?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  // Get user reels
+  getUserReels: async (username: string, page: number = 1, limit: number = 12) => {
+    const response = await apiClient.get(`/users/${username}/reels?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  // Follow user
+  followUser: async (userId: number) => {
+    const response = await apiClient.post(`/users/${userId}/follow`)
+    return response.data
+  },
+
+  // Unfollow user
+  unfollowUser: async (userId: number) => {
+    const response = await apiClient.delete(`/users/${userId}/follow`)
+    return response.data
+  },
+
+  // Block user
+  blockUser: async (userId: number) => {
+    const response = await apiClient.post(`/users/${userId}/block`)
+    return response.data
+  },
+
+  // Unblock user
+  unblockUser: async (userId: number) => {
+    const response = await apiClient.delete(`/users/${userId}/block`)
+    return response.data
+  },
+
+  // Update profile
+  updateProfile: async (data: { name: string; bio: string; gender: string }) => {
+    const response = await apiClient.put('/profile/edit', data)
+    return response.data
+  },
+
+  // Set privacy
+  setPrivacy: async (isPrivate: boolean) => {
+    const response = await apiClient.put('/settings/privacy', { is_private: isPrivate })
+    return response.data
+  },
+
+  // Submit verification request
+  submitVerification: async (data: {
+    id_card_number: string
+    face_picture_url: string
+    reason: string
+  }) => {
+    const response = await apiClient.post('/profile/verify', data)
+    return response.data
+  }
+}
+
+// Media APIs
+export const mediaAPI = {
+  uploadMedia: async (file: File) => {
+    // 1. Get the pre-signed URL from our gateway
+    const urlResponse = await apiClient.get<UploadURLResponse>(`/media/upload-url`, {
+      params: {
+        filename: file.name,
+        type: file.type,
+      }
+    });
+
+    const { upload_url, final_media_url } = urlResponse.data;
+
+    // 2. Upload the file DIRECTLY to MinIO using the pre-signed PUT URL
+    // Note: Use PUT instead of POST for direct file upload
+    await axios.put(upload_url, file, {
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    // 3. Return the final URL for our database
+    return { media_url: final_media_url };
+  },
+}
+
+// Feed APIs
+export const feedAPI = {
+  getHomeFeed: async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/feed/home?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  getExploreFeed: async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/feed/explore?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  getReelsFeed: async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/feed/reels?page=${page}&limit=${limit}`)
+    return response.data
+  }
+}
+
+// Post APIs
+export const postAPI = {
+  createPost: async (data: {
+    caption: string
+    media_urls: string[]
+    comments_disabled?: boolean
+    is_reel?: boolean
+    collaborator_ids?: number[]
+    thumbnail_url?: string
+  }) => {
+    const response = await apiClient.post('/posts', data)
+    return response.data
+  },
+
+  likePost: async (postId: string) => {
+    const response = await apiClient.post(`/posts/${postId}/like`)
+    return response.data
+  },
+
+  unlikePost: async (postId: string) => {
+    const response = await apiClient.delete(`/posts/${postId}/like`)
+    return response.data
+  },
+
+  sharePost: async (postId: string, caption?: string) => {
+    const response = await apiClient.post(`/posts/${postId}/share`, { caption })
+    return response.data
+  },
+
+  summarizeCaption: async (postId: string) => {
+    const response = await apiClient.post(`/posts/${postId}/summarize`)
+    return response.data
+  }
+}
+
+// Story APIs
+export const storyAPI = {
+  createStory: async (mediaUrl: string) => {
+    const response = await apiClient.post('/stories', { media_url: mediaUrl })
+    return response.data
+  },
+
+  likeStory: async (storyId: string) => {
+    const response = await apiClient.post(`/stories/${storyId}/like`)
+    return response.data
+  },
+
+  unlikeStory: async (storyId: string) => {
+    const response = await apiClient.delete(`/stories/${storyId}/like`)
+    return response.data
+  }
+}
+
+// Comment APIs
+export const commentAPI = {
+  getCommentsByPost: async (postId: number, page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/posts/${postId}/comments?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  createComment: async (data: {
+    post_id: number
+    content: string
+    parent_comment_id?: number
+  }) => {
+    const response = await apiClient.post('/comments', data)
+    return response.data
+  },
+
+  deleteComment: async (commentId: string) => {
+    const response = await apiClient.delete(`/comments/${commentId}`)
+    return response.data
+  }
+}
+
+// Collection APIs
+export const collectionAPI = {
+  create: async (name: string) => {
+    const response = await apiClient.post('/collections', { name })
+    return response.data
+  },
+
+  getAll: async () => {
+    const response = await apiClient.get('/collections')
+    return response.data
+  },
+
+  getPosts: async (collectionId: string, page: number = 1, limit: number = 12) => {
+    const response = await apiClient.get(`/collections/${collectionId}?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  savePost: async (collectionId: string, postId: number) => {
+    const response = await apiClient.post(`/collections/${collectionId}/posts`, { post_id: postId })
+    return response.data
+  },
+
+  unsavePost: async (collectionId: string, postId: string) => {
+    const response = await apiClient.delete(`/collections/${collectionId}/posts/${postId}`)
+    return response.data
+  },
+
+  delete: async (collectionId: string) => {
+    const response = await apiClient.delete(`/collections/${collectionId}`)
+    return response.data
+  },
+
+  rename: async (collectionId: string, newName: string) => {
+    const response = await apiClient.put(`/collections/${collectionId}`, { new_name: newName })
+    return response.data
+  }
+}
+
+// Search APIs
+export const searchAPI = {
+  users: async (query: string) => {
+    const response = await apiClient.get(`/search/users?q=${encodeURIComponent(query)}`)
+    return response.data
+  },
+
+  hashtag: async (name: string) => {
+    const response = await apiClient.get(`/search/hashtags/${name}`)
+    return response.data
+  },
+
+  trending: async () => {
+    const response = await apiClient.get('/trending/hashtags')
+    return response.data
+  }
+}
+
+// Message APIs
+export const messageAPI = {
+  createConversation: async (data: {
+    participant_ids: number[]
+    group_name?: string
+    group_image_url?: string
+  }) => {
+    const response = await apiClient.post('/conversations', data)
+    return response.data
+  },
+
+  getConversations: async (page: number = 1, limit: number = 20) => {
+    const response = await apiClient.get(`/conversations?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  getMessages: async (conversationId: string, page: number = 1, limit: number = 50) => {
+    const response = await apiClient.get(`/conversations/${conversationId}/messages?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  sendMessage: async (conversationId: string, content: string) => {
+    const response = await apiClient.post(`/conversations/${conversationId}/messages`, { content })
+    return response.data
+  },
+
+  unsendMessage: async (messageId: string) => {
+    const response = await apiClient.delete(`/messages/${messageId}`)
+    return response.data
+  },
+
+  deleteConversation: async (conversationId: string) => {
+    const response = await apiClient.delete(`/conversations/${conversationId}`)
+    return response.data
+  },
+
+  getVideoToken: async (conversationId: string) => {
+    const response = await apiClient.get(`/conversations/${conversationId}/video_token`)
+    return response.data
+  }
+}
+
+// Report APIs
+export const reportAPI = {
+  reportPost: async (postId: number, reason: string) => {
+    const response = await apiClient.post('/reports/post', { post_id: postId, reason })
+    return response.data
+  },
+
+  reportUser: async (userId: number, reason: string) => {
+    const response = await apiClient.post('/reports/user', { reported_user_id: userId, reason })
+    return response.data
+  }
+}
+
+// Helper function to handle API errors
+export const handleApiError = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError<{ error?: string; message?: string }>
+    
+    // Check if there's a response from server
+    if (axiosError.response) {
+      const errorMessage = 
+        axiosError.response.data?.error || 
+        axiosError.response.data?.message || 
+        'An error occurred'
+      return errorMessage
+    }
+    
+    // Network error
+    if (axiosError.request) {
+      return 'Network error. Please check your connection.'
+    }
+  }
+  
+  return 'An unexpected error occurred'
+}
+
+// Save token and user to localStorage
+export const saveAuthData = (token: string, user?: LoginResponse) => {
+  localStorage.setItem('jwt_token', token)
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user))
+  }
+}
+
+// Get stored user data
+export const getStoredUser = (): LoginResponse | null => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    try {
+      return JSON.parse(userStr)
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+// Check if user is authenticated
+export const isAuthenticated = (): boolean => {
+  return !!localStorage.getItem('jwt_token')
+}
+
+export default apiClient

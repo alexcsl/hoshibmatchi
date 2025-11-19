@@ -64,6 +64,7 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_SERVER_URL=http://localhost:9000
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -224,6 +225,8 @@ services:
     container_name: api-gateway
     environment:
       - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "8000:8000"
     depends_on:
       rabbitmq:
         condition: service_healthy

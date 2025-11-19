@@ -585,6 +585,7 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 	}
+	// Note: Do NOT set ID manually - let GORM auto-generate it
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
 		// 1. Create the comment
@@ -598,7 +599,8 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		return nil
 	})
 
-	if result := s.db.Create(&newComment); result.Error != nil {
+	if err != nil {
+		log.Printf("Failed to create comment: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to save comment")
 	}
 
@@ -669,6 +671,47 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 	}
 
 	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
+}
+
+// --- GRPC: GetCommentsByPost ---
+func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPostRequest) (*pb.GetCommentsByPostResponse, error) {
+	var comments []Comment
+
+	// Fetch comments for the post with pagination
+	offset := int(req.PageOffset)
+	limit := int(req.PageSize)
+	if limit == 0 {
+		limit = 20 // Default limit
+	}
+
+	err := s.db.Where("post_id = ? AND parent_comment_id = 0", req.PostId).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&comments).Error
+
+	if err != nil {
+		log.Printf("Failed to fetch comments: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to fetch comments")
+	}
+
+	// Convert to proto response
+	var commentResponses []*pb.CommentResponse
+	for _, comment := range comments {
+		commentResponses = append(commentResponses, &pb.CommentResponse{
+			Id:               strconv.FormatUint(uint64(comment.ID), 10),
+			Content:          comment.Content,
+			AuthorUsername:   comment.AuthorUsername,
+			AuthorProfileUrl: comment.AuthorProfileURL,
+			CreatedAt:        comment.CreatedAt.Format(time.RFC3339),
+			PostId:           comment.PostID,
+			ParentCommentId:  int64(comment.ParentCommentID),
+		})
+	}
+
+	return &pb.GetCommentsByPostResponse{
+		Comments: commentResponses,
+	}, nil
 }
 
 // --- GPRC: GetHomeFeed ---
@@ -971,20 +1014,64 @@ func (s *server) GetPostsInCollection(ctx context.Context, req *pb.GetPostsInCol
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
 
-// --- GPRC: SavePostToCollection ---
-func (s *server) SavePostToCollection(ctx context.Context, req *pb.SavePostToCollectionRequest) (*pb.SavePostToCollectionResponse, error) {
-	// 1. Verify this user owns this collection
+// --- Helper: Get or create default collection for user ---
+func (s *server) getOrCreateDefaultCollection(userID int64) (*Collection, error) {
+	// Try to find existing collection for this user
 	var collection Collection
-	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
-		return nil, status.Error(codes.NotFound, "Collection not found")
-	}
-	if collection.UserID != req.UserId {
-		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	err := s.db.Where("user_id = ?", userID).First(&collection).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// No collection exists, create default "Saved" collection
+		collection = Collection{
+			UserID: userID,
+			Name:   "Saved",
+		}
+		if createErr := s.db.Create(&collection).Error; createErr != nil {
+			log.Printf("Failed to create default collection for user %d: %v", userID, createErr)
+			return nil, createErr
+		}
+		log.Printf("Created default collection (ID: %d) for user %d", collection.ID, userID)
+		return &collection, nil
+	} else if err != nil {
+		log.Printf("Database error when fetching collection: %v", err)
+		return nil, err
 	}
 
-	// 2. Save the post
+	// Found existing collection
+	return &collection, nil
+}
+
+// --- GPRC: SavePostToCollection ---
+func (s *server) SavePostToCollection(ctx context.Context, req *pb.SavePostToCollectionRequest) (*pb.SavePostToCollectionResponse, error) {
+	// Special handling: If collection ID is 1 (common default), get or create user's first collection
+	var collection *Collection
+	var err error
+
+	if req.CollectionId == 1 {
+		// Use the user's first/default collection
+		collection, err = s.getOrCreateDefaultCollection(req.UserId)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "Failed to get or create default collection")
+		}
+		log.Printf("Using default collection ID %d for user %d", collection.ID, req.UserId)
+	} else {
+		// Use the specified collection
+		var col Collection
+		if err := s.db.First(&col, req.CollectionId).Error; err != nil {
+			log.Printf("Collection %d not found: %v", req.CollectionId, err)
+			return nil, status.Error(codes.NotFound, "Collection not found")
+		}
+		collection = &col
+
+		log.Printf("SavePostToCollection: collection.UserID=%d, req.UserId=%d", collection.UserID, req.UserId)
+		if collection.UserID != req.UserId {
+			return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+		}
+	}
+
+	// 2. Save the post to the actual collection (use collection.ID, not req.CollectionId)
 	savedPost := SavedPost{
-		CollectionID: uint(req.CollectionId),
+		CollectionID: uint(collection.ID),
 		PostID:       uint(req.PostId),
 	}
 	if result := s.db.Create(&savedPost); result.Error != nil {

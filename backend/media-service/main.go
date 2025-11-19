@@ -26,8 +26,9 @@ import (
 
 type server struct {
 	pb.UnimplementedMediaServiceServer
-	minioClient   *minio.Client
-	minioEndpoint string
+	minioClient         *minio.Client
+	minioEndpoint       string
+	minioPublicEndpoint string // For browser-accessible URLs
 }
 
 const (
@@ -70,6 +71,10 @@ func main() {
 		log.Fatalf("Failed to connect to MinIO after retries: %v", err)
 	}
 
+	// Calculate the public endpoint for browser access
+	minioPublicEndpoint := strings.Replace(minioEndpoint, "minio:9000", "localhost:9000", 1)
+	log.Printf("Using public endpoint for browser URLs: %s", minioPublicEndpoint)
+
 	// --- Step 2: Ensure our bucket exists ---
 	err = minioClient.MakeBucket(context.Background(), minioBucketName, minio.MakeBucketOptions{})
 	if err != nil {
@@ -91,8 +96,9 @@ func main() {
 
 	s := grpc.NewServer()
 	pb.RegisterMediaServiceServer(s, &server{
-		minioClient:   minioClient,
-		minioEndpoint: minioEndpoint,
+		minioClient:         minioClient,
+		minioEndpoint:       minioEndpoint,
+		minioPublicEndpoint: minioPublicEndpoint,
 	})
 
 	log.Println("Media service listening on port 9005...")
@@ -307,33 +313,29 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 
 // --- Implement GetUploadURL ---
 func (s *server) GetUploadURL(ctx context.Context, req *pb.GetUploadURLRequest) (*pb.GetUploadURLResponse, error) {
-	// Create a unique object name, e.g., "user-1/posts/my-photo.jpg"
-	objectName := fmt.Sprintf("user-%d/posts/%s", req.UserId, req.Filename)
+	// Create a unique object name with UUID to avoid collisions
+	uniqueID := uuid.New().String()
+	ext := filepath.Ext(req.Filename)
+	objectName := fmt.Sprintf("user-%d/posts/%s%s", req.UserId, uniqueID, ext)
 
-	// Set upload policy
-	policy := minio.NewPostPolicy()
-	policy.SetBucket(minioBucketName)
-	policy.SetKey(objectName)
-	policy.SetExpires(time.Now().Add(10 * time.Minute)) // URL is valid for 10 minutes
-	policy.SetContentType(req.ContentType)
-
-	// Get the pre-signed URL
-	// We use PresignedPostPolicy to allow browser-based uploads
-	uploadURL, formData, err := s.minioClient.PresignedPostPolicy(context.Background(), policy)
+	// Generate a pre-signed PUT URL
+	// MinIO will use MINIO_SERVER_URL if set, ensuring localhost:9000 in the URL
+	uploadURL, err := s.minioClient.PresignedPutObject(context.Background(), minioBucketName, objectName, 10*time.Minute)
 	if err != nil {
 		log.Printf("Failed to generate pre-signed URL: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to create upload URL")
 	}
 
-	// The `upload_url` is what the frontend will POST to.
-	// But the `final_media_url` is the simple S3-compatible URL
-	// we want to save in our Postgres database.
-	finalURL := fmt.Sprintf("%s/%s/%s", s.minioEndpoint, minioBucketName, objectName)
+	publicMinioEndpoint := "http://localhost:9000" 
+	finalURL := fmt.Sprintf("%s/%s/%s", publicMinioEndpoint, minioBucketName, objectName)
 
-	_ = formData // We'd send this to the frontend too
+	uploadUrlStr := uploadURL.String()
+	uploadUrlStr = strings.Replace(uploadUrlStr, "minio:9000", "localhost:9000", 1)
+	log.Printf("Generated upload URL: %s", uploadURL.String())
+	log.Printf("Final media URL: %s", finalURL)
 
 	return &pb.GetUploadURLResponse{
-		UploadUrl:     uploadURL.String(),
-		FinalMediaUrl: finalURL,
+    UploadUrl:     uploadUrlStr,
+    FinalMediaUrl: finalURL,
 	}, nil
 }

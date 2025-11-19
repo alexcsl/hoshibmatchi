@@ -1,41 +1,153 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// We'll create these components in a moment
+import { isAuthenticated } from '../services/api'
+
+// Layouts
 import MainLayout from '../layouts/MainLayout.vue'
+
+// Views
 import HomeView from '../views/HomeView.vue'
 import RegisterView from '../views/RegisterView.vue'
 
+// Pages
+import Login from '../pages/Login.vue'
+import SignUp from '../pages/SignUp.vue'
+import LoginOTP from '../pages/LoginOTP.vue'
+import ForgotPassword from '../pages/ForgotPassword.vue'
+import ResetPassword from '../pages/ResetPassword.vue'
+import Feed from '../pages/Feed.vue'
+import Explore from '../pages/Explore.vue'
+import Reels from '../pages/Reels.vue'
+import Messages from '../pages/Messages.vue'
+import Profile from '../pages/Profile.vue'
+import GoogleCallback from '../pages/GoogleCallback.vue'
+import VerifyOTP from '../pages/VerifyOTP.vue'
+
 const routes = [
-  // Routes that use the main Instagram-like layout
+  // Auth Routes (no sidebar layout)
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/signup',
+    name: 'SignUp',
+    component: SignUp,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/login-otp',
+    name: 'LoginOTP',
+    component: LoginOTP,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/verify-otp',
+    name: 'VerifyOTP',
+    component: VerifyOTP,
+    meta: { guestsOnly: true }
+  },
+  {
+    path: '/auth/google/callback',
+    name: 'GoogleCallback',
+    component: GoogleCallback,
+    meta: { guestsOnly: true }
+  },
+  
+  // Main App Routes (with sidebar layout)
   {
     path: '/',
     component: MainLayout,
+    meta: { requiresAuth: true },
     children: [
-      { path: '', name: 'Home', component: HomeView },
-      // { path: 'explore', name: 'Explore', component: () => import('../views/ExploreView.vue') },
-      // { path: 'reels', name: 'Reels', component: () => import('../views/ReelsView.vue') },
-      // { path: 'messages', name: 'Messages', component: () => import('../views/MessagesView.vue') },
+      { 
+        path: '', 
+        redirect: '/feed'
+      },
+      { 
+        path: 'feed', 
+        name: 'Feed', 
+        component: Feed 
+      },
+      { 
+        path: 'explore', 
+        name: 'Explore', 
+        component: Explore 
+      },
+      { 
+        path: 'reels', 
+        name: 'Reels', 
+        component: Reels 
+      },
+      { 
+        path: 'messages', 
+        name: 'Messages', 
+        component: Messages 
+      },
+      { 
+        path: 'profile', 
+        name: 'Profile', 
+        component: Profile 
+      },
+      { 
+        path: 'settings', 
+        name: 'Settings', 
+        component: () => import('../pages/Settings.vue')
+      },
+      { 
+        path: 'archive', 
+        name: 'Archive', 
+        component: () => import('../pages/Archive.vue')
+      },
+      // Future routes
       // { path: ':username', name: 'Profile', component: () => import('../views/ProfileView.vue') },
     ]
   },
   
-  // Routes that *don't* use the sidebar (e.g., Login, Register)
+  // Legacy routes (can be removed later)
   {
     path: '/register',
     name: 'Register',
     component: RegisterView,
-    // meta: { guestsOnly: true } // For auth guards later
+    meta: { guestsOnly: true }
   },
-  // {
-  //   path: '/login',
-  //   name: 'Login',
-  //   component: () => import('../views/LoginView.vue'),
-  //   meta: { guestsOnly: true }
-  // },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// Navigation guards
+router.beforeEach((to, from, next) => {
+  const authenticated = isAuthenticated()
+
+  // Redirect authenticated users away from guest-only pages
+  if (to.meta.guestsOnly && authenticated) {
+    next('/feed')
+    return
+  }
+
+  // Redirect unauthenticated users to login
+  if (to.meta.requiresAuth && !authenticated) {
+    next('/login')
+    return
+  }
+
+  next()
 })
 
 export default router

@@ -33,6 +33,7 @@ type RegisterUserRequest struct {
 	// string profile_picture_url = 7; // REMOVED
 	// string otp_code = 8; // REMOVED
 	ConfirmPassword string `protobuf:"bytes,9,opt,name=confirm_password,json=confirmPassword,proto3" json:"confirm_password,omitempty"` // ADDED
+	Enable_2Fa      bool   `protobuf:"varint,10,opt,name=enable_2fa,json=enable2fa,proto3" json:"enable_2fa,omitempty"`                 // ADDED for 2FA
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -114,6 +115,13 @@ func (x *RegisterUserRequest) GetConfirmPassword() string {
 		return x.ConfirmPassword
 	}
 	return ""
+}
+
+func (x *RegisterUserRequest) GetEnable_2Fa() bool {
+	if x != nil {
+		return x.Enable_2Fa
+	}
+	return false
 }
 
 type RegisterUserResponse struct {
@@ -2710,7 +2718,7 @@ var File_user_proto protoreflect.FileDescriptor
 const file_user_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"user.proto\x12\x04user\"\xde\x01\n" +
+	"user.proto\x12\x04user\"\xfd\x01\n" +
 	"\x13RegisterUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
@@ -2718,7 +2726,10 @@ const file_user_proto_rawDesc = "" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\"\n" +
 	"\rdate_of_birth\x18\x05 \x01(\tR\vdateOfBirth\x12\x16\n" +
 	"\x06gender\x18\x06 \x01(\tR\x06gender\x12)\n" +
-	"\x10confirm_password\x18\t \x01(\tR\x0fconfirmPassword\"r\n" +
+	"\x10confirm_password\x18\t \x01(\tR\x0fconfirmPassword\x12\x1d\n" +
+	"\n" +
+	"enable_2fa\x18\n" +
+	" \x01(\bR\tenable2fa\"r\n" +
 	"\x14RegisterUserResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +

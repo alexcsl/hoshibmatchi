@@ -8,6 +8,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     volumes:
       - ./backend:/app/backend # Mount local backend code
+      - ./uploads:/app/backend/api-gateway/uploads # Mount uploads directory for serving media
     working_dir: /app/backend/api-gateway
     command: ["air", "-c", ".air.toml"]
     depends_on:

@@ -66,6 +66,7 @@ message RegisterUserRequest {
   // string profile_picture_url = 7; // REMOVED
   // string otp_code = 8; // REMOVED
   string confirm_password = 9; // ADDED
+  bool enable_2fa = 10; // ADDED for 2FA
 }
 
 message RegisterUserResponse {
