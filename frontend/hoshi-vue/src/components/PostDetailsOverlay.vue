@@ -180,6 +180,7 @@ interface Comment {
 
 const props = defineProps<{
   postId: string
+  postObject?: any
 }>()
 
 const emit = defineEmits<{
@@ -198,6 +199,10 @@ const newComment = ref('')
 const comments = ref<Comment[]>([])
 
 const postData = computed(() => {
+  // If passed directly (from Profile page), use it
+  if (props.postObject) return props.postObject
+
+  // Otherwise look in stores (from Feed page)
   return feedStore.homeFeed.find(p => p.id === props.postId) ||
          feedStore.exploreFeed.find(p => p.id === props.postId) ||
          feedStore.reelsFeed.find(p => p.id === props.postId)

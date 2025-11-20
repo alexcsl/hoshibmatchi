@@ -17,6 +17,21 @@ interface AuthState {
   error: string | null
 }
 
+// Helper to decode JWT payload
+function parseJwt(token: string) {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join(''))
+
+    return JSON.parse(jsonPayload)
+  } catch (e) {
+    return null
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: getStoredUser(),
@@ -42,6 +57,7 @@ export const useAuthStore = defineStore('auth', {
       gender: string
       date_of_birth: string
       enable_2fa?: boolean
+      profile_picture_url?: string;
     }) {
       this.loading = true
       this.error = null
@@ -75,7 +91,16 @@ export const useAuthStore = defineStore('auth', {
 
         // Set authentication data
         const token = response.token || response.access_token || ''
-        this.setAuth(token, response)
+        const decoded = parseJwt(token)
+
+        // Construct user object from Token + Response
+        const userData = {
+          ...response, // Any data backend sends
+          user_id: decoded?.user_id, // From Token
+          username: decoded?.username, // From Token
+        }
+
+        this.setAuth(token, userData)
         return { requires_2fa: false, success: true }
       } catch (error: any) {
         this.error = error.response?.data?.error || 'Login failed'
@@ -93,7 +118,15 @@ export const useAuthStore = defineStore('auth', {
         const response = await authAPI.verify2FA(data)
 
         const token = response.token || response.access_token || ''
-        this.setAuth(token, response)
+
+        const decoded = parseJwt(token)
+        const userData = {
+            ...response,
+            user_id: decoded?.user_id,
+            username: decoded?.username
+        }
+
+        this.setAuth(token, userData)
         return { success: true }
       } catch (error: any) {
         this.error = error.response?.data?.error || '2FA verification failed'
@@ -145,7 +178,7 @@ export const useAuthStore = defineStore('auth', {
         profile_picture_url: userData.profile_picture_url
       }
       this.isAuthenticated = true
-      saveAuthData(token, userData)
+      saveAuthData(token, this.user)
     },
 
     logout() {

@@ -138,6 +138,7 @@ import FormInput from '../components/FormInput.vue'
 import PasswordStrengthValidator from '../components/PasswordStrengthValidator.vue'
 import ErrorAlert from '../components/ErrorAlert.vue'
 import { useAuthStore } from '@/stores/auth'
+import { mediaAPI } from '@/services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -262,6 +263,24 @@ const handleSubmit = async () => {
   }
 
   try {
+    // --- NEW LOGIC START ---
+    let profilePictureUrl = ''
+
+    // 1. If a file is selected, upload it first
+    if (form.profilePicture) {
+      try {
+        // We reuse the same API call used in EditProfile.vue
+        const uploadRes = await mediaAPI.uploadMedia(form.profilePicture)
+        profilePictureUrl = uploadRes.media_url
+      } catch (uploadErr) {
+        console.error("Image upload failed", uploadErr)
+        // Optional: decide if you want to stop registration or proceed without image
+        error.value = "Failed to upload profile picture. Please try a different image."
+        return
+      }
+    }
+    // --- NEW LOGIC END ---
+
     // Register user
     await authStore.register({
       name: form.name,
@@ -271,7 +290,8 @@ const handleSubmit = async () => {
       confirm_password: form.confirmPassword,
       gender: form.gender,
       date_of_birth: form.dob,
-      enable_2fa: form.twoFA
+      enable_2fa: form.twoFA,
+      profile_picture_url: profilePictureUrl // <--- Pass the URL here
     })
 
     // Redirect to OTP verification page

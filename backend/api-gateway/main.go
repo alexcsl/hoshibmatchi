@@ -126,6 +126,8 @@ func main() {
 		c.String(http.StatusOK, "API Gateway is running")
 	})
 
+	router.GET("/media/upload-url", handleGetUploadURL_Gin)
+
 	// Serve static files from /uploads (media files)
 	router.Static("/uploads", "./uploads")
 
@@ -175,9 +177,6 @@ func main() {
 		// Users
 		protected.POST("/users/:id/follow", handleFollowUser_Gin)
 		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
-
-		// Media
-		protected.GET("/media/upload-url", handleGetUploadURL_Gin)
 
 		// Profile
 		protected.GET("/users/:username", handleGetUserProfile_Gin)
@@ -457,15 +456,15 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Decode the JSON body from the client
 	var req struct {
-		Name            string `json:"name"`
-		Username        string `json:"username"`
-		Email           string `json:"email"`
-		Password        string `json:"password"`
-		ConfirmPassword string `json:"confirm_password"` // ADDED
-		DateOfBirth     string `json:"date_of_birth"`
-		Gender          string `json:"gender"`
-		Enable2FA       bool   `json:"enable_2fa"` // ADDED for 2FA
-		// ProfilePictureURL string `json:"profile_picture_url"` // REMOVED
+		Name              string `json:"name"`
+		Username          string `json:"username"`
+		Email             string `json:"email"`
+		Password          string `json:"password"`
+		ConfirmPassword   string `json:"confirm_password"` // ADDED
+		DateOfBirth       string `json:"date_of_birth"`
+		Gender            string `json:"gender"`
+		Enable2FA         bool   `json:"enable_2fa"` // ADDED for 2FA
+		ProfilePictureURL string `json:"profile_picture_url"`
 		// OtpCode           string `json:"otp_code"` // REMOVED
 	}
 
@@ -476,15 +475,15 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Call the gRPC service
 	grpcReq := &pb.RegisterUserRequest{
-		Name:            req.Name,
-		Username:        req.Username,
-		Email:           req.Email,
-		Password:        req.Password,
-		ConfirmPassword: req.ConfirmPassword, // ADDED
-		DateOfBirth:     req.DateOfBirth,
-		Gender:          req.Gender,
-		Enable_2Fa:      req.Enable2FA, // ADDED for 2FA
-		// ProfilePictureUrl: req.ProfilePictureURL, // REMOVED
+		Name:              req.Name,
+		Username:          req.Username,
+		Email:             req.Email,
+		Password:          req.Password,
+		ConfirmPassword:   req.ConfirmPassword, // ADDED
+		DateOfBirth:       req.DateOfBirth,
+		Gender:            req.Gender,
+		Enable_2Fa:        req.Enable2FA, // ADDED for 2FA
+		ProfilePictureUrl: req.ProfilePictureURL,
 		// OtpCode:           req.OtpCode, // REMOVED
 	}
 
@@ -1002,10 +1001,9 @@ func handleGetCommentsByPost_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUploadURL ---
 func handleGetUploadURL_Gin(c *gin.Context) {
-	userID, ok := c.Request.Context().Value(userIDKey).(int64)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
-		return
+	var userID int64 = 0
+	if val, ok := c.Request.Context().Value(userIDKey).(int64); ok {
+		userID = val
 	}
 
 	// Get query params, e.g., /media/upload-url?filename=foo.jpg&type=image/jpeg
@@ -1068,7 +1066,7 @@ func handleGetHomeFeed_Gin(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, grpcRes.Posts)
+	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
 // --- GIN-NATIVE HANDLER: handleGetExploreFeed ---
@@ -1102,7 +1100,7 @@ func handleGetExploreFeed_Gin(c *gin.Context) {
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	c.JSON(http.StatusOK, grpcRes.Posts)
+	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
 // --- GIN-NATIVE HANDLER: handleGetReelsFeed ---
@@ -1136,7 +1134,7 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
-	c.JSON(http.StatusOK, grpcRes.Posts)
+	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
 // --- GIN-NATIVE HANDLER: handleGetUserProfile ---
@@ -1265,9 +1263,10 @@ func handleUpdateProfile_Gin(c *gin.Context) {
 	}
 
 	var req struct {
-		Name   string `json:"name"`
-		Bio    string `json:"bio"`
-		Gender string `json:"gender"`
+		Name              string `json:"name"`
+		Bio               string `json:"bio"`
+		Gender            string `json:"gender"`
+		ProfilePictureURL string `json:"profile_picture_url"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -1276,10 +1275,11 @@ func handleUpdateProfile_Gin(c *gin.Context) {
 	}
 
 	grpcReq := &pb.UpdateUserProfileRequest{
-		UserId: userID,
-		Name:   req.Name,
-		Bio:    req.Bio,
-		Gender: req.Gender,
+		UserId:            userID,
+		Name:              req.Name,
+		Bio:               req.Bio,
+		Gender:            req.Gender,
+		ProfilePictureUrl: req.ProfilePictureURL,
 	}
 
 	grpcRes, err := client.UpdateUserProfile(c.Request.Context(), grpcReq)

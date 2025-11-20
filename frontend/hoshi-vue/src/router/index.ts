@@ -21,6 +21,7 @@ import Messages from '../pages/Messages.vue'
 import Profile from '../pages/Profile.vue'
 import GoogleCallback from '../pages/GoogleCallback.vue'
 import VerifyOTP from '../pages/VerifyOTP.vue'
+import EditProfile from '../pages/EditProfile.vue'
 
 const routes = [
   // Auth Routes (no sidebar layout)
@@ -99,6 +100,11 @@ const routes = [
       },
       { 
         path: 'profile', 
+        name: 'ProfileOwn', 
+        component: Profile 
+      },
+      { 
+        path: 'profile/:username?', 
         name: 'Profile', 
         component: Profile 
       },
@@ -112,6 +118,12 @@ const routes = [
         name: 'Archive', 
         component: () => import('../pages/Archive.vue')
       },
+      { 
+        path: 'edit-profile', 
+        name: 'EditProfile', 
+        component: () => import('../pages/EditProfile.vue')
+      },
+
       // Future routes
       // { path: ':username', name: 'Profile', component: () => import('../views/ProfileView.vue') },
     ]

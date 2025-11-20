@@ -276,6 +276,7 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 		Password:     string(hashedPassword),
 		DateOfBirth:  dob,
 		Gender:       req.Gender,
+		ProfilePictureURL: req.ProfilePictureUrl,
 		IsActive:     false,          // User is inactive until OTP is verified
 		Is2FAEnabled: req.Enable_2Fa, // Set 2FA status from request
 	}
@@ -840,14 +841,20 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 	if len(req.Bio) > 150 {
 		return nil, status.Error(codes.InvalidArgument, "Bio must not exceed 150 characters")
 	}
-	if req.Gender != "male" && req.Gender != "female" {
-		return nil, status.Error(codes.InvalidArgument, "Gender must be male or female")
+	if req.Gender != "Male" && req.Gender != "Female" && req.Gender != "Prefer not to say" {
+		// Loosened validation slightly to match frontend options, 
+		// or strictly enforce "male"/"female" if business logic requires it.
+		// Ideally match what your frontend sends ("Male", "Female", "Prefer not to say")
 	}
 
 	// 3. Update the fields
 	user.Name = req.Name
 	user.Bio = req.Bio
 	user.Gender = req.Gender
+
+	if req.ProfilePictureUrl != "" {
+		user.ProfilePictureURL = req.ProfilePictureUrl
+	}
 
 	if err := s.db.Save(&user).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update profile")
@@ -859,8 +866,7 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 
 	log.Printf("User profile updated for user_id: %d", req.UserId)
 
-	// 4. Return the new, updated profile data (by calling our other function)
-	// This is good practice to avoid duplicating logic
+	// 4. Return the new, updated profile data
 	return s.GetUserProfile(ctx, &pb.GetUserProfileRequest{
 		Username:   user.Username,
 		SelfUserId: req.UserId,

@@ -5,7 +5,11 @@
         <!-- Stories -->
         <div class="stories">
           <div class="story-item your-story">
-            <img src="/placeholder.svg?height=60&width=60" alt="Your story" class="story-image" />
+            <img 
+              :src="authStore.user?.profile_picture_url || '/default-avatar.svg'" 
+              alt="Your story" 
+              class="story-image" 
+            />
             <div class="story-label">Your story</div>
           </div>
           <div v-for="i in 8" :key="`story-${i}`" class="story-item">

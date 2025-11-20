@@ -23,14 +23,14 @@ const (
 
 // --- Register ---
 type RegisterUserRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Username    string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email       string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	Password    string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	DateOfBirth string                 `protobuf:"bytes,5,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
-	Gender      string                 `protobuf:"bytes,6,opt,name=gender,proto3" json:"gender,omitempty"`
-	// string profile_picture_url = 7; // REMOVED
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Name              string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Username          string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Email             string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Password          string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
+	DateOfBirth       string                 `protobuf:"bytes,5,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
+	Gender            string                 `protobuf:"bytes,6,opt,name=gender,proto3" json:"gender,omitempty"`
+	ProfilePictureUrl string                 `protobuf:"bytes,7,opt,name=profile_picture_url,json=profilePictureUrl,proto3" json:"profile_picture_url,omitempty"`
 	// string otp_code = 8; // REMOVED
 	ConfirmPassword string `protobuf:"bytes,9,opt,name=confirm_password,json=confirmPassword,proto3" json:"confirm_password,omitempty"` // ADDED
 	Enable_2Fa      bool   `protobuf:"varint,10,opt,name=enable_2fa,json=enable2fa,proto3" json:"enable_2fa,omitempty"`                 // ADDED for 2FA
@@ -106,6 +106,13 @@ func (x *RegisterUserRequest) GetDateOfBirth() string {
 func (x *RegisterUserRequest) GetGender() string {
 	if x != nil {
 		return x.Gender
+	}
+	return ""
+}
+
+func (x *RegisterUserRequest) GetProfilePictureUrl() string {
+	if x != nil {
+		return x.ProfilePictureUrl
 	}
 	return ""
 }
@@ -1529,13 +1536,14 @@ func (x *GetUserProfileResponse) GetIsPrivate() bool {
 
 // --- Edit User Profile ---
 type UpdateUserProfileRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Bio           string                 `protobuf:"bytes,3,opt,name=bio,proto3" json:"bio,omitempty"`
-	Gender        string                 `protobuf:"bytes,4,opt,name=gender,proto3" json:"gender,omitempty"` // We'll add ProfilePictureURL later
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	UserId            int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT
+	Name              string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Bio               string                 `protobuf:"bytes,3,opt,name=bio,proto3" json:"bio,omitempty"`
+	Gender            string                 `protobuf:"bytes,4,opt,name=gender,proto3" json:"gender,omitempty"`
+	ProfilePictureUrl string                 `protobuf:"bytes,5,opt,name=profile_picture_url,json=profilePictureUrl,proto3" json:"profile_picture_url,omitempty"` // We'll add ProfilePictureURL later
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateUserProfileRequest) Reset() {
@@ -1592,6 +1600,13 @@ func (x *UpdateUserProfileRequest) GetBio() string {
 func (x *UpdateUserProfileRequest) GetGender() string {
 	if x != nil {
 		return x.Gender
+	}
+	return ""
+}
+
+func (x *UpdateUserProfileRequest) GetProfilePictureUrl() string {
+	if x != nil {
+		return x.ProfilePictureUrl
 	}
 	return ""
 }
@@ -2718,14 +2733,15 @@ var File_user_proto protoreflect.FileDescriptor
 const file_user_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"user.proto\x12\x04user\"\xfd\x01\n" +
+	"user.proto\x12\x04user\"\xad\x02\n" +
 	"\x13RegisterUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x1a\n" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12\"\n" +
 	"\rdate_of_birth\x18\x05 \x01(\tR\vdateOfBirth\x12\x16\n" +
-	"\x06gender\x18\x06 \x01(\tR\x06gender\x12)\n" +
+	"\x06gender\x18\x06 \x01(\tR\x06gender\x12.\n" +
+	"\x13profile_picture_url\x18\a \x01(\tR\x11profilePictureUrl\x12)\n" +
 	"\x10confirm_password\x18\t \x01(\tR\x0fconfirmPassword\x12\x1d\n" +
 	"\n" +
 	"enable_2fa\x18\n" +
@@ -2820,12 +2836,13 @@ const file_user_proto_rawDesc = "" +
 	" \x01(\x03R\x13mutualFollowerCount\x12\x16\n" +
 	"\x06gender\x18\v \x01(\tR\x06gender\x12\x1d\n" +
 	"\n" +
-	"is_private\x18\f \x01(\bR\tisPrivate\"q\n" +
+	"is_private\x18\f \x01(\bR\tisPrivate\"\xa1\x01\n" +
 	"\x18UpdateUserProfileRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x10\n" +
 	"\x03bio\x18\x03 \x01(\tR\x03bio\x12\x16\n" +
-	"\x06gender\x18\x04 \x01(\tR\x06gender\"R\n" +
+	"\x06gender\x18\x04 \x01(\tR\x06gender\x12.\n" +
+	"\x13profile_picture_url\x18\x05 \x01(\tR\x11profilePictureUrl\"R\n" +
 	"\x18SetAccountPrivacyRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1d\n" +
 	"\n" +
