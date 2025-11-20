@@ -92,6 +92,26 @@ export interface GoogleAuthRequest {
   auth_code: string
 }
 
+export interface Post {
+  id: string
+  author_id: number
+  caption: string
+  author_username: string
+  author_profile_url: string
+  author_is_verified: boolean
+  media_urls: string[]
+  created_at: string
+  is_reel: boolean
+  
+  // New Fields
+  location?: string
+  like_count: number
+  comment_count: number
+  share_count?: number
+  is_liked?: boolean
+  is_saved?: boolean
+}
+
 export interface UserProfile {
   id: number
   username: string
@@ -188,6 +208,11 @@ export const userAPI = {
   // Get user reels
   getUserReels: async (username: string, page: number = 1, limit: number = 12) => {
     const response = await apiClient.get(`/users/${username}/reels?page=${page}&limit=${limit}`)
+    return response.data
+  },
+
+  getUserTagged: async (username: string) => {
+    const response = await apiClient.get(`/users/${username}/tagged`)
     return response.data
   },
 
@@ -290,6 +315,7 @@ export const postAPI = {
     comments_disabled?: boolean
     is_reel?: boolean
     collaborator_ids?: number[]
+    location?: string
     thumbnail_url?: string
   }) => {
     const response = await apiClient.post('/posts', data)

@@ -31,6 +31,7 @@ const (
 	UserService_UnfollowUser_FullMethodName               = "/user.UserService/UnfollowUser"
 	UserService_IsFollowing_FullMethodName                = "/user.UserService/IsFollowing"
 	UserService_GetFollowingList_FullMethodName           = "/user.UserService/GetFollowingList"
+	UserService_GetFollowersList_FullMethodName           = "/user.UserService/GetFollowersList"
 	UserService_GetUserProfile_FullMethodName             = "/user.UserService/GetUserProfile"
 	UserService_UpdateUserProfile_FullMethodName          = "/user.UserService/UpdateUserProfile"
 	UserService_SetAccountPrivacy_FullMethodName          = "/user.UserService/SetAccountPrivacy"
@@ -67,6 +68,7 @@ type UserServiceClient interface {
 	UnfollowUser(ctx context.Context, in *UnfollowUserRequest, opts ...grpc.CallOption) (*UnfollowUserResponse, error)
 	IsFollowing(ctx context.Context, in *IsFollowingRequest, opts ...grpc.CallOption) (*IsFollowingResponse, error)
 	GetFollowingList(ctx context.Context, in *GetFollowingListRequest, opts ...grpc.CallOption) (*GetFollowingListResponse, error)
+	GetFollowersList(ctx context.Context, in *GetFollowersListRequest, opts ...grpc.CallOption) (*GetFollowersListResponse, error)
 	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
 	UpdateUserProfile(ctx context.Context, in *UpdateUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
 	SetAccountPrivacy(ctx context.Context, in *SetAccountPrivacyRequest, opts ...grpc.CallOption) (*SetAccountPrivacyResponse, error)
@@ -208,6 +210,16 @@ func (c *userServiceClient) GetFollowingList(ctx context.Context, in *GetFollowi
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetFollowingListResponse)
 	err := c.cc.Invoke(ctx, UserService_GetFollowingList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetFollowersList(ctx context.Context, in *GetFollowersListRequest, opts ...grpc.CallOption) (*GetFollowersListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFollowersListResponse)
+	err := c.cc.Invoke(ctx, UserService_GetFollowersList_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -365,6 +377,7 @@ type UserServiceServer interface {
 	UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error)
 	IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error)
 	GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error)
+	GetFollowersList(context.Context, *GetFollowersListRequest) (*GetFollowersListResponse, error)
 	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
 	UpdateUserProfile(context.Context, *UpdateUserProfileRequest) (*GetUserProfileResponse, error)
 	SetAccountPrivacy(context.Context, *SetAccountPrivacyRequest) (*SetAccountPrivacyResponse, error)
@@ -427,6 +440,9 @@ func (UnimplementedUserServiceServer) IsFollowing(context.Context, *IsFollowingR
 }
 func (UnimplementedUserServiceServer) GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFollowingList not implemented")
+}
+func (UnimplementedUserServiceServer) GetFollowersList(context.Context, *GetFollowersListRequest) (*GetFollowersListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFollowersList not implemented")
 }
 func (UnimplementedUserServiceServer) GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserProfile not implemented")
@@ -700,6 +716,24 @@ func _UserService_GetFollowingList_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).GetFollowingList(ctx, req.(*GetFollowingListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetFollowersList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFollowersListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFollowersList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetFollowersList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFollowersList(ctx, req.(*GetFollowersListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -992,6 +1026,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetFollowingList",
 			Handler:    _UserService_GetFollowingList_Handler,
+		},
+		{
+			MethodName: "GetFollowersList",
+			Handler:    _UserService_GetFollowersList_Handler,
 		},
 		{
 			MethodName: "GetUserProfile",

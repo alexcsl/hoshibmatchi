@@ -177,11 +177,13 @@ func main() {
 		// Users
 		protected.POST("/users/:id/follow", handleFollowUser_Gin)
 		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
+		protected.GET("/users/:id/followers", handleGetFollowersList_Gin)
 
 		// Profile
-		protected.GET("/users/:username", handleGetUserProfile_Gin)
-		protected.GET("/users/:username/posts", handleGetUserPosts_Gin)
-		protected.GET("/users/:username/reels", handleGetUserReels_Gin)
+		protected.GET("/users/:id", handleGetUserProfile_Gin)
+		protected.GET("/users/:id/posts", handleGetUserPosts_Gin)
+		protected.GET("/users/:id/reels", handleGetUserReels_Gin)
+		protected.GET("/users/:id/tagged", handleGetUserTaggedPosts_Gin) 
 
 		// Edit Profiel
 		protected.PUT("/profile/edit", handleUpdateProfile_Gin)
@@ -1145,7 +1147,7 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
 		return
 	}
-	usernameToFind := c.Param("username") // Get username from URL
+	usernameToFind := c.Param("id") // Get username from URL
 
 	// --- 1. Get Profile Data from User-Service ---
 	userReq := &pb.GetUserProfileRequest{
@@ -1192,7 +1194,7 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUserPosts ---
 func handleGetUserPosts_Gin(c *gin.Context) {
-	usernameToFind := c.Param("username")
+	usernameToFind := c.Param("id")
 
 	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
 	if err != nil {
@@ -1224,7 +1226,7 @@ func handleGetUserPosts_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUserReels ---
 func handleGetUserReels_Gin(c *gin.Context) {
-	usernameToFind := c.Param("username")
+	usernameToFind := c.Param("id")
 
 	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: usernameToFind})
 	if err != nil {
@@ -2387,4 +2389,46 @@ func handleGoogleCallback_Gin(c *gin.Context) {
 		"access_token":  grpcRes.AccessToken,
 		"refresh_token": grpcRes.RefreshToken,
 	})
+}
+
+// --- HANDLER: GetUserTaggedPosts ---
+func handleGetUserTaggedPosts_Gin(c *gin.Context) {
+    requesterID, _ := c.Request.Context().Value(userIDKey).(int64)
+    username := c.Param("id")
+
+    // 1. Resolve username to ID (reuse existing logic or call GetUserProfile)
+    userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: username})
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+
+    // 2. Call Post Service
+    grpcReq := &postPb.GetUserContentRequest{
+        UserId:      userRes.UserId,
+        RequesterId: requesterID,
+        PageSize:    20,
+        PageOffset:  0,
+    }
+    res, err := postClient.GetUserTaggedPosts(c.Request.Context(), grpcReq)
+    if err != nil {
+        // handle error
+         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tagged posts"})
+         return
+    }
+    c.JSON(http.StatusOK, res.Posts)
+}
+
+// --- HANDLER: GetFollowersList ---
+func handleGetFollowersList_Gin(c *gin.Context) {
+    userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+    
+    res, err := client.GetFollowersList(c.Request.Context(), &pb.GetFollowersListRequest{UserId: userID})
+    if err != nil {
+         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed"})
+         return
+    }
+    // We just return IDs for now, ideally we'd hydrate them with profiles, 
+    // but the frontend asked for the list/count fix first.
+    c.JSON(http.StatusOK, res.FollowerUserIds)
 }

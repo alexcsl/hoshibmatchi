@@ -12,6 +12,7 @@
             {{ post.author_username }}
             <span v-if="post.author_is_verified" class="verified">✓</span>
           </div>
+          <div v-if="post.location" class="location">{{ post.location }}</div>
           <div class="timestamp">{{ formatTimestamp(post.created_at) }}</div>
         </div>
       </div>
@@ -62,10 +63,15 @@
       <div class="likes">
         <strong>{{ formatLikes(post.like_count) }}</strong>
       </div>
-      <div v-if="post.caption" class="caption">
-        <strong>{{ post.author_username }}</strong>
-        {{ post.caption }}
+      <div class="caption">
+          <strong>{{ post.author_username }}</strong>
+          <span v-if="!showingSummary" v-html="formattedCaption"></span>
+          <span v-else>{{ aiSummary }}</span>
       </div>
+      
+      <button class="ai-btn" @click.stop="toggleSummary">
+        {{ showingSummary ? 'Show Original' : '✨ Summarize with AI' }}
+      </button>
       <div v-if="post.comment_count > 0" class="comments-link" @click.stop="handleViewComments">
         View all {{ post.comment_count }} comments
       </div>
@@ -92,6 +98,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { postAPI } from '@/services/api'
 
 interface Post {
   id: string
@@ -103,6 +110,7 @@ interface Post {
   media_urls: string[]
   created_at: string
   is_reel: boolean
+  location?: string
   like_count: number
   comment_count: number
   share_count?: number
@@ -193,8 +201,15 @@ const handleComment = () => {
   emit('openDetails', props.post.id)
 }
 
-const handleShare = () => {
-  emit('share', props.post.id)
+// NEW: Handle Share (Copy Link)
+const handleShare = async () => {
+  const url = `${window.location.origin}/post/${props.post.id}`
+  try {
+    await navigator.clipboard.writeText(url)
+    alert('Link copied to clipboard!')
+  } catch (err) {
+    console.error('Failed to copy', err)
+  }
 }
 
 const handlePostClick = () => {
@@ -220,6 +235,40 @@ const handleAddComment = async () => {
     isSubmitting.value = false
   }
 }
+
+const showingSummary = ref(false)
+const aiSummary = ref('')
+const loadingAi = ref(false)
+
+// Fixed Hashtag Formatter
+const formattedCaption = computed(() => {
+  if (!props.post.caption) return ''
+  return props.post.caption.replace(/#(\w+)/g, '<span class="hashtag" style="color: #0095f6; cursor: pointer;">#$1</span>')
+})
+
+const toggleSummary = async () => {
+    if (showingSummary.value) {
+        showingSummary.value = false
+        return
+    }
+    
+    if (aiSummary.value) {
+        showingSummary.value = true
+        return
+    }
+    
+    loadingAi.value = true
+    try {
+        const res = await postAPI.summarizeCaption(props.post.id)
+        aiSummary.value = res.summary
+        showingSummary.value = true
+    } catch(e) {
+        alert("AI Summarization failed")
+    } finally {
+        loadingAi.value = false
+    }
+}
+
 </script>
 
 <style scoped lang="scss">
@@ -228,6 +277,20 @@ const handleAddComment = async () => {
   border-radius: 1px;
   cursor: pointer;
   background-color: #000;
+}
+
+.location {
+  font-size: 12px;
+  color: #fff;
+}
+
+/* Add this to make hashtags look clickable */
+:deep(.hashtag) {
+  color: #0095f6;
+  font-weight: 500;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 .post-header {
@@ -432,5 +495,11 @@ const handleAddComment = async () => {
       color: #0a66c2;
     }
   }
+}
+
+.ai-btn {
+    background: none; border: none; color: #0095f6; 
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    margin-top: 4px; display: block;
 }
 </style>

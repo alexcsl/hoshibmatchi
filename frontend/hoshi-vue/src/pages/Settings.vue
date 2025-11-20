@@ -31,7 +31,12 @@
               <div class="label">Private account</div>
               <div class="value">Make your profile private</div>
             </div>
-            <input type="checkbox" class="toggle-switch" />
+            <input 
+              type="checkbox" 
+              class="toggle-switch" 
+              :checked="isPrivate" 
+              @change="togglePrivacy"
+            />
           </div>
           <div class="setting-item toggle">
             <div class="setting-info">
@@ -80,6 +85,38 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/services/api'
+
+const isPrivate = ref(false)
+const authStore = useAuthStore()
+
+// Load initial state
+onMounted(async () => {
+  // We might need to fetch the user profile to get the current privacy setting
+  if (authStore.user?.username) {
+    const res = await apiClient.get(`/users/${authStore.user.username}`)
+    // The proto mapping usually results in 'isPrivate' or 'is_private'
+    const userData = res.data.user || res.data
+    isPrivate.value = userData.is_private || false
+  }
+})
+
+const togglePrivacy = async () => {
+  try {
+    const newState = !isPrivate.value
+    // Call the backend
+    await apiClient.put('/settings/privacy', { is_private: newState })
+    isPrivate.value = newState
+  } catch (err) {
+    console.error("Failed to update privacy", err)
+    // Revert toggle if failed
+    // (Visual revert handled by v-model not updating if we don't change value, 
+    // but checkbox input works differently. Better to alert.)
+    alert("Failed to update privacy settings")
+  }
+}
 </script>
 
 <style scoped lang="scss">

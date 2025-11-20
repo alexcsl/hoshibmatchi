@@ -39,6 +39,7 @@ service PostService {
   rpc SharePost (SharePostRequest) returns (SharePostResponse);
   rpc UnsharePost (UnsharePostRequest) returns (UnsharePostResponse);
   rpc GetSharedPosts (GetSharedPostsRequest) returns (GetSharedPostsResponse);
+  rpc GetUserTaggedPosts (GetUserContentRequest) returns (GetHomeFeedResponse);
 }
 
 // Data from the API Gateway

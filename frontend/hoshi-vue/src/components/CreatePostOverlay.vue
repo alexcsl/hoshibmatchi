@@ -89,13 +89,23 @@
 
             <div class="options">
               <div class="option-item">
-                <span>Add location</span>
-                <button class="option-btn">›</button>
+                <input 
+                  v-model="location" 
+                  type="text" 
+                  placeholder="Add location" 
+                  class="text-input"
+                />
+                <span class="icon">📍</span>
               </div>
               
               <div class="option-item">
-                <span>Advanced settings</span>
-                <button class="option-btn">›</button>
+                <input 
+                  v-model="collaboratorsText" 
+                  type="text" 
+                  placeholder="Add Collaborators (usernames: john, jane)" 
+                  class="text-input"
+                />
+                <span class="icon">👥</span>
               </div>
 
               <div class="option-item">
@@ -156,6 +166,8 @@ const caption = ref('')
 const isReel = ref(false)
 const commentsDisabled = ref(false)
 const isUploading = ref(false)
+const location = ref('')
+const collaboratorsText = ref('')
 
 const currentUser = computed(() => authStore.user)
 
@@ -233,13 +245,36 @@ const handlePost = async () => {
       finalMediaUrls.push(uploadData.final_media_url)
     }
 
+    // Post Collaborators
+    const collaboratorIds: number[] = []
+    if (collaboratorsText.value.trim()) {
+      const usernames = collaboratorsText.value.split(',').map(u => u.trim())
+      
+      for (const username of usernames) {
+        if (!username) continue
+        try {
+          // We try to find the user to get their ID
+          const res = await apiClient.get(`/users/${username}`)
+          // Handle different response structures depending on your API Gateway
+          const userObj = res.data.user || res.data
+          if (userObj && (userObj.id || userObj.user_id)) {
+             collaboratorIds.push(Number(userObj.id || userObj.user_id))
+          }
+        } catch (err) {
+          console.warn(`Could not find user: ${username}`)
+        }
+      }
+    }
+
     // 2. Create Post in Backend
     // We use postAPI which also uses apiClient internally
     const response = await postAPI.createPost({
       caption: caption.value,
       media_urls: finalMediaUrls,
       comments_disabled: commentsDisabled.value,
-      is_reel: isReel.value
+      is_reel: isReel.value,
+      location: location.value,
+      collaborator_ids: collaboratorIds
     })
 
     // 3. Update Feed
@@ -250,7 +285,6 @@ const handlePost = async () => {
     emit('posted')
     emit('close')
     clearFiles()
-    alert('Post created successfully!')
 
   } catch (error: any) {
     console.error('Failed to create post:', error)
@@ -397,6 +431,25 @@ onUnmounted(() => {
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
+}
+
+.text-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 14px;
+  padding: 8px 0;
+  outline: none;
+  
+  &::placeholder {
+    color: #a8a8a8;
+  }
+}
+
+.icon {
+  font-size: 16px;
+  margin-left: 8px;
 }
 
 .media-preview {

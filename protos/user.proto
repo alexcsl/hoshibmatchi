@@ -28,6 +28,7 @@ service UserService {
   rpc IsFollowing (IsFollowingRequest) returns (IsFollowingResponse);
 
   rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
+  rpc GetFollowersList (GetFollowersListRequest) returns (GetFollowersListResponse);
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
 
   rpc UpdateUserProfile (UpdateUserProfileRequest) returns (GetUserProfileResponse);
@@ -193,6 +194,14 @@ message GetFollowingListRequest {
 
 message GetFollowingListResponse {
   repeated int64 following_user_ids = 1; // A list of user IDs
+}
+
+message GetFollowersListRequest {
+  int64 user_id = 1;
+}
+
+message GetFollowersListResponse {
+  repeated int64 follower_user_ids = 1;
 }
 
 // --- Get User Profile ---

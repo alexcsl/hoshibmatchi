@@ -2608,7 +2608,7 @@ const file_post_proto_rawDesc = "" +
 	"\x0eshared_caption\x18\x04 \x01(\tR\rsharedCaption\x12\x1b\n" +
 	"\tshared_at\x18\x05 \x01(\tR\bsharedAt\"Q\n" +
 	"\x16GetSharedPostsResponse\x127\n" +
-	"\fshared_posts\x18\x01 \x03(\v2\x14.post.SharedPostItemR\vsharedPosts2\xb6\x0e\n" +
+	"\fshared_posts\x18\x01 \x03(\v2\x14.post.SharedPostItemR\vsharedPosts2\x84\x0f\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -2638,7 +2638,8 @@ const file_post_proto_rawDesc = "" +
 	"DeletePost\x12\x17.post.DeletePostRequest\x1a\x18.post.DeletePostResponse\x12<\n" +
 	"\tSharePost\x12\x16.post.SharePostRequest\x1a\x17.post.SharePostResponse\x12B\n" +
 	"\vUnsharePost\x12\x18.post.UnsharePostRequest\x1a\x19.post.UnsharePostResponse\x12K\n" +
-	"\x0eGetSharedPosts\x12\x1b.post.GetSharedPostsRequest\x1a\x1c.post.GetSharedPostsResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
+	"\x0eGetSharedPosts\x12\x1b.post.GetSharedPostsRequest\x1a\x1c.post.GetSharedPostsResponse\x12L\n" +
+	"\x12GetUserTaggedPosts\x12\x1b.post.GetUserContentRequest\x1a\x19.post.GetHomeFeedResponseB,Z*github.com/hoshibmatchi/post-service/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once
@@ -2730,33 +2731,35 @@ var file_post_proto_depIdxs = []int32{
 	35, // 29: post.PostService.SharePost:input_type -> post.SharePostRequest
 	37, // 30: post.PostService.UnsharePost:input_type -> post.UnsharePostRequest
 	39, // 31: post.PostService.GetSharedPosts:input_type -> post.GetSharedPostsRequest
-	2,  // 32: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 33: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 34: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 35: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	12, // 36: post.PostService.GetCommentsByPost:output_type -> post.GetCommentsByPostResponse
-	10, // 37: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	14, // 38: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	14, // 39: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	14, // 40: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	14, // 41: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	14, // 42: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	17, // 43: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
-	18, // 44: post.PostService.CreateCollection:output_type -> post.Collection
-	21, // 45: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
-	14, // 46: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
-	24, // 47: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
-	26, // 48: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
-	28, // 49: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
-	18, // 50: post.PostService.RenameCollection:output_type -> post.Collection
-	1,  // 51: post.PostService.GetPost:output_type -> post.Post
-	32, // 52: post.PostService.GetPosts:output_type -> post.GetPostsResponse
-	34, // 53: post.PostService.DeletePost:output_type -> post.DeletePostResponse
-	36, // 54: post.PostService.SharePost:output_type -> post.SharePostResponse
-	38, // 55: post.PostService.UnsharePost:output_type -> post.UnsharePostResponse
-	41, // 56: post.PostService.GetSharedPosts:output_type -> post.GetSharedPostsResponse
-	32, // [32:57] is the sub-list for method output_type
-	7,  // [7:32] is the sub-list for method input_type
+	15, // 32: post.PostService.GetUserTaggedPosts:input_type -> post.GetUserContentRequest
+	2,  // 33: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 34: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 35: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 36: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	12, // 37: post.PostService.GetCommentsByPost:output_type -> post.GetCommentsByPostResponse
+	10, // 38: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	14, // 39: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	14, // 40: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	14, // 41: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	14, // 42: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	14, // 43: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	17, // 44: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
+	18, // 45: post.PostService.CreateCollection:output_type -> post.Collection
+	21, // 46: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
+	14, // 47: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
+	24, // 48: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
+	26, // 49: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
+	28, // 50: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
+	18, // 51: post.PostService.RenameCollection:output_type -> post.Collection
+	1,  // 52: post.PostService.GetPost:output_type -> post.Post
+	32, // 53: post.PostService.GetPosts:output_type -> post.GetPostsResponse
+	34, // 54: post.PostService.DeletePost:output_type -> post.DeletePostResponse
+	36, // 55: post.PostService.SharePost:output_type -> post.SharePostResponse
+	38, // 56: post.PostService.UnsharePost:output_type -> post.UnsharePostResponse
+	41, // 57: post.PostService.GetSharedPosts:output_type -> post.GetSharedPostsResponse
+	14, // 58: post.PostService.GetUserTaggedPosts:output_type -> post.GetHomeFeedResponse
+	33, // [33:59] is the sub-list for method output_type
+	7,  // [7:33] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name

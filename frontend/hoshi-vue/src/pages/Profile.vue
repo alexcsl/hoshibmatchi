@@ -118,7 +118,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/services/api'
+import apiClient, { userAPI } from '@/services/api'
 import PostDetailsOverlay from '@/components/PostDetailsOverlay.vue'
 
 const route = useRoute()
@@ -197,6 +197,11 @@ const fetchPosts = async (tab: string) => {
         return
     }
 
+    if (tab === 'tagged') {
+        const response = await userAPI.getUserTagged(username) // Use new API
+        posts.value = response || []
+    }
+
     if (tab === 'saved') {
         // --- Fetch Saved Posts (Collections) ---
         // 1. Get collections
@@ -257,18 +262,30 @@ const closePostDetails = () => {
 const toggleFollow = async () => {
   if (followLoading.value) return
   followLoading.value = true
+
+  const targetId = profile.value.user_id || profile.value.id
+  if (!targetId) {
+    console.error("Cannot follow: User ID is missing on profile object", profile.value)
+    alert("Error: User ID not found")
+    followLoading.value = false
+    return
+  }
+
   try {
     if (profile.value.is_following) {
-      await apiClient.delete(`/users/${profile.value.id}/follow`)
+      await apiClient.delete(`/users/${targetId}/follow`)
       profile.value.is_following = false
       profile.value.followers_count--
     } else {
-      await apiClient.post(`/users/${profile.value.id}/follow`)
+      await apiClient.post(`/users/${targetId}/follow`)
       profile.value.is_following = true
       profile.value.followers_count++
     }
-  } catch (err) { console.error(err) } 
-  finally { followLoading.value = false }
+  } catch (err) { 
+    console.error(err) 
+  } finally { 
+    followLoading.value = false 
+  }
 }
 
 const sendMessage = () => router.push({ name: 'Messages', query: { user: profile.value.username } })

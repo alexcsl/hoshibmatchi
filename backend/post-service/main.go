@@ -724,7 +724,7 @@ func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPos
 func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*pb.GetHomeFeedResponse, error) {
 	log.Printf("GetHomeFeed request received for user %d", req.UserId)
 
-	// Try cache first
+	// // Try cache first
 	cacheKey := strconv.FormatInt(req.UserId, 10) + ":" + strconv.FormatInt(int64(req.PageSize), 10) + ":" + strconv.FormatInt(int64(req.PageOffset), 10)
 	cacheKey = "feed:home:" + cacheKey
 	cachedData, err := s.rdb.Get(ctx, cacheKey).Result()
@@ -789,10 +789,44 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 
 	// Cache with 5 minute TTL
 	if responseJSON, err := json.Marshal(response); err == nil {
-		s.rdb.Set(ctx, cacheKey, responseJSON, 5*time.Minute)
+		s.rdb.Set(ctx, cacheKey, responseJSON, 2*time.Minute)
 	}
 
 	return response, nil
+}
+
+// --- NEW: GetUserTaggedPosts ---
+func (s *server) GetUserTaggedPosts(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
+    var postIDs []int64
+    
+    // Find all posts where this user is a collaborator
+    if err := s.db.Model(&PostCollaborator{}).
+        Where("user_id = ?", req.UserId).
+        Pluck("post_id", &postIDs).Error; err != nil {
+        return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
+    }
+
+    if len(postIDs) == 0 {
+        return &pb.GetHomeFeedResponse{Posts: []*pb.Post{}}, nil
+    }
+
+    var posts []Post
+    if err := s.db.Where("? = ANY(collaborator_ids) AND author_id != ?", req.UserId, req.UserId).
+        Order("created_at DESC").
+        Limit(int(req.PageSize)).
+        Offset(int(req.PageOffset)).
+        Find(&posts).Error; err != nil {
+        return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
+    }
+
+    // Filter privacy & Enrich
+    posts = s.filterPostsByPrivacy(ctx, posts, req.RequesterId)
+    var grpcPosts []*pb.Post
+    for _, post := range posts {
+        grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.RequesterId))
+    }
+
+    return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
 
 // --- Implement GetExploreFeed ---
@@ -816,16 +850,7 @@ func (s *server) GetExploreFeed(ctx context.Context, req *pb.GetHomeFeedRequest)
 	// Convert GORM models to gRPC responses
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
-		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:               strconv.FormatUint(uint64(post.ID), 10),
-			Caption:          post.Caption,
-			AuthorUsername:   post.AuthorUsername,
-			AuthorProfileUrl: post.AuthorProfileURL,
-			AuthorIsVerified: post.AuthorIsVerified,
-			MediaUrls:        post.MediaURLs,
-			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
-			IsReel:           post.IsReel,
-		})
+		grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.UserId))
 	}
 
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
@@ -851,16 +876,7 @@ func (s *server) GetReelsFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (
 	// Convert GORM models to gRPC responses
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
-		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:               strconv.FormatUint(uint64(post.ID), 10),
-			Caption:          post.Caption,
-			AuthorUsername:   post.AuthorUsername,
-			AuthorProfileUrl: post.AuthorProfileURL,
-			AuthorIsVerified: post.AuthorIsVerified,
-			MediaUrls:        post.MediaURLs,
-			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
-			IsReel:           post.IsReel,
-		})
+		grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.UserId))
 	}
 
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
@@ -884,16 +900,8 @@ func (s *server) GetUserPosts(ctx context.Context, req *pb.GetUserContentRequest
 
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
-		grpcPosts = append(grpcPosts, &pb.Post{
-			Id:               strconv.FormatUint(uint64(post.ID), 10),
-			Caption:          post.Caption,
-			AuthorUsername:   post.AuthorUsername,
-			AuthorProfileUrl: post.AuthorProfileURL,
-			AuthorIsVerified: post.AuthorIsVerified,
-			MediaUrls:        post.MediaURLs,
-			CreatedAt:        post.CreatedAt.Format(time.RFC3339),
-			IsReel:           post.IsReel,
-		})
+		// We pass req.RequesterId so we know if the viewer liked/saved them
+		grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.RequesterId))
 	}
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }

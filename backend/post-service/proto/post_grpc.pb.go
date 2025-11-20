@@ -44,6 +44,7 @@ const (
 	PostService_SharePost_FullMethodName                = "/post.PostService/SharePost"
 	PostService_UnsharePost_FullMethodName              = "/post.PostService/UnsharePost"
 	PostService_GetSharedPosts_FullMethodName           = "/post.PostService/GetSharedPosts"
+	PostService_GetUserTaggedPosts_FullMethodName       = "/post.PostService/GetUserTaggedPosts"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -75,6 +76,7 @@ type PostServiceClient interface {
 	SharePost(ctx context.Context, in *SharePostRequest, opts ...grpc.CallOption) (*SharePostResponse, error)
 	UnsharePost(ctx context.Context, in *UnsharePostRequest, opts ...grpc.CallOption) (*UnsharePostResponse, error)
 	GetSharedPosts(ctx context.Context, in *GetSharedPostsRequest, opts ...grpc.CallOption) (*GetSharedPostsResponse, error)
+	GetUserTaggedPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
 }
 
 type postServiceClient struct {
@@ -335,6 +337,16 @@ func (c *postServiceClient) GetSharedPosts(ctx context.Context, in *GetSharedPos
 	return out, nil
 }
 
+func (c *postServiceClient) GetUserTaggedPosts(ctx context.Context, in *GetUserContentRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHomeFeedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetUserTaggedPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -364,6 +376,7 @@ type PostServiceServer interface {
 	SharePost(context.Context, *SharePostRequest) (*SharePostResponse, error)
 	UnsharePost(context.Context, *UnsharePostRequest) (*UnsharePostResponse, error)
 	GetSharedPosts(context.Context, *GetSharedPostsRequest) (*GetSharedPostsResponse, error)
+	GetUserTaggedPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -448,6 +461,9 @@ func (UnimplementedPostServiceServer) UnsharePost(context.Context, *UnsharePostR
 }
 func (UnimplementedPostServiceServer) GetSharedPosts(context.Context, *GetSharedPostsRequest) (*GetSharedPostsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSharedPosts not implemented")
+}
+func (UnimplementedPostServiceServer) GetUserTaggedPosts(context.Context, *GetUserContentRequest) (*GetHomeFeedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserTaggedPosts not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -920,6 +936,24 @@ func _PostService_GetSharedPosts_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetUserTaggedPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserContentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetUserTaggedPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetUserTaggedPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetUserTaggedPosts(ctx, req.(*GetUserContentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1026,6 +1060,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetSharedPosts",
 			Handler:    _PostService_GetSharedPosts_Handler,
+		},
+		{
+			MethodName: "GetUserTaggedPosts",
+			Handler:    _PostService_GetUserTaggedPosts_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

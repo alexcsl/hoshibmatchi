@@ -767,6 +767,24 @@ func (s *server) GetFollowingList(ctx context.Context, req *pb.GetFollowingListR
 	}, nil
 }
 
+// --- GPRC: GetFollowersList ---
+func (s *server) GetFollowersList(ctx context.Context, req *pb.GetFollowersListRequest) (*pb.GetFollowersListResponse, error) {
+	var followerIDs []int64
+	
+	// Find all 'Follow' records where following_id is the target user
+	err := s.db.Model(&Follow{}).
+		Where("following_id = ?", req.UserId).
+		Pluck("follower_id", &followerIDs).Error
+		
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to retrieve followers list")
+	}
+
+	return &pb.GetFollowersListResponse{
+		FollowerUserIds: followerIDs,
+	}, nil
+}
+
 // Helper function for age validation
 func isAgeValid(birthDate time.Time, minAge int) bool {
 	today := time.Now()
