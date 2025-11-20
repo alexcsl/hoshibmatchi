@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -28,8 +27,11 @@ import (
 // Story defines the GORM model
 type Story struct {
 	gorm.Model
-	AuthorID int64
-	MediaURL string
+	AuthorID         int64
+	MediaURL         string
+	MediaType        string // "image" or "video"
+	Caption          string
+	ExpiresAt        time.Time // Crucial for 24h logic
 
 	// Denormalized data
 	AuthorUsername   string
@@ -42,7 +44,7 @@ type StoryLike struct {
 	CreatedAt time.Time
 }
 
-// server struct holds its DB and the user-service client
+// server struct holds its DB, user-service client, and RabbitMQ channel
 type server struct {
 	pb.UnimplementedStoryServiceServer
 	db         *gorm.DB
@@ -57,8 +59,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to story-db: %v", err)
 	}
-	db.AutoMigrate(&Story{})
-	db.AutoMigrate(&StoryLike{})
+	// Update schema with new fields
+	db.AutoMigrate(&Story{}, &StoryLike{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -74,11 +76,7 @@ func main() {
 	maxRetries := 10
 	retryDelay := 2 * time.Second
 	for i := 0; i < maxRetries; i++ {
-		amqpURI := os.Getenv("RABBITMQ_URI")
-		if amqpURI == "" {
-			amqpURI = "amqp://guest:guest@rabbitmq:5672/" // Default
-		}
-		amqpConn, err = amqp.Dial(amqpURI)
+		amqpConn, err = amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 		if err == nil {
 			log.Println("Successfully connected to RabbitMQ")
 			break
@@ -97,7 +95,9 @@ func main() {
 	}
 	defer amqpCh.Close()
 
-	// 1. This is the FINAL queue the worker will listen to.
+	// --- Step 3b: Declare RabbitMQ Queues for Delayed Deletion ---
+
+	// 1. The Destination Queue (Worker listens to this)
 	_, err = amqpCh.QueueDeclare(
 		"story_deletion_queue",
 		true,  // durable
@@ -110,51 +110,38 @@ func main() {
 		log.Fatalf("Failed to declare story_deletion_queue: %v", err)
 	}
 
-	// 2. This is the "wait" queue. Messages sit here for 24h.
+	// 2. The "Waiting Room" Queue (Messages sit here for 24h)
+	// We use Dead Letter Exchange (DLX) to route expired messages to the destination
+	args := amqp.Table{
+		// TTL: 24 hours in milliseconds (24 * 60 * 60 * 1000)
+		"x-message-ttl": int32(86400000),
+		// When expired, send to default exchange
+		"x-dead-letter-exchange": "",
+		// With this routing key (the destination queue name)
+		"x-dead-letter-routing-key": "story_deletion_queue",
+	}
+
 	_, err = amqpCh.QueueDeclare(
 		"story_wait_24h",
 		true,  // durable
 		false, // delete when unused
 		false, // exclusive
 		false, // no-wait
-		amqp.Table{
-			// Set message Time-To-Live to 24 hours (in milliseconds)
-			"x-message-ttl": int32(24 * 60 * 60 * 1000),
-			// When message expires, send it to the default exchange
-			"x-dead-letter-exchange": "",
-			// Route it to the "story_deletion_queue"
-			"x-dead-letter-routing-key": "story_deletion_queue",
-		},
+		args,  // <--- Apply the DLX config
 	)
 	if err != nil {
 		log.Fatalf("Failed to declare story_wait_24h queue: %v", err)
 	}
-	log.Println("RabbitMQ story deletion queues declared")
+	log.Println("RabbitMQ story queues configured")
 
-	_, err = amqpCh.QueueDeclare(
-		"notification_queue", true, false, false, false, nil,
-	)
+	// Also declare notification queue for likes
+	_, err = amqpCh.QueueDeclare("notification_queue", true, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("Failed to declare notification_queue: %v", err)
 	}
-	log.Println("RabbitMQ notification_queue declared")
-
-	// --- ADDED: Declare video transcoding queue ---
-	_, err = amqpCh.QueueDeclare(
-		"video_transcoding_queue",
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		log.Fatalf("Failed to declare video_transcoding_queue: %v", err)
-	}
-	log.Println("RabbitMQ video_transcoding_queue declared")
 
 	// --- Step 4: Start this gRPC Server ---
-	lis, err := net.Listen("tcp", ":9002") // Correct port 9002
+	lis, err := net.Listen("tcp", ":9002") // Port 9002
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -163,7 +150,7 @@ func main() {
 	pb.RegisterStoryServiceServer(s, &server{
 		db:         db,
 		userClient: userClient,
-		amqpCh:     amqpCh, // <-- This was missing
+		amqpCh:     amqpCh,
 	})
 
 	log.Println("Story service listening on port 9002...")
@@ -187,69 +174,134 @@ func (s *server) publishToQueue(ctx context.Context, queueName string, body []by
 	)
 }
 
-// --- Implement CreateStory ---
+// --- 1. Create Story (With Expiry) ---
 func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*pb.CreateStoryResponse, error) {
 	log.Println("CreateStory request received")
 
-	// --- Step 1: Call User Service for Denormalization ---
-	userData, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.AuthorId})
+	// 1. Get User Info for denormalization
+	userRes, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: req.AuthorId})
 	if err != nil {
-		log.Printf("Failed to get user data from user-service: %v", err)
+		log.Printf("Failed to get user data: %v", err)
 		return nil, status.Error(codes.Internal, "Failed to retrieve author details")
 	}
 
-	// --- Step 2: Create the Story in our DB ---
+	// 2. Calculate Expiry
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	// 3. Create Story Object
 	newStory := Story{
 		AuthorID:         req.AuthorId,
 		MediaURL:         req.MediaUrl,
-		AuthorUsername:   userData.Username,
-		AuthorProfileURL: userData.ProfilePictureUrl,
+		MediaType:        req.MediaType,
+		Caption:          req.Caption,
+		ExpiresAt:        expiresAt,
+		AuthorUsername:   userRes.Username,
+		AuthorProfileURL: userRes.ProfilePictureUrl,
 	}
 
-	if result := s.db.Create(&newStory); result.Error != nil {
+	if err := s.db.Create(&newStory).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to save story to database")
 	}
 
-	// --- Publish 24-hour delayed deletion job ---
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	msgBody, _ := json.Marshal(map[string]uint{
+	// 4. Publish to the "Waiting Room" Queue
+	// The worker will pick this up from 'story_deletion_queue' after 24h
+	msgBody, _ := json.Marshal(map[string]interface{}{
+		"type":     "story.delete",
 		"story_id": newStory.ID,
 	})
 
-	// Publish to the "wait" queue, NOT the final queue
-	err = s.amqpCh.PublishWithContext(
-		ctxTimeout,
-		"",               // exchange (default)
-		"story_wait_24h", // routing key (the "wait" queue)
-		false,            // mandatory
-		false,            // immediate
-		amqp.Publishing{
-			ContentType:  "application/json",
-			DeliveryMode: amqp.Persistent, // Make message durable
-			Body:         msgBody,
-		},
-	)
+	err = s.publishToQueue(ctx, "story_wait_24h", msgBody)
 	if err != nil {
-		// Log the error, but don't fail the user's request
-		log.Printf("Failed to publish story deletion job for story %d: %v", newStory.ID, err)
+		log.Printf("Failed to schedule deletion task: %v", err)
+		// We don't fail the request, just log warning. 
+		// In production, you might want a cron backup for cleanup.
 	} else {
-		log.Printf("Published 24h deletion job for story %d", newStory.ID)
+		log.Printf("Scheduled 24h deletion for story %d", newStory.ID)
 	}
 
-	// --- Step 3: Return the created story ---
 	return &pb.CreateStoryResponse{
 		Story: &pb.Story{
 			Id:               strconv.FormatUint(uint64(newStory.ID), 10),
 			MediaUrl:         newStory.MediaURL,
+			MediaType:        newStory.MediaType,
+			Caption:          newStory.Caption,
 			AuthorUsername:   newStory.AuthorUsername,
 			AuthorProfileUrl: newStory.AuthorProfileURL,
 			CreatedAt:        newStory.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:        newStory.ExpiresAt.Format(time.RFC3339),
 		},
 	}, nil
 }
 
+// --- 2. Get Story Feed (Grouped by User) ---
+func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) (*pb.GetStoryFeedResponse, error) {
+	// 1. Get Following List
+	followingRes, err := s.userClient.GetFollowingList(ctx, &userPb.GetFollowingListRequest{UserId: req.UserId})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get following list")
+	}
+	// Include Self so user sees their own story
+	targetIDs := append(followingRes.FollowingUserIds, req.UserId)
+
+	// 2. Fetch Active Stories (ExpiresAt > Now)
+	var stories []Story
+	if err := s.db.Where("author_id IN ? AND expires_at > ?", targetIDs, time.Now()).
+		Order("created_at ASC"). // Oldest first (chronological for stories)
+		Find(&stories).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch stories")
+	}
+
+	// 3. Group Stories by AuthorID
+	groupedMap := make(map[int64]*pb.UserStoryGroup)
+
+	for _, story := range stories {
+		// Initialize group if not exists
+		if _, exists := groupedMap[story.AuthorID]; !exists {
+			groupedMap[story.AuthorID] = &pb.UserStoryGroup{
+				UserId:         story.AuthorID,
+				Username:       story.AuthorUsername,
+				UserProfileUrl: story.AuthorProfileURL,
+				Stories:        []*pb.Story{},
+				AllSeen:        false, // Placeholder
+			}
+		}
+
+		// Add story to group
+		groupedMap[story.AuthorID].Stories = append(groupedMap[story.AuthorID].Stories, &pb.Story{
+			Id:               strconv.FormatUint(uint64(story.ID), 10),
+			MediaUrl:         story.MediaURL,
+			MediaType:        story.MediaType,
+			Caption:          story.Caption,
+			CreatedAt:        story.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:        story.ExpiresAt.Format(time.RFC3339),
+		})
+	}
+
+	// 4. Convert Map to Slice
+	var responseGroups []*pb.UserStoryGroup
+	for _, group := range groupedMap {
+		// Optional: Put "Self" (current user) at the very front
+		if group.UserId == req.UserId {
+			responseGroups = append([]*pb.UserStoryGroup{group}, responseGroups...)
+		} else {
+			responseGroups = append(responseGroups, group)
+		}
+	}
+
+	return &pb.GetStoryFeedResponse{StoryGroups: responseGroups}, nil
+}
+
+// --- 3. Delete Story (Manual or Worker Triggered) ---
+func (s *server) DeleteStory(ctx context.Context, req *pb.DeleteStoryRequest) (*pb.DeleteStoryResponse, error) {
+	// In a real app, you'd check if req.UserId owns the story or is admin/worker
+	if err := s.db.Delete(&Story{}, req.StoryId).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to delete story")
+	}
+	log.Printf("Story %d deleted successfully", req.StoryId)
+	return &pb.DeleteStoryResponse{Message: "Story deleted"}, nil
+}
+
+// --- 4. Like Story ---
 func (s *server) LikeStory(ctx context.Context, req *pb.LikeStoryRequest) (*pb.LikeStoryResponse, error) {
 	like := StoryLike{
 		UserID:  req.UserId,
@@ -262,6 +314,7 @@ func (s *server) LikeStory(ctx context.Context, req *pb.LikeStoryRequest) (*pb.L
 		return nil, status.Error(codes.Internal, "Failed to like story")
 	}
 
+	// Send notification (unless liking own story)
 	var story Story
 	s.db.First(&story, req.StoryId)
 	if story.AuthorID != req.UserId {
@@ -277,7 +330,7 @@ func (s *server) LikeStory(ctx context.Context, req *pb.LikeStoryRequest) (*pb.L
 	return &pb.LikeStoryResponse{Message: "Story liked"}, nil
 }
 
-// --- Implement UnlikeStory ---
+// --- 5. Unlike Story ---
 func (s *server) UnlikeStory(ctx context.Context, req *pb.UnlikeStoryRequest) (*pb.UnlikeStoryResponse, error) {
 	like := StoryLike{
 		UserID:  req.UserId,

@@ -103,9 +103,20 @@ const notifications = ref([
 ])
 
 const stories = ref([
-  { id: 1, username: 'user_1', avatar: '/placeholder.svg?height=48&width=48', image: '/placeholder.svg?height=800&width=500', timestamp: '2 hours ago' },
-  { id: 2, username: 'user_2', avatar: '/placeholder.svg?height=48&width=48', image: '/placeholder.svg?height=800&width=500', timestamp: '4 hours ago' },
-  { id: 3, username: 'user_3', avatar: '/placeholder.svg?height=48&width=48', image: '/placeholder.svg?height=800&width=500', timestamp: '6 hours ago' }
+  { 
+    id: '1', 
+    author_username: 'user_1', 
+    author_profile_url: '/placeholder.svg?height=48&width=48', 
+    media_url: '/placeholder.svg?height=800&width=500', 
+    created_at: new Date().toISOString() 
+  },
+  { 
+    id: '2', 
+    author_username: 'user_2', 
+    author_profile_url: '/placeholder.svg?height=48&width=48', 
+    media_url: '/placeholder.svg?height=800&width=500', 
+    created_at: new Date().toISOString() 
+  }
 ])
 
 const handlePostCreated = () => {

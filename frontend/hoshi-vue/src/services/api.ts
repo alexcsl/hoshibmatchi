@@ -131,6 +131,25 @@ export interface UploadURLResponse {
   final_media_url: string; // The URL to save in our database
 }
 
+export interface Story {
+  id: string
+  media_url: string
+  media_type: string
+  caption: string
+  author_username: string
+  author_profile_url: string
+  created_at: string
+  is_liked?: boolean
+}
+
+export interface StoryGroup {
+  user_id: number
+  username: string
+  user_profile_url: string
+  stories: Story[]
+  all_seen: boolean
+}
+
 // API Functions
 
 // Auth APIs
@@ -345,6 +364,11 @@ export const postAPI = {
 
 // Story APIs
 export const storyAPI = {
+  getStoryFeed: async () => {
+    const response = await apiClient.get('/stories/feed')
+    return response.data // Returns StoryGroup[]
+  },
+
   createStory: async (mediaUrl: string) => {
     const response = await apiClient.post('/stories', { media_url: mediaUrl })
     return response.data

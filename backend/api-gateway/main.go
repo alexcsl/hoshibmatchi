@@ -168,6 +168,7 @@ func main() {
 		protected.POST("/stories", handleCreateStory_Gin)
 		protected.POST("/stories/:id/like", handleStoryLike_Gin)
 		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
+		protected.GET("/stories/feed", handleGetStoryFeed_Gin)
 
 		// Comments
 		protected.POST("/comments", handleCreateComment_Gin)
@@ -2431,4 +2432,19 @@ func handleGetFollowersList_Gin(c *gin.Context) {
     // We just return IDs for now, ideally we'd hydrate them with profiles, 
     // but the frontend asked for the list/count fix first.
     c.JSON(http.StatusOK, res.FollowerUserIds)
+}
+
+// --- HANDLER: GetStoryFeed ---
+func handleGetStoryFeed_Gin(c *gin.Context) {
+	userID, _ := c.Request.Context().Value(userIDKey).(int64)
+
+	res, err := storyClient.GetStoryFeed(c.Request.Context(), &storyPb.GetStoryFeedRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch stories"})
+		return
+	}
+
+	c.JSON(http.StatusOK, res.StoryGroups)
 }

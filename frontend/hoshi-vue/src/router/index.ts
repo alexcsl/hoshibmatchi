@@ -22,6 +22,7 @@ import Profile from '../pages/Profile.vue'
 import GoogleCallback from '../pages/GoogleCallback.vue'
 import VerifyOTP from '../pages/VerifyOTP.vue'
 import EditProfile from '../pages/EditProfile.vue'
+import CreateStory from '../pages/CreateStory.vue'
 
 const routes = [
   // Auth Routes (no sidebar layout)
@@ -122,6 +123,11 @@ const routes = [
         path: 'edit-profile', 
         name: 'EditProfile', 
         component: () => import('../pages/EditProfile.vue')
+      },
+      { 
+      path: '/create-story', 
+      name: 'create-story', 
+      component: CreateStory 
       },
 
       // Future routes

@@ -27,6 +27,8 @@ type CreateStoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AuthorId      int64                  `protobuf:"varint,1,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"` // From the JWT
 	MediaUrl      string                 `protobuf:"bytes,2,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`  // Stories are usually a single media item
+	MediaType     string                 `protobuf:"bytes,3,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
+	Caption       string                 `protobuf:"bytes,4,opt,name=caption,proto3" json:"caption,omitempty"` // Add other fields later if needed, like "close_friends_only"
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -75,15 +77,32 @@ func (x *CreateStoryRequest) GetMediaUrl() string {
 	return ""
 }
 
+func (x *CreateStoryRequest) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
+	}
+	return ""
+}
+
+func (x *CreateStoryRequest) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
 // The created Story
 type Story struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	MediaUrl string                 `protobuf:"bytes,2,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
-	// Denormalized data from user-service
-	AuthorUsername   string `protobuf:"bytes,3,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
-	AuthorProfileUrl string `protobuf:"bytes,4,opt,name=author_profile_url,json=authorProfileUrl,proto3" json:"author_profile_url,omitempty"`
-	CreatedAt        string `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	MediaUrl         string                 `protobuf:"bytes,2,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`
+	MediaType        string                 `protobuf:"bytes,3,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
+	Caption          string                 `protobuf:"bytes,4,opt,name=caption,proto3" json:"caption,omitempty"`
+	AuthorUsername   string                 `protobuf:"bytes,5,opt,name=author_username,json=authorUsername,proto3" json:"author_username,omitempty"`
+	AuthorProfileUrl string                 `protobuf:"bytes,6,opt,name=author_profile_url,json=authorProfileUrl,proto3" json:"author_profile_url,omitempty"`
+	CreatedAt        string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ExpiresAt        string                 `protobuf:"bytes,8,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	IsLiked          bool                   `protobuf:"varint,9,opt,name=is_liked,json=isLiked,proto3" json:"is_liked,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -132,6 +151,20 @@ func (x *Story) GetMediaUrl() string {
 	return ""
 }
 
+func (x *Story) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
+	}
+	return ""
+}
+
+func (x *Story) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
 func (x *Story) GetAuthorUsername() string {
 	if x != nil {
 		return x.AuthorUsername
@@ -151,6 +184,20 @@ func (x *Story) GetCreatedAt() string {
 		return x.CreatedAt
 	}
 	return ""
+}
+
+func (x *Story) GetExpiresAt() string {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return ""
+}
+
+func (x *Story) GetIsLiked() bool {
+	if x != nil {
+		return x.IsLiked
+	}
+	return false
 }
 
 type CreateStoryResponse struct {
@@ -197,6 +244,171 @@ func (x *CreateStoryResponse) GetStory() *Story {
 	return nil
 }
 
+type GetStoryFeedRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // The viewer
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStoryFeedRequest) Reset() {
+	*x = GetStoryFeedRequest{}
+	mi := &file_story_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStoryFeedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStoryFeedRequest) ProtoMessage() {}
+
+func (x *GetStoryFeedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_story_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStoryFeedRequest.ProtoReflect.Descriptor instead.
+func (*GetStoryFeedRequest) Descriptor() ([]byte, []int) {
+	return file_story_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetStoryFeedRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+// We group stories by Author so the Frontend can render the "Circles"
+type UserStoryGroup struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username       string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	UserProfileUrl string                 `protobuf:"bytes,3,opt,name=user_profile_url,json=userProfileUrl,proto3" json:"user_profile_url,omitempty"`
+	Stories        []*Story               `protobuf:"bytes,4,rep,name=stories,proto3" json:"stories,omitempty"`
+	AllSeen        bool                   `protobuf:"varint,5,opt,name=all_seen,json=allSeen,proto3" json:"all_seen,omitempty"` // Optional: if we track views later
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UserStoryGroup) Reset() {
+	*x = UserStoryGroup{}
+	mi := &file_story_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserStoryGroup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserStoryGroup) ProtoMessage() {}
+
+func (x *UserStoryGroup) ProtoReflect() protoreflect.Message {
+	mi := &file_story_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserStoryGroup.ProtoReflect.Descriptor instead.
+func (*UserStoryGroup) Descriptor() ([]byte, []int) {
+	return file_story_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UserStoryGroup) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *UserStoryGroup) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UserStoryGroup) GetUserProfileUrl() string {
+	if x != nil {
+		return x.UserProfileUrl
+	}
+	return ""
+}
+
+func (x *UserStoryGroup) GetStories() []*Story {
+	if x != nil {
+		return x.Stories
+	}
+	return nil
+}
+
+func (x *UserStoryGroup) GetAllSeen() bool {
+	if x != nil {
+		return x.AllSeen
+	}
+	return false
+}
+
+type GetStoryFeedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StoryGroups   []*UserStoryGroup      `protobuf:"bytes,1,rep,name=story_groups,json=storyGroups,proto3" json:"story_groups,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStoryFeedResponse) Reset() {
+	*x = GetStoryFeedResponse{}
+	mi := &file_story_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStoryFeedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStoryFeedResponse) ProtoMessage() {}
+
+func (x *GetStoryFeedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_story_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStoryFeedResponse.ProtoReflect.Descriptor instead.
+func (*GetStoryFeedResponse) Descriptor() ([]byte, []int) {
+	return file_story_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetStoryFeedResponse) GetStoryGroups() []*UserStoryGroup {
+	if x != nil {
+		return x.StoryGroups
+	}
+	return nil
+}
+
 type LikeStoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`    // From JWT
@@ -207,7 +419,7 @@ type LikeStoryRequest struct {
 
 func (x *LikeStoryRequest) Reset() {
 	*x = LikeStoryRequest{}
-	mi := &file_story_proto_msgTypes[3]
+	mi := &file_story_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +431,7 @@ func (x *LikeStoryRequest) String() string {
 func (*LikeStoryRequest) ProtoMessage() {}
 
 func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_story_proto_msgTypes[3]
+	mi := &file_story_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +444,7 @@ func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*LikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_story_proto_rawDescGZIP(), []int{3}
+	return file_story_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *LikeStoryRequest) GetUserId() int64 {
@@ -258,7 +470,7 @@ type LikeStoryResponse struct {
 
 func (x *LikeStoryResponse) Reset() {
 	*x = LikeStoryResponse{}
-	mi := &file_story_proto_msgTypes[4]
+	mi := &file_story_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -270,7 +482,7 @@ func (x *LikeStoryResponse) String() string {
 func (*LikeStoryResponse) ProtoMessage() {}
 
 func (x *LikeStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_story_proto_msgTypes[4]
+	mi := &file_story_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -283,7 +495,7 @@ func (x *LikeStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeStoryResponse.ProtoReflect.Descriptor instead.
 func (*LikeStoryResponse) Descriptor() ([]byte, []int) {
-	return file_story_proto_rawDescGZIP(), []int{4}
+	return file_story_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LikeStoryResponse) GetMessage() string {
@@ -303,7 +515,7 @@ type UnlikeStoryRequest struct {
 
 func (x *UnlikeStoryRequest) Reset() {
 	*x = UnlikeStoryRequest{}
-	mi := &file_story_proto_msgTypes[5]
+	mi := &file_story_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +527,7 @@ func (x *UnlikeStoryRequest) String() string {
 func (*UnlikeStoryRequest) ProtoMessage() {}
 
 func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_story_proto_msgTypes[5]
+	mi := &file_story_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -328,7 +540,7 @@ func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*UnlikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_story_proto_rawDescGZIP(), []int{5}
+	return file_story_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UnlikeStoryRequest) GetUserId() int64 {
@@ -354,7 +566,7 @@ type UnlikeStoryResponse struct {
 
 func (x *UnlikeStoryResponse) Reset() {
 	*x = UnlikeStoryResponse{}
-	mi := &file_story_proto_msgTypes[6]
+	mi := &file_story_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -366,7 +578,7 @@ func (x *UnlikeStoryResponse) String() string {
 func (*UnlikeStoryResponse) ProtoMessage() {}
 
 func (x *UnlikeStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_story_proto_msgTypes[6]
+	mi := &file_story_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -379,10 +591,106 @@ func (x *UnlikeStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeStoryResponse.ProtoReflect.Descriptor instead.
 func (*UnlikeStoryResponse) Descriptor() ([]byte, []int) {
-	return file_story_proto_rawDescGZIP(), []int{6}
+	return file_story_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UnlikeStoryResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type DeleteStoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // Owner or Admin
+	StoryId       int64                  `protobuf:"varint,2,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteStoryRequest) Reset() {
+	*x = DeleteStoryRequest{}
+	mi := &file_story_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteStoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStoryRequest) ProtoMessage() {}
+
+func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_story_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStoryRequest.ProtoReflect.Descriptor instead.
+func (*DeleteStoryRequest) Descriptor() ([]byte, []int) {
+	return file_story_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DeleteStoryRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *DeleteStoryRequest) GetStoryId() int64 {
+	if x != nil {
+		return x.StoryId
+	}
+	return 0
+}
+
+type DeleteStoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteStoryResponse) Reset() {
+	*x = DeleteStoryResponse{}
+	mi := &file_story_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteStoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStoryResponse) ProtoMessage() {}
+
+func (x *DeleteStoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_story_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStoryResponse.ProtoReflect.Descriptor instead.
+func (*DeleteStoryResponse) Descriptor() ([]byte, []int) {
+	return file_story_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteStoryResponse) GetMessage() string {
 	if x != nil {
 		return x.Message
 	}
@@ -394,19 +702,38 @@ var File_story_proto protoreflect.FileDescriptor
 const file_story_proto_rawDesc = "" +
 	"\n" +
 	"\vstory.proto\x12\x05story\x1a\n" +
-	"user.proto\"N\n" +
+	"user.proto\"\x87\x01\n" +
 	"\x12CreateStoryRequest\x12\x1b\n" +
 	"\tauthor_id\x18\x01 \x01(\x03R\bauthorId\x12\x1b\n" +
-	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\"\xaa\x01\n" +
+	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\x03 \x01(\tR\tmediaType\x12\x18\n" +
+	"\acaption\x18\x04 \x01(\tR\acaption\"\x9d\x02\n" +
 	"\x05Story\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12'\n" +
-	"\x0fauthor_username\x18\x03 \x01(\tR\x0eauthorUsername\x12,\n" +
-	"\x12author_profile_url\x18\x04 \x01(\tR\x10authorProfileUrl\x12\x1d\n" +
+	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\tR\tcreatedAt\"9\n" +
+	"media_type\x18\x03 \x01(\tR\tmediaType\x12\x18\n" +
+	"\acaption\x18\x04 \x01(\tR\acaption\x12'\n" +
+	"\x0fauthor_username\x18\x05 \x01(\tR\x0eauthorUsername\x12,\n" +
+	"\x12author_profile_url\x18\x06 \x01(\tR\x10authorProfileUrl\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\b \x01(\tR\texpiresAt\x12\x19\n" +
+	"\bis_liked\x18\t \x01(\bR\aisLiked\"9\n" +
 	"\x13CreateStoryResponse\x12\"\n" +
-	"\x05story\x18\x01 \x01(\v2\f.story.StoryR\x05story\"F\n" +
+	"\x05story\x18\x01 \x01(\v2\f.story.StoryR\x05story\".\n" +
+	"\x13GetStoryFeedRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\"\xb2\x01\n" +
+	"\x0eUserStoryGroup\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12(\n" +
+	"\x10user_profile_url\x18\x03 \x01(\tR\x0euserProfileUrl\x12&\n" +
+	"\astories\x18\x04 \x03(\v2\f.story.StoryR\astories\x12\x19\n" +
+	"\ball_seen\x18\x05 \x01(\bR\aallSeen\"P\n" +
+	"\x14GetStoryFeedResponse\x128\n" +
+	"\fstory_groups\x18\x01 \x03(\v2\x15.story.UserStoryGroupR\vstoryGroups\"F\n" +
 	"\x10LikeStoryRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x19\n" +
 	"\bstory_id\x18\x02 \x01(\x03R\astoryId\"-\n" +
@@ -416,11 +743,18 @@ const file_story_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x19\n" +
 	"\bstory_id\x18\x02 \x01(\x03R\astoryId\"/\n" +
 	"\x13UnlikeStoryResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xda\x01\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"H\n" +
+	"\x12DeleteStoryRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x19\n" +
+	"\bstory_id\x18\x02 \x01(\x03R\astoryId\"/\n" +
+	"\x13DeleteStoryResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2\xe9\x02\n" +
 	"\fStoryService\x12D\n" +
 	"\vCreateStory\x12\x19.story.CreateStoryRequest\x1a\x1a.story.CreateStoryResponse\x12>\n" +
 	"\tLikeStory\x12\x17.story.LikeStoryRequest\x1a\x18.story.LikeStoryResponse\x12D\n" +
-	"\vUnlikeStory\x12\x19.story.UnlikeStoryRequest\x1a\x1a.story.UnlikeStoryResponseB-Z+github.com/hoshibmatchi/story-service/protob\x06proto3"
+	"\vUnlikeStory\x12\x19.story.UnlikeStoryRequest\x1a\x1a.story.UnlikeStoryResponse\x12G\n" +
+	"\fGetStoryFeed\x12\x1a.story.GetStoryFeedRequest\x1a\x1b.story.GetStoryFeedResponse\x12D\n" +
+	"\vDeleteStory\x12\x19.story.DeleteStoryRequest\x1a\x1a.story.DeleteStoryResponseB-Z+github.com/hoshibmatchi/story-service/protob\x06proto3"
 
 var (
 	file_story_proto_rawDescOnce sync.Once
@@ -434,29 +768,40 @@ func file_story_proto_rawDescGZIP() []byte {
 	return file_story_proto_rawDescData
 }
 
-var file_story_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_story_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_story_proto_goTypes = []any{
-	(*CreateStoryRequest)(nil),  // 0: story.CreateStoryRequest
-	(*Story)(nil),               // 1: story.Story
-	(*CreateStoryResponse)(nil), // 2: story.CreateStoryResponse
-	(*LikeStoryRequest)(nil),    // 3: story.LikeStoryRequest
-	(*LikeStoryResponse)(nil),   // 4: story.LikeStoryResponse
-	(*UnlikeStoryRequest)(nil),  // 5: story.UnlikeStoryRequest
-	(*UnlikeStoryResponse)(nil), // 6: story.UnlikeStoryResponse
+	(*CreateStoryRequest)(nil),   // 0: story.CreateStoryRequest
+	(*Story)(nil),                // 1: story.Story
+	(*CreateStoryResponse)(nil),  // 2: story.CreateStoryResponse
+	(*GetStoryFeedRequest)(nil),  // 3: story.GetStoryFeedRequest
+	(*UserStoryGroup)(nil),       // 4: story.UserStoryGroup
+	(*GetStoryFeedResponse)(nil), // 5: story.GetStoryFeedResponse
+	(*LikeStoryRequest)(nil),     // 6: story.LikeStoryRequest
+	(*LikeStoryResponse)(nil),    // 7: story.LikeStoryResponse
+	(*UnlikeStoryRequest)(nil),   // 8: story.UnlikeStoryRequest
+	(*UnlikeStoryResponse)(nil),  // 9: story.UnlikeStoryResponse
+	(*DeleteStoryRequest)(nil),   // 10: story.DeleteStoryRequest
+	(*DeleteStoryResponse)(nil),  // 11: story.DeleteStoryResponse
 }
 var file_story_proto_depIdxs = []int32{
-	1, // 0: story.CreateStoryResponse.story:type_name -> story.Story
-	0, // 1: story.StoryService.CreateStory:input_type -> story.CreateStoryRequest
-	3, // 2: story.StoryService.LikeStory:input_type -> story.LikeStoryRequest
-	5, // 3: story.StoryService.UnlikeStory:input_type -> story.UnlikeStoryRequest
-	2, // 4: story.StoryService.CreateStory:output_type -> story.CreateStoryResponse
-	4, // 5: story.StoryService.LikeStory:output_type -> story.LikeStoryResponse
-	6, // 6: story.StoryService.UnlikeStory:output_type -> story.UnlikeStoryResponse
-	4, // [4:7] is the sub-list for method output_type
-	1, // [1:4] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	1,  // 0: story.CreateStoryResponse.story:type_name -> story.Story
+	1,  // 1: story.UserStoryGroup.stories:type_name -> story.Story
+	4,  // 2: story.GetStoryFeedResponse.story_groups:type_name -> story.UserStoryGroup
+	0,  // 3: story.StoryService.CreateStory:input_type -> story.CreateStoryRequest
+	6,  // 4: story.StoryService.LikeStory:input_type -> story.LikeStoryRequest
+	8,  // 5: story.StoryService.UnlikeStory:input_type -> story.UnlikeStoryRequest
+	3,  // 6: story.StoryService.GetStoryFeed:input_type -> story.GetStoryFeedRequest
+	10, // 7: story.StoryService.DeleteStory:input_type -> story.DeleteStoryRequest
+	2,  // 8: story.StoryService.CreateStory:output_type -> story.CreateStoryResponse
+	7,  // 9: story.StoryService.LikeStory:output_type -> story.LikeStoryResponse
+	9,  // 10: story.StoryService.UnlikeStory:output_type -> story.UnlikeStoryResponse
+	5,  // 11: story.StoryService.GetStoryFeed:output_type -> story.GetStoryFeedResponse
+	11, // 12: story.StoryService.DeleteStory:output_type -> story.DeleteStoryResponse
+	8,  // [8:13] is the sub-list for method output_type
+	3,  // [3:8] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_story_proto_init() }
@@ -470,7 +815,7 @@ func file_story_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_story_proto_rawDesc), len(file_story_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { feedAPI, postAPI, collectionAPI } from '@/services/api'
+import { feedAPI, postAPI, collectionAPI, storyAPI } from '@/services/api'
 
 interface Post {
   id: string
@@ -22,6 +22,7 @@ interface FeedState {
   homeFeed: Post[]
   exploreFeed: Post[]
   reelsFeed: Post[]
+  storyFeed: any[]
   homePage: number
   explorePage: number
   reelsPage: number
@@ -34,6 +35,7 @@ export const useFeedStore = defineStore('feed', {
     homeFeed: [],
     exploreFeed: [],
     reelsFeed: [],
+    storyFeed: [],
     homePage: 1,
     explorePage: 1,
     reelsPage: 1,
@@ -97,6 +99,16 @@ export const useFeedStore = defineStore('feed', {
         console.error('Error details:', error.response?.data || error.message)
       } finally {
         this.loading = false
+      }
+    },
+
+    async loadStoryFeed() {
+      try {
+        const groups = await storyAPI.getStoryFeed()
+        // Backend returns null if empty, ensure array
+        this.storyFeed = groups || []
+      } catch (error) {
+        console.error("Failed to load stories", error)
       }
     },
 

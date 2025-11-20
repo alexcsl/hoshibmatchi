@@ -4,7 +4,7 @@
       <main class="main-feed">
         <!-- Stories -->
         <div class="stories">
-          <div class="story-item your-story">
+          <div class="story-item your-story" @click="handleCreateStory">
             <img 
               :src="authStore.user?.profile_picture_url || '/default-avatar.svg'" 
               alt="Your story" 
@@ -12,11 +12,28 @@
             />
             <div class="story-label">Your story</div>
           </div>
-          <div v-for="i in 8" :key="`story-${i}`" class="story-item">
-            <img :src="`/placeholder.svg?height=60&width=60&query=story-${i}`" :alt="`Story ${i}`" class="story-image" />
-            <div class="story-label">user_{{ i }}</div>
+
+            <div 
+              v-for="group in feedStore.storyFeed" 
+              :key="group.user_id" 
+              class="story-item"
+              :class="{ 'seen': group.all_seen }"
+              @click="openStoryViewer(group)"
+            >
+              <img 
+                  :src="group.user_profile_url || '/default-avatar.svg'" 
+                  :alt="group.username" 
+                  class="story-image" 
+              />
+              <div class="story-label">{{ group.username }}</div>
+            </div>
           </div>
-        </div>
+
+        <StoryViewer 
+            v-if="showStoryViewer && selectedStoryGroup"
+            :stories="selectedStoryGroup.stories"
+            @close="showStoryViewer = false"
+        />
 
         <!-- Posts -->
         <div class="posts" ref="postsContainer">
@@ -99,14 +116,19 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router' // Import Router
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
 import { commentAPI } from '@/services/api'
 import PostCard from '@/components/PostCard.vue'
+import StoryViewer from '@/components/StoryViewer.vue'
 
+const router = useRouter()
 const feedStore = useFeedStore()
 const authStore = useAuthStore()
 const postsContainer = ref<HTMLElement | null>(null)
+const showStoryViewer = ref(false)
+const selectedStoryGroup = ref<any>(null)
 
 onMounted(async () => {
   // Load initial feed
@@ -117,6 +139,7 @@ onMounted(async () => {
     console.log('Feed data:', feedStore.homeFeed)
   }
 
+  await feedStore.loadStoryFeed()
   // Setup infinite scroll
   window.addEventListener('scroll', handleScroll)
 })
@@ -184,6 +207,22 @@ const handleOpenPostDetails = (postId: string) => {
   if (window.openPostDetails) {
     window.openPostDetails(postId)
   }
+}
+
+const handleCreateStory = () => {
+    // We can reuse CreatePostOverlay, but pass a prop or mode?
+    // Or strictly speaking, "Create" button in sidebar usually handles both.
+    // For now, trigger the global create event or router push
+    router.push('/create-story')   // If Feed emits this, or use a global bus/store
+    // Actually, sidebar handles 'Create'. Let's assume we open the overlay
+    // but set `isReel` to false and maybe we need an `isStory` flag in CreatePostOverlay later.
+    // For MVP: Just alert or log
+    console.log("Open Create Overlay in Story Mode")
+}
+
+const openStoryViewer = (group: any) => {
+    selectedStoryGroup.value = group
+    showStoryViewer.value = true
 }
 
 const handleOpenOptions = (postId: string) => {

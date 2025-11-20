@@ -12,12 +12,18 @@ service StoryService {
 
   rpc LikeStory (LikeStoryRequest) returns (LikeStoryResponse);
   rpc UnlikeStory (UnlikeStoryRequest) returns (UnlikeStoryResponse);
+  // NEW: Get the story feed
+  rpc GetStoryFeed (GetStoryFeedRequest) returns (GetStoryFeedResponse);
+  // NEW: Delete story (for worker or user)
+  rpc DeleteStory (DeleteStoryRequest) returns (DeleteStoryResponse);
 }
 
 // Data from the API Gateway
 message CreateStoryRequest {
   int64 author_id = 1; // From the JWT
   string media_url = 2; // Stories are usually a single media item
+  string media_type = 3;
+  string caption = 4;
   // Add other fields later if needed, like "close_friends_only"
 }
 
@@ -25,16 +31,34 @@ message CreateStoryRequest {
 message Story {
   string id = 1;
   string media_url = 2;
-  
-  // Denormalized data from user-service
-  string author_username = 3;
-  string author_profile_url = 4;
-  
-  string created_at = 5;
+  string media_type = 3;
+  string caption = 4;
+  string author_username = 5;
+  string author_profile_url = 6;
+  string created_at = 7;
+  string expires_at = 8;
+  bool is_liked = 9;
 }
 
 message CreateStoryResponse {
   Story story = 1;
+}
+
+message GetStoryFeedRequest {
+  int64 user_id = 1; // The viewer
+}
+
+// We group stories by Author so the Frontend can render the "Circles"
+message UserStoryGroup {
+  int64 user_id = 1;
+  string username = 2;
+  string user_profile_url = 3;
+  repeated Story stories = 4;
+  bool all_seen = 5; // Optional: if we track views later
+}
+
+message GetStoryFeedResponse {
+  repeated UserStoryGroup story_groups = 1;
 }
 
 message LikeStoryRequest {
@@ -50,4 +74,12 @@ message UnlikeStoryRequest {
 }
 message UnlikeStoryResponse {
   string message = 1; // "Story unliked"
+}
+
+message DeleteStoryRequest {
+    int64 user_id = 1; // Owner or Admin
+    int64 story_id = 2;
+}
+message DeleteStoryResponse {
+    string message = 1;
 }

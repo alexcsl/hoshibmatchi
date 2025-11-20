@@ -3,31 +3,27 @@
     <button class="close-btn" @click.stop="$emit('close')">✕</button>
 
     <div class="story-container">
-      <!-- Story Image -->
       <div class="story-image-wrapper">
-        <img :src="story.image" :alt="story.username" class="story-image" />
+        <img :src="story.media_url" :alt="story.author_username" class="story-image" />
         <div class="story-progress">
           <div class="progress-bar" :style="{ width: progressPercentage + '%' }"></div>
         </div>
       </div>
 
-      <!-- Story Header -->
       <div class="story-header">
         <div class="user-info">
-          <img :src="story.avatar" :alt="story.username" class="avatar" />
+          <img :src="story.author_profile_url || '/default-avatar.svg'" :alt="story.author_username" class="avatar" />
           <div>
-            <div class="username">{{ story.username }}</div>
-            <div class="timestamp">{{ story.timestamp }}</div>
+            <div class="username">{{ story.author_username }}</div>
+            <div class="timestamp">{{ formatTime(story.created_at) }}</div>
           </div>
         </div>
         <button class="more-btn">⋯</button>
       </div>
 
-      <!-- Navigation -->
       <button v-if="canGoPrev" class="nav-btn prev" @click.stop="goToPrev">◀</button>
       <button v-if="canGoNext" class="nav-btn next" @click.stop="goToNext">▶</button>
 
-      <!-- Story Reply -->
       <div class="story-reply">
         <input type="text" placeholder="Reply..." class="reply-input" />
         <button class="send-btn">📤</button>
@@ -39,12 +35,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 
-interface Story {
-  id: number
-  username: string
-  avatar: string
-  image: string
-  timestamp: string
+// Interface matching Backend Protobuf/JSON
+export interface Story {
+  id: string
+  author_username: string
+  author_profile_url: string 
+  media_url: string         
+  created_at: string
 }
 
 const props = defineProps<{
@@ -53,23 +50,36 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close: []
-  prev: []
-  next: []
+  (e: 'close'): void
+  (e: 'prev'): void
+  (e: 'next'): void
 }>()
 
 const currentIndex = ref(props.initialIndex || 0)
 const progress = ref(0)
-const storyDuration = 5000 // 5 seconds per story
+const storyDuration = 5000 
 
 const story = computed(() => props.stories[currentIndex.value])
 const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100))
 const canGoPrev = computed(() => currentIndex.value > 0)
 const canGoNext = computed(() => currentIndex.value < props.stories.length - 1)
 
+// Helper for timestamp
+const formatTime = (dateStr: string) => {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000) // seconds
+
+  if (diff < 60) return 'Just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+  return `${Math.floor(diff / 86400)}d`
+}
+
 let interval: number | null = null
 
 const startProgress = () => {
+  stopProgress() // Ensure no duplicate intervals
   progress.value = 0
   interval = setInterval(() => {
     progress.value += 100
@@ -86,6 +96,7 @@ const startProgress = () => {
 const stopProgress = () => {
   if (interval) {
     clearInterval(interval)
+    interval = null
   }
 }
 
@@ -93,8 +104,9 @@ const goToNext = () => {
   if (canGoNext.value) {
     currentIndex.value++
     emit('next')
-    progress.value = 0
     startProgress()
+  } else {
+    emit('close')
   }
 }
 
@@ -102,16 +114,17 @@ const goToPrev = () => {
   if (canGoPrev.value) {
     currentIndex.value--
     emit('prev')
-    progress.value = 0
     startProgress()
+  } else {
+      // Restart current story if at beginning
+      startProgress()
   }
 }
 
-const handleClick = () => {
-  // Tap right side to go next
-  const element = event?.target as HTMLElement
+const handleClick = (event: MouseEvent) => {
+  const element = event.currentTarget as HTMLElement
   const rect = element.getBoundingClientRect()
-  const x = (event as MouseEvent).clientX - rect.left
+  const x = event.clientX - rect.left
 
   if (x > rect.width / 2) {
     goToNext()
