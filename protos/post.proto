@@ -49,6 +49,7 @@ message CreatePostRequest {
   bool comments_disabled = 4;
   bool is_reel = 5;
   repeated int64 collaborator_ids = 6;
+  string location = 8;
   string thumbnail_url = 7;
 }
 
@@ -75,6 +76,9 @@ message Post {
   int64 like_count = 12;
   int64 comment_count = 13;
   int64 share_count = 14;
+  bool is_liked = 15; // Context-aware: Did the requesting user like this?
+  bool is_saved = 16;
+  string location = 17;
 }
 
 message CreatePostResponse {

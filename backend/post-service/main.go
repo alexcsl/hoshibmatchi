@@ -43,6 +43,9 @@ type Post struct {
 	CommentCount     int64          `gorm:"default:0"`
 	ShareCount       int64          `gorm:"default:0"`
 
+	Location        string
+	CollaboratorIDs pq.Int64Array  `gorm:"type:bigint[]"`
+
 	// Denormalized fields from user-service
 	AuthorUsername   string
 	AuthorProfileURL string
@@ -357,6 +360,9 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 		AuthorIsVerified: userData.IsVerified,
+		
+		Location:         req.Location,
+		CollaboratorIDs:  req.CollaboratorIds,
 	}
 
 	// --- Step 3: Create Post and Collaborators in a transaction ---
@@ -479,7 +485,7 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 
 	// --- Step 3: Return the created post ---
 	return &pb.CreatePostResponse{
-		Post: s.gormToGrpcPost(&newPost),
+		Post: s.enrichPostProto(ctx, &newPost, req.AuthorId), // Requesting user is author
 	}, nil
 }
 
@@ -776,7 +782,7 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 	// --- Step 5: Convert GORM models to gRPC responses ---
 	var grpcPosts []*pb.Post
 	for _, post := range posts {
-		grpcPosts = append(grpcPosts, s.gormToGrpcPost(&post))
+		grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.UserId))
 	}
 
 	response := &pb.GetHomeFeedResponse{Posts: grpcPosts}
@@ -1421,4 +1427,52 @@ func (s *server) GetSharedPosts(ctx context.Context, req *pb.GetSharedPostsReque
 	}
 
 	return &pb.GetSharedPostsResponse{SharedPosts: items}, nil
+}
+
+func (s *server) enrichPostProto(ctx context.Context, post *Post, viewerID int64) *pb.Post {
+	var likeCount int64
+	var commentCount int64
+	var isLiked bool
+	var isSaved bool
+
+	// 1. Count Likes
+	s.db.Model(&PostLike{}).Where("post_id = ?", post.ID).Count(&likeCount)
+
+	// 2. Count Comments
+	s.db.Model(&Comment{}).Where("post_id = ?", post.ID).Count(&commentCount)
+
+	// 3. Check if Viewer Liked
+	if viewerID != 0 {
+		var count int64
+		s.db.Model(&PostLike{}).Where("post_id = ? AND user_id = ?", post.ID, viewerID).Count(&count)
+		isLiked = count > 0
+	}
+
+	// 4. Check if Viewer Saved
+	if viewerID != 0 {
+		// We need to check if the post ID exists in ANY of the user's collections
+		// Join SavedPost with Collection
+		var count int64
+		s.db.Table("saved_posts").
+			Joins("JOIN collections ON saved_posts.collection_id = collections.id").
+			Where("saved_posts.post_id = ? AND collections.user_id = ?", post.ID, viewerID).
+			Count(&count)
+		isSaved = count > 0
+	}
+
+	return &pb.Post{
+		Id:               strconv.FormatUint(uint64(post.ID), 10),
+		Caption:          post.Caption,
+		AuthorUsername:   post.AuthorUsername,
+		AuthorProfileUrl: post.AuthorProfileURL,
+		AuthorIsVerified: post.AuthorIsVerified,
+		MediaUrls:        post.MediaURLs,
+		CreatedAt:        post.CreatedAt.Format(time.RFC3339),
+		IsReel:           post.IsReel,
+		Location:         post.Location,
+		LikeCount:        likeCount,
+		CommentCount:     commentCount,
+		IsLiked:          isLiked,
+		IsSaved:          isSaved,
+	}
 }

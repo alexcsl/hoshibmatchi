@@ -31,6 +31,7 @@ type CreatePostRequest struct {
 	CommentsDisabled bool                   `protobuf:"varint,4,opt,name=comments_disabled,json=commentsDisabled,proto3" json:"comments_disabled,omitempty"`
 	IsReel           bool                   `protobuf:"varint,5,opt,name=is_reel,json=isReel,proto3" json:"is_reel,omitempty"`
 	CollaboratorIds  []int64                `protobuf:"varint,6,rep,packed,name=collaborator_ids,json=collaboratorIds,proto3" json:"collaborator_ids,omitempty"`
+	Location         string                 `protobuf:"bytes,8,opt,name=location,proto3" json:"location,omitempty"`
 	ThumbnailUrl     string                 `protobuf:"bytes,7,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -108,6 +109,13 @@ func (x *CreatePostRequest) GetCollaboratorIds() []int64 {
 	return nil
 }
 
+func (x *CreatePostRequest) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
 func (x *CreatePostRequest) GetThumbnailUrl() string {
 	if x != nil {
 		return x.ThumbnailUrl
@@ -132,9 +140,12 @@ type Post struct {
 	CommentsDisabled bool   `protobuf:"varint,10,opt,name=comments_disabled,json=commentsDisabled,proto3" json:"comments_disabled,omitempty"`
 	ThumbnailUrl     string `protobuf:"bytes,11,opt,name=thumbnail_url,json=thumbnailUrl,proto3" json:"thumbnail_url,omitempty"`
 	// Counts (we'll implement the logic for these later)
-	LikeCount     int64 `protobuf:"varint,12,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
-	CommentCount  int64 `protobuf:"varint,13,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
-	ShareCount    int64 `protobuf:"varint,14,opt,name=share_count,json=shareCount,proto3" json:"share_count,omitempty"`
+	LikeCount     int64  `protobuf:"varint,12,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
+	CommentCount  int64  `protobuf:"varint,13,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
+	ShareCount    int64  `protobuf:"varint,14,opt,name=share_count,json=shareCount,proto3" json:"share_count,omitempty"`
+	IsLiked       bool   `protobuf:"varint,15,opt,name=is_liked,json=isLiked,proto3" json:"is_liked,omitempty"` // Context-aware: Did the requesting user like this?
+	IsSaved       bool   `protobuf:"varint,16,opt,name=is_saved,json=isSaved,proto3" json:"is_saved,omitempty"`
+	Location      string `protobuf:"bytes,17,opt,name=location,proto3" json:"location,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -265,6 +276,27 @@ func (x *Post) GetShareCount() int64 {
 		return x.ShareCount
 	}
 	return 0
+}
+
+func (x *Post) GetIsLiked() bool {
+	if x != nil {
+		return x.IsLiked
+	}
+	return false
+}
+
+func (x *Post) GetIsSaved() bool {
+	if x != nil {
+		return x.IsSaved
+	}
+	return false
+}
+
+func (x *Post) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
 }
 
 type CreatePostResponse struct {
@@ -2405,7 +2437,7 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
 	"post.proto\x12\x04post\x1a\n" +
-	"user.proto\"\xff\x01\n" +
+	"user.proto\"\x9b\x02\n" +
 	"\x11CreatePostRequest\x12\x1b\n" +
 	"\tauthor_id\x18\x01 \x01(\x03R\bauthorId\x12\x18\n" +
 	"\acaption\x18\x02 \x01(\tR\acaption\x12\x1d\n" +
@@ -2413,8 +2445,9 @@ const file_post_proto_rawDesc = "" +
 	"media_urls\x18\x03 \x03(\tR\tmediaUrls\x12+\n" +
 	"\x11comments_disabled\x18\x04 \x01(\bR\x10commentsDisabled\x12\x17\n" +
 	"\ais_reel\x18\x05 \x01(\bR\x06isReel\x12)\n" +
-	"\x10collaborator_ids\x18\x06 \x03(\x03R\x0fcollaboratorIds\x12#\n" +
-	"\rthumbnail_url\x18\a \x01(\tR\fthumbnailUrl\"\xe0\x03\n" +
+	"\x10collaborator_ids\x18\x06 \x03(\x03R\x0fcollaboratorIds\x12\x1a\n" +
+	"\blocation\x18\b \x01(\tR\blocation\x12#\n" +
+	"\rthumbnail_url\x18\a \x01(\tR\fthumbnailUrl\"\xb2\x04\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\x03R\bauthorId\x12\x18\n" +
@@ -2434,7 +2467,10 @@ const file_post_proto_rawDesc = "" +
 	"like_count\x18\f \x01(\x03R\tlikeCount\x12#\n" +
 	"\rcomment_count\x18\r \x01(\x03R\fcommentCount\x12\x1f\n" +
 	"\vshare_count\x18\x0e \x01(\x03R\n" +
-	"shareCount\"4\n" +
+	"shareCount\x12\x19\n" +
+	"\bis_liked\x18\x0f \x01(\bR\aisLiked\x12\x19\n" +
+	"\bis_saved\x18\x10 \x01(\bR\aisSaved\x12\x1a\n" +
+	"\blocation\x18\x11 \x01(\tR\blocation\"4\n" +
 	"\x12CreatePostResponse\x12\x1e\n" +
 	"\x04post\x18\x01 \x01(\v2\n" +
 	".post.PostR\x04post\"C\n" +
