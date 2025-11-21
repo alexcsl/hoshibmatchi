@@ -154,9 +154,10 @@ message GetUserDataRequest {
 }
 
 message GetUserDataResponse {
-  string username = 1;
-  string profile_picture_url = 2;
-  bool is_verified = 3;
+  int64 id = 1; // User ID
+  string username = 2;
+  string profile_picture_url = 3;
+  bool is_verified = 4;
 }
 
 // --- Follow / Unfollow User ---

@@ -8,9 +8,26 @@
       </div>
 
       <div class="modal-content">
-        <!-- Upload Area (shown when no files selected) -->
+        <!-- Content Type Selection (shown first) -->
+        <div v-if="!contentTypeSelected" class="content-type-selection">
+          <h3>What do you want to create?</h3>
+          <div class="type-options">
+            <button class="type-option" @click="selectContentType('post')">
+              <div class="type-icon">📷</div>
+              <div class="type-label">Post</div>
+              <div class="type-description">Share photos and videos to your feed</div>
+            </button>
+            <button class="type-option" @click="selectContentType('story')">
+              <div class="type-icon">⭕</div>
+              <div class="type-label">Story</div>
+              <div class="type-description">Share a moment that disappears in 24h</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Upload Area (shown when no files selected but content type chosen) -->
         <div 
-          v-if="selectedFiles.length === 0" 
+          v-else-if="selectedFiles.length === 0" 
           class="upload-area" 
           @dragover.prevent="isDragging = true" 
           @dragleave="isDragging = false" 
@@ -142,6 +159,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
 // We keep axios for the direct MinIO upload
@@ -154,9 +172,11 @@ const emit = defineEmits<{
   posted: []
 }>()
 
+const router = useRouter()
 const feedStore = useFeedStore()
 const authStore = useAuthStore()
 
+const contentTypeSelected = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const selectedFiles = ref<File[]>([])
@@ -170,6 +190,15 @@ const location = ref('')
 const collaboratorsText = ref('')
 
 const currentUser = computed(() => authStore.user)
+
+const selectContentType = (type: 'post' | 'story') => {
+  if (type === 'story') {
+    emit('close')
+    router.push('/create-story')
+  } else {
+    contentTypeSelected.value = true
+  }
+}
 
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -213,6 +242,7 @@ const clearFiles = () => {
   caption.value = ''
   isReel.value = false
   commentsDisabled.value = false
+  contentTypeSelected.value = false
 }
 
 const handlePost = async () => {
@@ -373,6 +403,66 @@ onUnmounted(() => {
 .modal-content {
   padding: 40px 20px;
   min-height: 300px;
+}
+
+.content-type-selection {
+  text-align: center;
+  padding: 20px;
+
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 32px;
+    color: #fff;
+  }
+
+  .type-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .type-option {
+    background-color: #1a1a1a;
+    border: 2px solid #404040;
+    border-radius: 12px;
+    padding: 32px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #fff;
+
+    &:hover {
+      border-color: #0a66c2;
+      background-color: #262626;
+      transform: translateY(-2px);
+    }
+
+    .type-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+
+    .type-label {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .type-description {
+      font-size: 13px;
+      color: #a8a8a8;
+      line-height: 1.4;
+    }
+  }
 }
 
 .upload-area {

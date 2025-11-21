@@ -44,7 +44,7 @@ type Post struct {
 	ShareCount       int64          `gorm:"default:0"`
 
 	Location        string
-	CollaboratorIDs pq.Int64Array  `gorm:"type:bigint[]"`
+	CollaboratorIDs pq.Int64Array `gorm:"type:bigint[]"`
 
 	// Denormalized fields from user-service
 	AuthorUsername   string
@@ -81,6 +81,14 @@ type Comment struct {
 	// Denormalized data from user-service
 	AuthorUsername   string
 	AuthorProfileURL string
+}
+
+// CommentLike defines the GORM model for a like on a comment
+type CommentLike struct {
+	// Composite primary key (user_id, comment_id)
+	UserID    int64 `gorm:"primaryKey"`
+	CommentID int64 `gorm:"primaryKey"`
+	CreatedAt time.Time
 }
 
 type server struct {
@@ -123,6 +131,7 @@ func main() {
 	db.AutoMigrate(&Post{})
 	db.AutoMigrate(&PostLike{})
 	db.AutoMigrate(&Comment{})
+	db.AutoMigrate(&CommentLike{})
 	db.AutoMigrate(&Collection{})
 	db.AutoMigrate(&SavedPost{})
 	db.AutoMigrate(&PostCollaborator{})
@@ -360,9 +369,9 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
 		AuthorIsVerified: userData.IsVerified,
-		
-		Location:         req.Location,
-		CollaboratorIDs:  req.CollaboratorIds,
+
+		Location:        req.Location,
+		CollaboratorIDs: req.CollaboratorIds,
 	}
 
 	// --- Step 3: Create Post and Collaborators in a transaction ---
@@ -679,6 +688,54 @@ func (s *server) DeleteComment(ctx context.Context, req *pb.DeleteCommentRequest
 	return &pb.DeleteCommentResponse{Message: "Comment deleted"}, nil
 }
 
+// --- GRPC: LikeComment ---
+func (s *server) LikeComment(ctx context.Context, req *pb.LikeCommentRequest) (*pb.LikeCommentResponse, error) {
+	// Check if comment exists
+	var comment Comment
+	if err := s.db.First(&comment, req.CommentId).Error; err == gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.NotFound, "Comment not found")
+	}
+
+	// Check if already liked
+	var existingLike CommentLike
+	err := s.db.Where("user_id = ? AND comment_id = ?", req.UserId, req.CommentId).First(&existingLike).Error
+	if err == nil {
+		// Already liked
+		return &pb.LikeCommentResponse{Message: "Comment already liked"}, nil
+	}
+
+	// Create new like
+	like := CommentLike{
+		UserID:    req.UserId,
+		CommentID: req.CommentId,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(&like).Error; err != nil {
+		log.Printf("Failed to like comment: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to like comment")
+	}
+
+	return &pb.LikeCommentResponse{Message: "Comment liked"}, nil
+}
+
+// --- GRPC: UnlikeComment ---
+func (s *server) UnlikeComment(ctx context.Context, req *pb.LikeCommentRequest) (*pb.UnlikeCommentResponse, error) {
+	// Delete the like
+	result := s.db.Where("user_id = ? AND comment_id = ?", req.UserId, req.CommentId).Delete(&CommentLike{})
+
+	if result.Error != nil {
+		log.Printf("Failed to unlike comment: %v", result.Error)
+		return nil, status.Error(codes.Internal, "Failed to unlike comment")
+	}
+
+	if result.RowsAffected == 0 {
+		return &pb.UnlikeCommentResponse{Message: "Comment was not liked"}, nil
+	}
+
+	return &pb.UnlikeCommentResponse{Message: "Comment unliked"}, nil
+}
+
 // --- GRPC: GetCommentsByPost ---
 func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPostRequest) (*pb.GetCommentsByPostResponse, error) {
 	var comments []Comment
@@ -797,36 +854,36 @@ func (s *server) GetHomeFeed(ctx context.Context, req *pb.GetHomeFeedRequest) (*
 
 // --- NEW: GetUserTaggedPosts ---
 func (s *server) GetUserTaggedPosts(ctx context.Context, req *pb.GetUserContentRequest) (*pb.GetHomeFeedResponse, error) {
-    var postIDs []int64
-    
-    // Find all posts where this user is a collaborator
-    if err := s.db.Model(&PostCollaborator{}).
-        Where("user_id = ?", req.UserId).
-        Pluck("post_id", &postIDs).Error; err != nil {
-        return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
-    }
+	var postIDs []int64
 
-    if len(postIDs) == 0 {
-        return &pb.GetHomeFeedResponse{Posts: []*pb.Post{}}, nil
-    }
+	// Find all posts where this user is a collaborator
+	if err := s.db.Model(&PostCollaborator{}).
+		Where("user_id = ?", req.UserId).
+		Pluck("post_id", &postIDs).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
+	}
 
-    var posts []Post
-    if err := s.db.Where("? = ANY(collaborator_ids) AND author_id != ?", req.UserId, req.UserId).
-        Order("created_at DESC").
-        Limit(int(req.PageSize)).
-        Offset(int(req.PageOffset)).
-        Find(&posts).Error; err != nil {
-        return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
-    }
+	if len(postIDs) == 0 {
+		return &pb.GetHomeFeedResponse{Posts: []*pb.Post{}}, nil
+	}
 
-    // Filter privacy & Enrich
-    posts = s.filterPostsByPrivacy(ctx, posts, req.RequesterId)
-    var grpcPosts []*pb.Post
-    for _, post := range posts {
-        grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.RequesterId))
-    }
+	var posts []Post
+	if err := s.db.Where("? = ANY(collaborator_ids) AND author_id != ?", req.UserId, req.UserId).
+		Order("created_at DESC").
+		Limit(int(req.PageSize)).
+		Offset(int(req.PageOffset)).
+		Find(&posts).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch tagged posts")
+	}
 
-    return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
+	// Filter privacy & Enrich
+	posts = s.filterPostsByPrivacy(ctx, posts, req.RequesterId)
+	var grpcPosts []*pb.Post
+	for _, post := range posts {
+		grpcPosts = append(grpcPosts, s.enrichPostProto(ctx, &post, req.RequesterId))
+	}
+
+	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
 
 // --- Implement GetExploreFeed ---

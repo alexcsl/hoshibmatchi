@@ -57,8 +57,9 @@ onMounted(async () => {
 })
 
 const handleOpenReel = (reelId: string) => {
-  if (window.openPostDetails) {
-    window.openPostDetails(reelId)
+  const reelIndex = feedStore.reelsFeed.findIndex(r => r.id === reelId)
+  if (reelIndex !== -1 && window.openReelsViewer) {
+    window.openReelsViewer(reelIndex)
   }
 }
 

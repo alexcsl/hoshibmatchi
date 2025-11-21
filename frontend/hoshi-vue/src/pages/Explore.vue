@@ -52,7 +52,7 @@ onMounted(async () => {
 
 const handleOpenPost = (postId: string) => {
   if (window.openPostDetails) {
-    window.openPostDetails(postId)
+    window.openPostDetails(postId, 'explore')
   }
 }
 

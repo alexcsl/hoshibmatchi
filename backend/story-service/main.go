@@ -36,6 +36,9 @@ type Story struct {
 	// Denormalized data
 	AuthorUsername   string
 	AuthorProfileURL string
+
+	FilterName   string
+    StickersJSON string `gorm:"type:text"`
 }
 
 type StoryLike struct {
@@ -197,6 +200,8 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		ExpiresAt:        expiresAt,
 		AuthorUsername:   userRes.Username,
 		AuthorProfileURL: userRes.ProfilePictureUrl,
+		FilterName:       req.FilterName,
+        StickersJSON:     req.StickersJson,
 	}
 
 	if err := s.db.Create(&newStory).Error; err != nil {

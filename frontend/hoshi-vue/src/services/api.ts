@@ -279,6 +279,12 @@ export const userAPI = {
   }) => {
     const response = await apiClient.post('/profile/verify', data)
     return response.data
+  },
+
+  // Search users
+  searchUsers: async (query: string) => {
+    const response = await apiClient.get(`/search/users?q=${encodeURIComponent(query)}`)
+    return response.data
   }
 }
 
@@ -359,6 +365,11 @@ export const postAPI = {
   summarizeCaption: async (postId: string) => {
     const response = await apiClient.post(`/posts/${postId}/summarize`)
     return response.data
+  },
+
+  deletePost: async (postId: string) => {
+    const response = await apiClient.delete(`/posts/${postId}`)
+    return response.data
   }
 }
 
@@ -369,8 +380,14 @@ export const storyAPI = {
     return response.data // Returns StoryGroup[]
   },
 
-  createStory: async (mediaUrl: string) => {
-    const response = await apiClient.post('/stories', { media_url: mediaUrl })
+  createStory: async (data: {
+      media_url: string, 
+      media_type: string, 
+      caption?: string,
+      filter_name?: string,
+      stickers_json?: string
+  }) => {
+    const response = await apiClient.post('/stories', data)
     return response.data
   },
 
@@ -403,6 +420,16 @@ export const commentAPI = {
 
   deleteComment: async (commentId: string) => {
     const response = await apiClient.delete(`/comments/${commentId}`)
+    return response.data
+  },
+
+  likeComment: async (commentId: string) => {
+    const response = await apiClient.post(`/comments/${commentId}/like`)
+    return response.data
+  },
+
+  unlikeComment: async (commentId: string) => {
+    const response = await apiClient.delete(`/comments/${commentId}/like`)
     return response.data
   }
 }

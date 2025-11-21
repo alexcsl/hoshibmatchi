@@ -270,15 +270,15 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 
 	// --- Step 4: Create User in Database (as INACTIVE) ---
 	newUser := User{
-		Name:         req.Name,
-		Username:     req.Username,
-		Email:        req.Email,
-		Password:     string(hashedPassword),
-		DateOfBirth:  dob,
-		Gender:       req.Gender,
+		Name:              req.Name,
+		Username:          req.Username,
+		Email:             req.Email,
+		Password:          string(hashedPassword),
+		DateOfBirth:       dob,
+		Gender:            req.Gender,
 		ProfilePictureURL: req.ProfilePictureUrl,
-		IsActive:     false,          // User is inactive until OTP is verified
-		Is2FAEnabled: req.Enable_2Fa, // Set 2FA status from request
+		IsActive:          false,          // User is inactive until OTP is verified
+		Is2FAEnabled:      req.Enable_2Fa, // Set 2FA status from request
 	}
 
 	result := s.db.Create(&newUser)
@@ -660,6 +660,7 @@ func (s *server) GetUserData(ctx context.Context, req *pb.GetUserDataRequest) (*
 	}
 
 	response := &pb.GetUserDataResponse{
+		Id:                int64(user.ID),
 		Username:          user.Username,
 		ProfilePictureUrl: user.ProfilePictureURL,
 		IsVerified:        user.IsVerified,
@@ -770,12 +771,12 @@ func (s *server) GetFollowingList(ctx context.Context, req *pb.GetFollowingListR
 // --- GPRC: GetFollowersList ---
 func (s *server) GetFollowersList(ctx context.Context, req *pb.GetFollowersListRequest) (*pb.GetFollowersListResponse, error) {
 	var followerIDs []int64
-	
+
 	// Find all 'Follow' records where following_id is the target user
 	err := s.db.Model(&Follow{}).
 		Where("following_id = ?", req.UserId).
 		Pluck("follower_id", &followerIDs).Error
-		
+
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to retrieve followers list")
 	}
@@ -860,7 +861,7 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 		return nil, status.Error(codes.InvalidArgument, "Bio must not exceed 150 characters")
 	}
 	if req.Gender != "Male" && req.Gender != "Female" && req.Gender != "Prefer not to say" {
-		// Loosened validation slightly to match frontend options, 
+		// Loosened validation slightly to match frontend options,
 		// or strictly enforce "male"/"female" if business logic requires it.
 		// Ideally match what your frontend sends ("Male", "Female", "Prefer not to say")
 	}

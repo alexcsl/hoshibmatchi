@@ -4,7 +4,28 @@
 
     <div class="story-container">
       <div class="story-image-wrapper">
-        <img :src="story.media_url" :alt="story.author_username" class="story-image" />
+        <img 
+          :src="getMediaUrl(story.media_url)" 
+          :alt="story.author_username" 
+          class="story-image" 
+          :style="{ filter: getFilterStyle(story.filter_name) }"
+        />
+        
+        <!-- Text Overlay -->
+        <div v-if="story.caption" class="text-overlay">
+          {{ story.caption }}
+        </div>
+        
+        <!-- Stickers Overlay -->
+        <div 
+          v-for="(sticker, idx) in parsedStickers" 
+          :key="idx" 
+          class="sticker" 
+          :style="sticker.style"
+        >
+          {{ sticker.emoji }}
+        </div>
+        
         <div class="story-progress">
           <div class="progress-bar" :style="{ width: progressPercentage + '%' }"></div>
         </div>
@@ -42,6 +63,9 @@ export interface Story {
   author_profile_url: string 
   media_url: string         
   created_at: string
+  caption?: string
+  filter_name?: string
+  stickers_json?: string
 }
 
 const props = defineProps<{
@@ -63,6 +87,41 @@ const story = computed(() => props.stories[currentIndex.value])
 const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100))
 const canGoPrev = computed(() => currentIndex.value > 0)
 const canGoNext = computed(() => currentIndex.value < props.stories.length - 1)
+
+// Parse stickers from JSON
+const parsedStickers = computed(() => {
+  try {
+    if (story.value.stickers_json) {
+      return JSON.parse(story.value.stickers_json)
+    }
+  } catch (e) {
+    console.error('Failed to parse stickers:', e)
+  }
+  return []
+})
+
+// Get filter CSS
+const getFilterStyle = (filterName?: string) => {
+  if (!filterName || filterName === 'None') return 'none'
+  const filters: Record<string, string> = {
+    'Grayscale': 'grayscale(100%)',
+    'Sepia': 'sepia(100%)',
+    'Bright': 'brightness(1.3)',
+    'Contrast': 'contrast(1.5)',
+    'Blur': 'blur(5px)'
+  }
+  return filters[filterName] || 'none'
+}
+
+// Helper for media URLs
+const getMediaUrl = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  }
+  return url
+}
 
 // Helper for timestamp
 const formatTime = (dateStr: string) => {
@@ -187,6 +246,28 @@ onUnmounted(() => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  .text-overlay {
+    position: absolute;
+    bottom: 80px;
+    left: 16px;
+    right: 16px;
+    text-align: center;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+    word-wrap: break-word;
+    padding: 12px;
+    z-index: 2;
+  }
+
+  .sticker {
+    position: absolute;
+    user-select: none;
+    z-index: 2;
+    pointer-events: none;
   }
 
   .story-progress {

@@ -16,6 +16,8 @@ service PostService {
   rpc CommentOnPost (CommentOnPostRequest) returns (CommentResponse);
   rpc GetCommentsByPost (GetCommentsByPostRequest) returns (GetCommentsByPostResponse);
   rpc DeleteComment (DeleteCommentRequest) returns (DeleteCommentResponse);
+  rpc LikeComment (LikeCommentRequest) returns (LikeCommentResponse);
+  rpc UnlikeComment (LikeCommentRequest) returns (UnlikeCommentResponse);
   rpc GetHomeFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
   rpc GetExploreFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
   rpc GetReelsFeed (GetHomeFeedRequest) returns (GetHomeFeedResponse);
@@ -127,6 +129,18 @@ message DeleteCommentRequest {
 }
 message DeleteCommentResponse {
   string message = 1; // "Comment deleted"
+}
+
+// --- Like/Unlike a Comment ---
+message LikeCommentRequest {
+  int64 user_id = 1; // From JWT
+  int64 comment_id = 2; // From URL
+}
+message LikeCommentResponse {
+  string message = 1; // "Comment liked"
+}
+message UnlikeCommentResponse {
+  string message = 1; // "Comment unliked"
 }
 
 // --- Get Comments for a Post ---

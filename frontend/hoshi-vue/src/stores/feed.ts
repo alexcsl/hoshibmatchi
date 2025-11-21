@@ -104,9 +104,9 @@ export const useFeedStore = defineStore('feed', {
 
     async loadStoryFeed() {
       try {
-        const groups = await storyAPI.getStoryFeed()
-        // Backend returns null if empty, ensure array
-        this.storyFeed = groups || []
+        const response = await storyAPI.getStoryFeed()
+        // Backend returns array directly, not wrapped in an object
+        this.storyFeed = Array.isArray(response) ? response : (response.story_groups || [])
       } catch (error) {
         console.error("Failed to load stories", error)
       }
@@ -236,26 +236,34 @@ export const useFeedStore = defineStore('feed', {
       post.is_saved = !wasSaved
 
       try {
+        // Use numeric post ID
+        const numericPostId = parseInt(postId)
+        if (isNaN(numericPostId)) {
+          throw new Error('Invalid post ID')
+        }
+
         if (wasSaved) {
-          await collectionAPI.unsavePost(collectionId, postId)
-        } else {
-          // Use numeric post ID
-          const numericPostId = parseInt(postId)
-          if (isNaN(numericPostId)) {
-            throw new Error('Invalid post ID')
+          // Unsave: Backend requires us to know which collection, so fetch collections first
+          try {
+            const collectionsRes = await collectionAPI.getAll()
+            const collections = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes.collections || [])
+            
+            if (collections.length > 0) {
+              // Try to unsave from the first collection (usually the default one)
+              await collectionAPI.unsavePost(String(collections[0].id), postId)
+            }
+          } catch (err) {
+            console.error('Failed to unsave:', err)
           }
-          await collectionAPI.savePost(collectionId, numericPostId)
+        } else {
+          // Save: Use collection ID 1 - backend will auto-create if needed
+          await collectionAPI.savePost('1', numericPostId)
         }
       } catch (error: any) {
         // Rollback on error
         post.is_saved = wasSaved
         console.error('Failed to toggle save:', error)
         console.error('Error details:', error.response?.data || error.message)
-        
-        // Show user-friendly message
-        if (error.response?.status === 400) {
-          console.warn('Collection not found or invalid. You may need to create a collection first.')
-        }
       }
     },
 

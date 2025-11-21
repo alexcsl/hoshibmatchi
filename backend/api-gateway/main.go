@@ -163,6 +163,8 @@ func main() {
 		protected.POST("/posts", handleCreatePost_Gin)
 		protected.POST("/posts/:id/like", handlePostLike_Gin)
 		protected.DELETE("/posts/:id/like", handlePostLike_Gin)
+		protected.DELETE("/posts/:id", handleDeletePost_Gin)
+		protected.POST("/posts/:id/summarize", handleSummarizeCaption_Gin)
 
 		// Stories
 		protected.POST("/stories", handleCreateStory_Gin)
@@ -174,6 +176,8 @@ func main() {
 		protected.POST("/comments", handleCreateComment_Gin)
 		protected.GET("/posts/:id/comments", handleGetCommentsByPost_Gin)
 		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
+		protected.POST("/comments/:id/like", handleLikeComment_Gin)
+		protected.DELETE("/comments/:id/like", handleUnlikeComment_Gin)
 
 		// Users
 		protected.POST("/users/:id/follow", handleFollowUser_Gin)
@@ -184,7 +188,7 @@ func main() {
 		protected.GET("/users/:id", handleGetUserProfile_Gin)
 		protected.GET("/users/:id/posts", handleGetUserPosts_Gin)
 		protected.GET("/users/:id/reels", handleGetUserReels_Gin)
-		protected.GET("/users/:id/tagged", handleGetUserTaggedPosts_Gin) 
+		protected.GET("/users/:id/tagged", handleGetUserTaggedPosts_Gin)
 
 		// Edit Profiel
 		protected.PUT("/profile/edit", handleUpdateProfile_Gin)
@@ -210,9 +214,6 @@ func main() {
 
 		// Search
 		protected.GET("/search/users", handleSearchUsers_Gin)
-
-		// AI
-		protected.POST("/posts/:id/summarize", handleSummarizeCaption_Gin)
 
 		// Report Routes
 		protected.POST("/reports/post", handleReportPost_Gin)
@@ -768,7 +769,11 @@ func handleCreateStory_Gin(c *gin.Context) {
 	}
 
 	var req struct {
-		MediaURL string `json:"media_url"`
+		MediaURL  string `json:"media_url"`
+		MediaType string `json:"media_type"` // Ensure frontend sends this ("image" or "video")
+		Caption   string `json:"caption"`
+		Filter    string `json:"filter_name"`
+		Stickers  string `json:"stickers_json"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -776,8 +781,12 @@ func handleCreateStory_Gin(c *gin.Context) {
 	}
 
 	grpcReq := &storyPb.CreateStoryRequest{
-		AuthorId: userID,
-		MediaUrl: req.MediaURL,
+		AuthorId:     userID,
+		MediaUrl:     req.MediaURL,
+		MediaType:    req.MediaType,
+		Caption:      req.Caption,
+		FilterName:   req.Filter,
+		StickersJson: req.Stickers,
 	}
 
 	grpcRes, err := storyClient.CreateStory(c.Request.Context(), grpcReq)
@@ -961,6 +970,81 @@ func handleDeleteComment_Gin(c *gin.Context) {
 
 	grpcReq := &postPb.DeleteCommentRequest{UserId: userID, CommentId: commentID}
 	grpcRes, err := postClient.DeleteComment(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleLikeComment ---
+func handleLikeComment_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+		return
+	}
+
+	grpcReq := &postPb.LikeCommentRequest{UserId: userID, CommentId: commentID}
+	grpcRes, err := postClient.LikeComment(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleUnlikeComment ---
+func handleUnlikeComment_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	commentIDStr := c.Param("id")
+	commentID, err := strconv.ParseInt(commentIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid comment ID"})
+		return
+	}
+
+	grpcReq := &postPb.LikeCommentRequest{UserId: userID, CommentId: commentID}
+	grpcRes, err := postClient.UnlikeComment(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleDeletePost ---
+func handleDeletePost_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	grpcReq := &postPb.DeletePostRequest{PostId: postID, AdminUserId: userID}
+	grpcRes, err := postClient.DeletePost(c.Request.Context(), grpcReq)
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
@@ -2394,44 +2478,44 @@ func handleGoogleCallback_Gin(c *gin.Context) {
 
 // --- HANDLER: GetUserTaggedPosts ---
 func handleGetUserTaggedPosts_Gin(c *gin.Context) {
-    requesterID, _ := c.Request.Context().Value(userIDKey).(int64)
-    username := c.Param("id")
+	requesterID, _ := c.Request.Context().Value(userIDKey).(int64)
+	username := c.Param("id")
 
-    // 1. Resolve username to ID (reuse existing logic or call GetUserProfile)
-    userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: username})
-    if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-        return
-    }
+	// 1. Resolve username to ID (reuse existing logic or call GetUserProfile)
+	userRes, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{Username: username})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
 
-    // 2. Call Post Service
-    grpcReq := &postPb.GetUserContentRequest{
-        UserId:      userRes.UserId,
-        RequesterId: requesterID,
-        PageSize:    20,
-        PageOffset:  0,
-    }
-    res, err := postClient.GetUserTaggedPosts(c.Request.Context(), grpcReq)
-    if err != nil {
-        // handle error
-         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tagged posts"})
-         return
-    }
-    c.JSON(http.StatusOK, res.Posts)
+	// 2. Call Post Service
+	grpcReq := &postPb.GetUserContentRequest{
+		UserId:      userRes.UserId,
+		RequesterId: requesterID,
+		PageSize:    20,
+		PageOffset:  0,
+	}
+	res, err := postClient.GetUserTaggedPosts(c.Request.Context(), grpcReq)
+	if err != nil {
+		// handle error
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tagged posts"})
+		return
+	}
+	c.JSON(http.StatusOK, res.Posts)
 }
 
 // --- HANDLER: GetFollowersList ---
 func handleGetFollowersList_Gin(c *gin.Context) {
-    userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-    
-    res, err := client.GetFollowersList(c.Request.Context(), &pb.GetFollowersListRequest{UserId: userID})
-    if err != nil {
-         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed"})
-         return
-    }
-    // We just return IDs for now, ideally we'd hydrate them with profiles, 
-    // but the frontend asked for the list/count fix first.
-    c.JSON(http.StatusOK, res.FollowerUserIds)
+	userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	res, err := client.GetFollowersList(c.Request.Context(), &pb.GetFollowersListRequest{UserId: userID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed"})
+		return
+	}
+	// We just return IDs for now, ideally we'd hydrate them with profiles,
+	// but the frontend asked for the list/count fix first.
+	c.JSON(http.StatusOK, res.FollowerUserIds)
 }
 
 // --- HANDLER: GetStoryFeed ---

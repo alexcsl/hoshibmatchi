@@ -16,6 +16,7 @@ import ForgotPassword from '../pages/ForgotPassword.vue'
 import ResetPassword from '../pages/ResetPassword.vue'
 import Feed from '../pages/Feed.vue'
 import Explore from '../pages/Explore.vue'
+import HashtagExplore from '../pages/HashtagExplore.vue'
 import Reels from '../pages/Reels.vue'
 import Messages from '../pages/Messages.vue'
 import Profile from '../pages/Profile.vue'
@@ -88,6 +89,11 @@ const routes = [
         path: 'explore', 
         name: 'Explore', 
         component: Explore 
+      },
+      { 
+        path: 'explore/tags/:hashtag', 
+        name: 'HashtagExplore', 
+        component: HashtagExplore 
       },
       { 
         path: 'reels', 

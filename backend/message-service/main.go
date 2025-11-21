@@ -211,12 +211,25 @@ func (s *server) CreateConversation(ctx context.Context, req *pb.CreateConversat
 	log.Printf("CreateConversation request received from user %d", req.CreatorId)
 
 	// --- Step 1: Validation ---
+	if req.CreatorId == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid creator ID")
+	}
+
 	if len(req.ParticipantIds) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "At least one other participant is required to create a conversation")
 	}
 
+	// Validate all participant IDs
+	for _, participantID := range req.ParticipantIds {
+		if participantID == 0 {
+			log.Printf("ERROR: Received invalid participant ID: 0")
+			return nil, status.Error(codes.InvalidArgument, "Invalid participant ID: 0")
+		}
+	}
+
 	// Combine all participant IDs, including the creator
 	allParticipantIDs := append(req.ParticipantIds, req.CreatorId)
+	log.Printf("All participant IDs for conversation: %v", allParticipantIDs)
 
 	// Determine if it's a group
 	isGroup := req.GroupName != "" || len(allParticipantIDs) > 2
@@ -224,19 +237,31 @@ func (s *server) CreateConversation(ctx context.Context, req *pb.CreateConversat
 	// --- Step 2: For 1-on-1 chats, check if a conversation already exists ---
 	if !isGroup {
 		var existingConversationID uint
-		// This query finds a conversation_id that has EXACTLY 2 participants
-		// AND where those participants are our two users.
-		err := s.db.Table("participants").
-			Select("conversation_id").
-			Where("user_id IN ?", allParticipantIDs).
-			Group("conversation_id").
-			Having("COUNT(user_id) = 2").
-			Limit(1).
-			Pluck("conversation_id", &existingConversationID).Error
+		// This query finds a conversation_id that has EXACTLY these 2 participants
+		// We need to ensure the conversation has ONLY these users and no others
+		err := s.db.Raw(`
+			SELECT conversation_id 
+			FROM participants 
+			WHERE conversation_id IN (
+				SELECT conversation_id 
+				FROM participants 
+				WHERE user_id IN (?) 
+				GROUP BY conversation_id 
+				HAVING COUNT(DISTINCT user_id) = ?
+			)
+			GROUP BY conversation_id
+			HAVING COUNT(user_id) = ?
+			LIMIT 1
+		`, allParticipantIDs, len(allParticipantIDs), len(allParticipantIDs)).
+			Scan(&existingConversationID).Error
 
 		if err == nil && existingConversationID > 0 {
 			// A 1-on-1 chat already exists. Find it and return it.
 			log.Printf("Found existing 1-on-1 chat (ID: %d) for users %v", existingConversationID, allParticipantIDs)
+
+			// Remove any hidden entries for this conversation (unhide it)
+			s.db.Where("user_id = ? AND conversation_id = ?", req.CreatorId, existingConversationID).Delete(&HiddenConversation{})
+
 			var existingConversation Conversation
 			if s.db.First(&existingConversation, existingConversationID).Error == nil {
 				// We found it, now we must convert it to the gRPC response

@@ -2,32 +2,47 @@
   <div class="feed-container">
     <div class="feed-wrapper">
       <main class="main-feed">
-        <!-- Stories -->
         <div class="stories">
-          <div class="story-item your-story" @click="handleCreateStory">
+          <div 
+            v-if="myStoryGroup"
+            class="story-item your-story active-story" 
+            @click="openStoryViewer(myStoryGroup)"
+          >
             <img 
-              :src="authStore.user?.profile_picture_url || '/default-avatar.svg'" 
-              alt="Your story" 
+              :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
               class="story-image" 
             />
             <div class="story-label">Your story</div>
           </div>
 
-            <div 
-              v-for="group in feedStore.storyFeed" 
-              :key="group.user_id" 
-              class="story-item"
-              :class="{ 'seen': group.all_seen }"
-              @click="openStoryViewer(group)"
-            >
-              <img 
-                  :src="group.user_profile_url || '/default-avatar.svg'" 
-                  :alt="group.username" 
-                  class="story-image" 
-              />
-              <div class="story-label">{{ group.username }}</div>
-            </div>
+          <div 
+            v-else
+            class="story-item your-story add-new" 
+            @click="handleCreateStory"
+          >
+            <img 
+              :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
+              class="story-image" 
+            />
+            <div class="plus-icon">+</div>
+            <div class="story-label">Your story</div>
           </div>
+
+          <div 
+            v-for="group in friendStoryGroups" 
+            :key="group.user_id" 
+            class="story-item"
+            :class="{ 'seen': group.all_seen }"
+            @click="openStoryViewer(group)"
+          >
+            <img 
+                :src="getMediaUrl(group.user_profile_url) || '/default-avatar.svg'" 
+                :alt="group.username" 
+                class="story-image" 
+            />
+            <div class="story-label">{{ group.username }}</div>
+          </div>
+        </div>
 
         <StoryViewer 
             v-if="showStoryViewer && selectedStoryGroup"
@@ -35,7 +50,6 @@
             @close="showStoryViewer = false"
         />
 
-        <!-- Posts -->
         <div class="posts" ref="postsContainer">
           <div v-if="feedStore.loading && feedStore.homeFeed.length === 0" class="loading-skeleton">
             <div v-for="i in 3" :key="`skeleton-${i}`" class="skeleton-post">
@@ -57,10 +71,6 @@
             @open-options="handleOpenOptions"
           />
 
-          <div v-if="feedStore.loading && feedStore.homeFeed.length > 0" class="loading-more">
-            Loading more posts...
-          </div>
-
           <div v-if="!feedStore.loading && !feedStore.hasMore && feedStore.homeFeed.length > 0" class="end-message">
             You're all caught up!
           </div>
@@ -72,42 +82,41 @@
         </div>
       </main>
 
-      <!-- Sidebar -->
       <aside class="sidebar">
         <div class="user-card">
-          <img src="/placeholder.svg?height=56&width=56" alt="User" class="profile-pic" />
+          <img 
+            :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
+            alt="User" 
+            class="profile-pic" 
+          />
           <div class="user-details">
-            <div class="username">username</div>
-            <div class="fullname">Full Name</div>
+            <div class="username">{{ authStore.user?.username || 'username' }}</div>
+            <div class="fullname">{{ authStore.user?.name || 'Full Name' }}</div>
           </div>
-          <button class="switch-btn">Switch</button>
+          <button class="switch-btn" @click="$router.push('/login')">Switch</button>
         </div>
 
         <div class="suggestions">
           <div class="suggestions-header">
             <h3>Suggestions For You</h3>
-            <a href="#">See All</a>
+            <a href="/explore">See All</a>
           </div>
-          <div v-for="i in 5" :key="`suggestion-${i}`" class="suggestion-item">
-            <img :src="`/placeholder.svg?height=32&width=32&query=suggestion-${i}`" alt="Suggestion" />
+          
+          <div v-for="user in suggestedUsers" :key="user.id" class="suggestion-item">
+            <img :src="user.profile_picture_url || '/default-avatar.svg'" :alt="user.username" />
             <div class="suggestion-info">
-              <div class="username">user_{{ i }}</div>
-              <div class="mutual">Suggested for you</div>
+              <div class="username">{{ user.username }}</div>
+              <div class="mutual">Popular</div>
             </div>
-            <button class="follow-btn">Follow</button>
+            <button class="follow-btn" @click="router.push(`/profile/${user.username}`)">View</button>
           </div>
         </div>
 
         <footer class="sidebar-footer">
           <a href="#">About</a>
           <a href="#">Help</a>
-          <a href="#">Press</a>
-          <a href="#">API</a>
-          <a href="#">Jobs</a>
           <a href="#">Privacy</a>
           <a href="#">Terms</a>
-          <a href="#">Locations</a>
-          <a href="#">Language</a>
         </footer>
       </aside>
     </div>
@@ -115,11 +124,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router' // Import Router
+import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
-import { commentAPI } from '@/services/api'
+import { commentAPI, postAPI, feedAPI } from '@/services/api' // Added postAPI
 import PostCard from '@/components/PostCard.vue'
 import StoryViewer from '@/components/StoryViewer.vue'
 
@@ -129,18 +138,19 @@ const authStore = useAuthStore()
 const postsContainer = ref<HTMLElement | null>(null)
 const showStoryViewer = ref(false)
 const selectedStoryGroup = ref<any>(null)
+const suggestedUsers = ref<any[]>([]) // Local state for suggestions
 
 onMounted(async () => {
-  // Load initial feed
+  // 1. Load Home Feed
   if (feedStore.homeFeed.length === 0) {
-    console.log('Loading initial home feed...')
     await feedStore.loadHomeFeed(1)
-    console.log('Home feed loaded:', feedStore.homeFeed.length, 'posts')
-    console.log('Feed data:', feedStore.homeFeed)
   }
-
+  // 2. Load Stories
   await feedStore.loadStoryFeed()
-  // Setup infinite scroll
+  
+  // 3. Load Suggestions (From Explore API)
+  loadSuggestions()
+
   window.addEventListener('scroll', handleScroll)
 })
 
@@ -148,12 +158,33 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
 
+// Helper to mock "Top Users" by fetching explore feed authors
+const loadSuggestions = async () => {
+  try {
+    const explorePosts = await feedAPI.getExploreFeed(1)
+    // Extract unique authors
+    const uniqueAuthors = new Map()
+    explorePosts.forEach((post: any) => {
+       // Don't suggest self
+       if (post.author_id !== authStore.user?.user_id && !uniqueAuthors.has(post.author_id)) {
+          uniqueAuthors.set(post.author_id, {
+             id: post.author_id,
+             username: post.author_username,
+             profile_picture_url: post.author_profile_url
+          })
+       }
+    })
+    // Take top 5
+    suggestedUsers.value = Array.from(uniqueAuthors.values()).slice(0, 5)
+  } catch (e) {
+    console.error("Failed to load suggestions", e)
+  }
+}
+
 const handleScroll = () => {
   if (feedStore.loading || !feedStore.hasMore) return
-
   const scrollPosition = window.innerHeight + window.scrollY
   const threshold = document.body.offsetHeight - 500
-
   if (scrollPosition >= threshold) {
     feedStore.loadHomeFeed(feedStore.homePage + 1)
   }
@@ -170,54 +201,49 @@ const handleSave = async (postId: string) => {
 const handleComment = async (postId: string, content: string) => {
   try {
     const numericPostId = parseInt(postId)
-    if (isNaN(numericPostId)) {
-      console.error('Invalid post ID:', postId)
-      return
-    }
-    
-    await commentAPI.createComment({
-      post_id: numericPostId,
-      content
-    })
-    
-    // Increment comment count locally
+    if (isNaN(numericPostId)) return
+    await commentAPI.createComment({ post_id: numericPostId, content })
     const post = feedStore.homeFeed.find(p => p.id === postId)
     if (post) {
-      feedStore.updatePost(postId, {
-        comment_count: (post.comment_count || 0) + 1
-      } as any)
+      feedStore.updatePost(postId, { comment_count: (post.comment_count || 0) + 1 } as any)
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to add comment:', error)
-    console.error('Error details:', error.response?.data || error.message)
-    
-    // Show user-friendly error
-    if (error.response?.status === 500) {
-      console.warn('Server error when creating comment. The backend may need to be checked.')
-    }
   }
 }
 
 const handleShare = async (postId: string) => {
-  // TODO: Implement share functionality
   console.log('Share post:', postId)
 }
 
 const handleOpenPostDetails = (postId: string) => {
-  if (window.openPostDetails) {
-    window.openPostDetails(postId)
+  const post = feedStore.homeFeed.find(p => p.id === postId)
+  
+  // If it's a reel, open in ReelsViewer
+  if (post && post.is_reel) {
+    // Add this reel to reelsFeed if not already there, then open ReelsViewer
+    const reelIndex = feedStore.reelsFeed.findIndex(r => r.id === postId)
+    if (reelIndex !== -1) {
+      if ((window as any).openReelsViewer) {
+        (window as any).openReelsViewer(reelIndex)
+      }
+    } else {
+      // Add to reelsFeed temporarily and open
+      feedStore.reelsFeed.unshift(post)
+      if ((window as any).openReelsViewer) {
+        (window as any).openReelsViewer(0)
+      }
+    }
+  } else {
+    // Regular post, open in PostDetailsOverlay
+    if ((window as any).openPostDetails) {
+      (window as any).openPostDetails(postId)
+    }
   }
 }
 
 const handleCreateStory = () => {
-    // We can reuse CreatePostOverlay, but pass a prop or mode?
-    // Or strictly speaking, "Create" button in sidebar usually handles both.
-    // For now, trigger the global create event or router push
-    router.push('/create-story')   // If Feed emits this, or use a global bus/store
-    // Actually, sidebar handles 'Create'. Let's assume we open the overlay
-    // but set `isReel` to false and maybe we need an `isStory` flag in CreatePostOverlay later.
-    // For MVP: Just alert or log
-    console.log("Open Create Overlay in Story Mode")
+    router.push('/create-story')
 }
 
 const openStoryViewer = (group: any) => {
@@ -226,9 +252,34 @@ const openStoryViewer = (group: any) => {
 }
 
 const handleOpenOptions = (postId: string) => {
-  // TODO: Implement post options menu
-  console.log('Open options for post:', postId)
+  console.log('Open options:', postId)
 }
+
+// Helper function for media URLs
+const getMediaUrl = (url: string | undefined) => {
+  if (!url) return '/default-avatar.svg'
+  if (url.startsWith('http')) return url
+  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  }
+  return url
+}
+
+// Computed Properties for Stories
+const myStoryGroup = computed(() => {
+    const currentUser = authStore.user
+    const userId = currentUser?.user_id || (currentUser as any)?.id
+    if (!userId) return null
+    // Ensure we match ID types (string vs number)
+    return feedStore.storyFeed.find(g => String(g.user_id) === String(userId))
+})
+
+const friendStoryGroups = computed(() => {
+    const currentUser = authStore.user
+    const userId = currentUser?.user_id || (currentUser as any)?.id
+    if (!userId) return feedStore.storyFeed
+    return feedStore.storyFeed.filter(g => String(g.user_id) !== String(userId))
+})
 </script>
 
 <style scoped lang="scss">
@@ -288,10 +339,6 @@ const handleOpenOptions = (postId: string) => {
       max-width: 56px;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    &:hover .story-image {
-      border-color: #0a66c2;
     }
 
     &.your-story .story-image {

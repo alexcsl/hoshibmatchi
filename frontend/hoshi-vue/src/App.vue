@@ -25,15 +25,21 @@
       </div>
 
       <!-- Overlays -->
-      <SearchOverlay v-if="isSearchOpen" @close="isSearchOpen = false" />
+      <SearchPanel v-if="isSearchOpen" @close="isSearchOpen = false" />
       <NotificationOverlay v-if="isNotificationsOpen" @close="isNotificationsOpen = false" :notifications="notifications" />
       <CreatePostOverlay v-if="isCreatePostOpen" @close="isCreatePostOpen = false" @posted="handlePostCreated" />
       <PostDetailsOverlay 
         v-if="isPostDetailsOpen && selectedPostId" 
         @close="isPostDetailsOpen = false" 
         :post-id="selectedPostId"
+        :context="postContext"
         @like="handlePostDetailsLike"
         @save="handlePostDetailsSave"
+      />
+      <ReelsViewer 
+        v-if="isReelsViewerOpen" 
+        @close="isReelsViewerOpen = false" 
+        :initial-index="currentReelIndex"
       />
       <StoryViewer v-if="isStoryViewerOpen" @close="isStoryViewerOpen = false" :stories="stories" :initial-index="currentStoryIndex" />
     </template>
@@ -53,16 +59,19 @@ import { useFeedStore } from '@/stores/feed'
 import Sidebar from './components/Sidebar.vue'
 import MiniMessage from './components/MiniMessage.vue'
 import SearchOverlay from './components/SearchOverlay.vue'
+import SearchPanel from './components/SearchPanel.vue'
 import NotificationOverlay from './components/NotificationOverlay.vue'
 import CreatePostOverlay from './components/CreatePostOverlay.vue'
 import PostDetailsOverlay from './components/PostDetailsOverlay.vue'
 import StoryViewer from './components/StoryViewer.vue'
+import ReelsViewer from './components/ReelsViewer.vue'
 
 // Extend Window interface for global functions
 declare global {
   interface Window {
-    openPostDetails: (postId: string) => void
+    openPostDetails: (postId: string, context?: string) => void
     openStoryViewer: (index?: number) => void
+    openReelsViewer: (index: number) => void
   }
 }
 
@@ -76,8 +85,11 @@ const isNotificationsOpen = ref(false)
 const isCreatePostOpen = ref(false)
 const isPostDetailsOpen = ref(false)
 const isStoryViewerOpen = ref(false)
+const isReelsViewerOpen = ref(false)
 const currentStoryIndex = ref(0)
+const currentReelIndex = ref(0)
 const selectedPostId = ref<string | null>(null)
+const postContext = ref<string>('feed')
 
 const authPages = ['Login', 'SignUp', 'LoginOTP', 'VerifyOTP', 'ResetPassword', 'ForgotPassword', 'GoogleCallback', 'Register']
 const isAuthPage = computed(() => !authPages.includes(route.name as string) && route.path !== '/')
@@ -155,9 +167,15 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-window.openPostDetails = (postId: string) => {
+window.openPostDetails = (postId: string, context: string = 'feed') => {
   selectedPostId.value = postId
+  postContext.value = context
   isPostDetailsOpen.value = true
+}
+
+window.openReelsViewer = (index: number) => {
+  currentReelIndex.value = index
+  isReelsViewerOpen.value = true
 }
 
 window.openStoryViewer = (index: number = 0) => {

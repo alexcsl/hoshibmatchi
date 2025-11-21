@@ -32,7 +32,13 @@
             </div>
 
             <!-- Stickers Overlay -->
-            <div v-for="(sticker, idx) in stickers" :key="idx" class="sticker" :style="sticker.style">
+            <div 
+              v-for="(sticker, idx) in stickers" 
+              :key="idx" 
+              class="sticker" 
+              :style="sticker.style"
+              @mousedown="startDrag($event, idx)"
+            >
               {{ sticker.emoji }}
             </div>
           </div>
@@ -109,6 +115,8 @@
             </div>
           </div>
 
+          
+
           <!-- Filters Tool -->
           <div class="tool-group">
             <label class="tool-label">
@@ -160,15 +168,20 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { mediaAPI, storyAPI } from '@/services/api'
 
 const router = useRouter()
 const fileInput = ref<HTMLInputElement>()
+const selectedFile = ref<File | null>(null)
 const isDragging = ref(false)
 const isLoading = ref(false)
 const storyMedia = ref<string>('')
 const storyType = ref<'image' | 'video'>('image')
 const currentFilter = ref('None')
 const videoDuration = ref(0)
+const isDraggingSticker = ref(false)
+const currentStickerIndex = ref(-1)
+const dragOffset = reactive({ x: 0, y: 0 })
 
 const textOverlay = reactive({
   text: '',
@@ -207,6 +220,42 @@ const getFilterStyle = (filterName: string) => {
   return filter?.css || 'filter: none'
 }
 
+const startDrag = (event: MouseEvent, index: number) => {
+  isDraggingSticker.value = true
+  currentStickerIndex.value = index
+  
+  // Calculate offset to prevent jumping
+  const stickerEl = (event.target as HTMLElement)
+  dragOffset.x = event.clientX - stickerEl.offsetLeft
+  dragOffset.y = event.clientY - stickerEl.offsetTop
+  
+  window.addEventListener('mousemove', onDrag)
+  window.addEventListener('mouseup', stopDrag)
+}
+
+const onDrag = (event: MouseEvent) => {
+  if (!isDraggingSticker.value || currentStickerIndex.value === -1) return
+  
+  const container = document.querySelector('.story-preview') as HTMLElement
+  if (!container) return
+
+  // Calculate new position relative to container
+  // (Simplified logic, might need adjustment based on your CSS positioning)
+  const newLeft = event.clientX - dragOffset.x
+  const newTop = event.clientY - dragOffset.y
+  
+  // Update sticker style
+  stickers.value[currentStickerIndex.value].style.left = `${newLeft}px`
+  stickers.value[currentStickerIndex.value].style.top = `${newTop}px`
+}
+
+const stopDrag = () => {
+  isDraggingSticker.value = false
+  currentStickerIndex.value = -1
+  window.removeEventListener('mousemove', onDrag)
+  window.removeEventListener('mouseup', stopDrag)
+}
+
 const triggerFileUpload = () => {
   fileInput.value?.click()
 }
@@ -216,6 +265,7 @@ const handleFileUpload = (event: Event) => {
   const file = target.files?.[0]
   
   if (file) {
+    selectedFile.value = file
     const reader = new FileReader()
     reader.onload = (e) => {
       storyMedia.value = e.target?.result as string
@@ -231,6 +281,7 @@ const handleDrop = (event: DragEvent) => {
   
   const file = event.dataTransfer?.files?.[0]
   if (file) {
+    selectedFile.value = file
     const reader = new FileReader()
     reader.onload = (e) => {
       storyMedia.value = e.target?.result as string
@@ -270,20 +321,24 @@ const resetMedia = () => {
 }
 
 const handleShareStory = async () => {
-  if (!storyMedia.value) {
+  if (!storyMedia.value || !selectedFile.value) {
     alert('Please select an image or video first')
     return
   }
 
   isLoading.value = true
   try {
-    console.log('Story data:', {
-      media: storyMedia.value,
-      type: storyType.value,
-      textOverlay,
-      stickers: stickers.value,
-      filter: currentFilter.value,
-      settings: storySettings,
+    // Upload Media
+      const { media_url } = await mediaAPI.uploadMedia(selectedFile.value!) // Using file object
+      
+      // Create Story with Metadata
+      await storyAPI.createStory({
+          media_url: media_url,
+          media_type: storyType.value,
+          caption: textOverlay.text,
+          filter_name: currentFilter.value,
+          // Serialize stickers to string for storage
+          stickers_json: JSON.stringify(stickers.value)
     })
 
     await new Promise(resolve => setTimeout(resolve, 1500))

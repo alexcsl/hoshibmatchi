@@ -93,12 +93,59 @@
         Post
       </button>
     </div>
+
+    <!-- Share Modal -->
+    <div v-if="showShareModal" class="share-modal-overlay" @click.stop="showShareModal = false">
+      <div class="share-modal" @click.stop>
+        <div class="share-header">
+          <h3>Share</h3>
+          <button class="close-share-btn" @click="showShareModal = false">✕</button>
+        </div>
+        <div class="share-options">
+          <button class="share-option" @click="copyLink">
+            <span class="share-icon">🔗</span>
+            <span>Copy Link</span>
+          </button>
+          <button class="share-option" @click="shareToFacebook">
+            <span class="share-icon">📘</span>
+            <span>Facebook</span>
+          </button>
+          <button class="share-option" @click="shareToTwitter">
+            <span class="share-icon">🐦</span>
+            <span>Twitter</span>
+          </button>
+          <button class="share-option" @click="shareViaEmail">
+            <span class="share-icon">✉️</span>
+            <span>Email</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Options Modal -->
+    <div v-if="showOptionsModal" class="share-modal-overlay" @click.stop="showOptionsModal = false">
+      <div class="options-modal" @click.stop>
+        <button v-if="isOwnPost" class="option-btn danger" @click="handleDeletePost">
+          <span>🗑️</span>
+          <span>Delete Post</span>
+        </button>
+        <button v-if="!isOwnPost" class="option-btn" @click="showOptionsModal = false">
+          <span>🚫</span>
+          <span>Report</span>
+        </button>
+        <button class="option-btn" @click="showOptionsModal = false">
+          <span>✕</span>
+          <span>Cancel</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { postAPI } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 interface Post {
   id: string
@@ -129,11 +176,18 @@ const emit = defineEmits<{
   share: [postId: string]
   openDetails: [postId: string]
   openOptions: [postId: string]
+  deleted: [postId: string]
+  archived: [postId: string]
 }>()
 
 const commentText = ref('')
 const isSubmitting = ref(false)
 const currentMediaIndex = ref(0)
+const authStore = useAuthStore()
+
+const isOwnPost = computed(() => {
+  return authStore.user?.user_id === props.post.author_id
+})
 
 const formatTimestamp = (timestamp: string) => {
   const date = new Date(timestamp)
@@ -201,15 +255,44 @@ const handleComment = () => {
   emit('openDetails', props.post.id)
 }
 
-// NEW: Handle Share (Copy Link)
-const handleShare = async () => {
+// Share Modal State
+const showShareModal = ref(false)
+const showOptionsModal = ref(false)
+
+const handleShare = () => {
+  showShareModal.value = true
+}
+
+const copyLink = async () => {
   const url = `${window.location.origin}/post/${props.post.id}`
   try {
     await navigator.clipboard.writeText(url)
     alert('Link copied to clipboard!')
+    showShareModal.value = false
   } catch (err) {
     console.error('Failed to copy', err)
   }
+}
+
+const shareToFacebook = () => {
+  const url = `${window.location.origin}/post/${props.post.id}`
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
+  showShareModal.value = false
+}
+
+const shareToTwitter = () => {
+  const url = `${window.location.origin}/post/${props.post.id}`
+  const text = props.post.caption ? props.post.caption.substring(0, 200) : 'Check out this post!'
+  window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank')
+  showShareModal.value = false
+}
+
+const shareViaEmail = () => {
+  const url = `${window.location.origin}/post/${props.post.id}`
+  const subject = 'Check out this post!'
+  const body = `I thought you might like this: ${url}`
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  showShareModal.value = false
 }
 
 const handlePostClick = () => {
@@ -221,7 +304,24 @@ const handleViewComments = () => {
 }
 
 const handleOptions = () => {
-  emit('openOptions', props.post.id)
+  showOptionsModal.value = true
+}
+
+const handleDeletePost = async () => {
+  if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+    return
+  }
+  
+  try {
+    await postAPI.deletePost(props.post.id)
+    showOptionsModal.value = false
+    // Emit event to parent to remove from feed
+    emit('deleted', props.post.id)
+    alert('Post deleted successfully')
+  } catch (error) {
+    console.error('Failed to delete post:', error)
+    alert('Failed to delete post. Please try again.')
+  }
 }
 
 const handleAddComment = async () => {
@@ -501,5 +601,129 @@ const toggleSummary = async () => {
     background: none; border: none; color: #0095f6; 
     font-size: 12px; font-weight: 600; cursor: pointer;
     margin-top: 4px; display: block;
+}
+
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.share-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+
+  .share-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close-share-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .share-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 20px;
+
+    .share-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 16px;
+      background-color: #1a1a1a;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background-color: #404040;
+        transform: translateY(-2px);
+      }
+
+      .share-icon {
+        font-size: 32px;
+      }
+
+      span:last-child {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+.options-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+
+  .option-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #404040;
+    color: #fff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: #404040;
+    }
+
+    &.danger {
+      color: #ff4458;
+      font-weight: 600;
+    }
+
+    span:first-child {
+      font-size: 20px;
+    }
+  }
 }
 </style>

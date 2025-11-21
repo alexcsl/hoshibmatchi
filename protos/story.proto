@@ -24,6 +24,8 @@ message CreateStoryRequest {
   string media_url = 2; // Stories are usually a single media item
   string media_type = 3;
   string caption = 4;
+  string filter_name = 5; 
+  string stickers_json = 6;
   // Add other fields later if needed, like "close_friends_only"
 }
 
@@ -38,6 +40,8 @@ message Story {
   string created_at = 7;
   string expires_at = 8;
   bool is_liked = 9;
+  string filter_name = 10;
+  string stickers_json = 11;
 }
 
 message CreateStoryResponse {

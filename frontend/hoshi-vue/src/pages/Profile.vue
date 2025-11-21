@@ -109,7 +109,10 @@
     <PostDetailsOverlay 
       v-if="showPostDetails && selectedPost" 
       :post-id="selectedPost.id" 
-      :post-object="selectedPost"  @close="closePostDetails" 
+      :post-object="selectedPost" 
+      @close="closePostDetails" 
+      @like="handlePostLike"
+      @save="handlePostSave"
     />
   </div>
 </template>
@@ -204,25 +207,30 @@ const fetchPosts = async (tab: string) => {
 
     if (tab === 'saved') {
         // --- Fetch Saved Posts (Collections) ---
-        // 1. Get collections
+        // Get all collections
         const collectionsRes = await apiClient.get('/collections')
-        const collections = collectionsRes.data.collections || []
+        const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || [])
         
-        // 2. Get posts from "All Posts" or default collection (assuming first one or a specific logic)
-        // For simplicity, we'll fetch posts from ALL collections or just show them flat if backend supports
-        // Since your backend has GetPostsInCollection, we need a collection ID.
-        // Ideally, there's a "All Saved" endpoint, but if not, we iterate.
-        // Let's assume we just want to show the first collection's posts for now or a dedicated endpoint.
-        // If you implemented a specific /users/me/saved endpoint, use that.
-        // Based on your API Gateway, you have /collections/:id.
-        // We will fetch the first collection found.
+        // Fetch posts from all collections and combine them
+        const allSavedPosts: any[] = []
         
-        if (collections.length > 0) {
-            const savedPostsRes = await apiClient.get(`/collections/${collections[0].id}`)
-            posts.value = savedPostsRes.data.posts || []
-        } else {
-            posts.value = []
+        for (const collection of collections) {
+            try {
+                const savedPostsRes = await apiClient.get(`/collections/${collection.id}`)
+                // Backend returns posts array directly, not wrapped in {posts: [...]}
+                const collectionPosts = Array.isArray(savedPostsRes.data) ? savedPostsRes.data : (savedPostsRes.data.posts || [])
+                allSavedPosts.push(...collectionPosts)
+            } catch (err) {
+                console.error(`Failed to fetch posts from collection ${collection.id}:`, err)
+            }
         }
+        
+        // Remove duplicates based on post ID
+        const uniquePosts = Array.from(
+            new Map(allSavedPosts.map(post => [post.id, post])).values()
+        )
+        
+        posts.value = uniquePosts
     } else {
         // Standard endpoints
         let endpoint = `/users/${username}/posts`
@@ -257,6 +265,80 @@ const openPost = (post: any) => {
 const closePostDetails = () => {
   showPostDetails.value = false
   selectedPost.value = null
+}
+
+const handlePostLike = async (postId: string) => {
+  if (!selectedPost.value) return
+  
+  // Optimistic update
+  const wasLiked = selectedPost.value.is_liked || false
+  selectedPost.value.is_liked = !wasLiked
+  selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? -1 : 1)
+  
+  // Also update in posts array
+  const postInList = posts.value.find(p => p.id === postId)
+  if (postInList) {
+    postInList.is_liked = !wasLiked
+    postInList.like_count = (postInList.like_count || 0) + (wasLiked ? -1 : 1)
+  }
+  
+  try {
+    if (wasLiked) {
+      await apiClient.delete(`/posts/${postId}/like`)
+    } else {
+      await apiClient.post(`/posts/${postId}/like`)
+    }
+  } catch (err) {
+    // Rollback on error
+    selectedPost.value.is_liked = wasLiked
+    selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? 1 : -1)
+    if (postInList) {
+      postInList.is_liked = wasLiked
+      postInList.like_count = (postInList.like_count || 0) + (wasLiked ? 1 : -1)
+    }
+    console.error('Failed to toggle like:', err)
+  }
+}
+
+const handlePostSave = async (postId: string) => {
+  if (!selectedPost.value) return
+  
+  // Optimistic update
+  const wasSaved = selectedPost.value.is_saved || false
+  selectedPost.value.is_saved = !wasSaved
+  
+  // Also update in posts array
+  const postInList = posts.value.find(p => p.id === postId)
+  if (postInList) {
+    postInList.is_saved = !wasSaved
+  }
+  
+  try {
+    const numericPostId = parseInt(postId)
+    if (isNaN(numericPostId)) {
+      throw new Error('Invalid post ID')
+    }
+    
+    if (wasSaved) {
+      // Unsave: Fetch collections and try to unsave
+      const collectionsRes = await apiClient.get('/collections')
+      const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || [])
+      
+      if (collections.length > 0) {
+        await apiClient.delete(`/collections/${collections[0].id}/posts/${postId}`)
+      }
+    } else {
+      // Save: Use collection ID 1 - backend will auto-create if needed
+      await apiClient.post(`/collections/1/posts`, { post_id: numericPostId })
+    }
+  } catch (err) {
+    // Rollback on error
+    selectedPost.value.is_saved = wasSaved
+    if (postInList) {
+      postInList.is_saved = wasSaved
+    }
+    console.error('Failed to toggle save:', err)
+  }
 }
 
 const toggleFollow = async () => {
