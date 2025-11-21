@@ -10,7 +10,7 @@
       <div class="form-section">
         <div class="form-content">
           <!-- Logo -->
-          <h1 class="logo">Instagram</h1>
+          <h1 class="logo">hoshiBmaTchi</h1>
 
           <!-- Main heading -->
           <p class="subtitle">Sign up to see photos and videos from your friends.</p>

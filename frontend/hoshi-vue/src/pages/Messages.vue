@@ -56,6 +56,68 @@
       </div>
     </div>
 
+    <!-- Edit Participants Modal -->
+    <div v-if="showEditParticipants" class="modal-overlay" @click="showEditParticipants = false">
+      <div class="modal" @click.stop>
+        <div class="modal-header">
+          <h3>Edit Participants</h3>
+          <button class="close-btn" @click="showEditParticipants = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="participants-section">
+            <h4>Current Participants ({{ currentParticipants.length }})</h4>
+            <div class="participants-list">
+              <div 
+                v-for="participant in currentParticipants" 
+                :key="participant.id || participant.user_id"
+                class="participant-item"
+              >
+                <img :src="getParticipantAvatar(participant)" :alt="participant.username" class="avatar" />
+                <div class="user-info">
+                  <div class="username">{{ participant.username }}</div>
+                  <div class="name">{{ participant.name }}</div>
+                </div>
+                <button 
+                  v-if="(participant.id || participant.user_id) !== currentUserId && canEditParticipants"
+                  @click="removeParticipant(participant)"
+                  class="remove-btn"
+                  title="Remove participant"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="canEditParticipants" class="add-participants-section">
+            <h4>Add People</h4>
+            <input 
+              v-model="participantSearchQuery" 
+              type="text" 
+              placeholder="Search users to add..." 
+              class="search-input"
+              @input="searchUsersForParticipants"
+            />
+            <div v-if="participantSearchResults.length > 0" class="search-results">
+              <div 
+                v-for="user in participantSearchResults" 
+                :key="user.user_id" 
+                class="search-result-item"
+                @click="addParticipant(user)"
+              >
+                <img :src="getMediaUrl(user.profile_picture_url)" :alt="user.username" class="avatar" />
+                <div class="user-info">
+                  <div class="username">{{ user.username }}</div>
+                  <div class="name">{{ user.name }}</div>
+                </div>
+                <button class="add-btn">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="messages-container">
       <!-- Conversations List -->
       <div class="conversations-list">
@@ -122,19 +184,36 @@
             </div>
           </div>
           <div class="chat-actions">
+            <button @click="toggleConversationSearch" title="Search in conversation">🔍</button>
+            <button @click="showEditParticipants = true" title="Edit Participants">✏️</button>
             <button @click="startAudioCall" title="Audio Call">📞</button>
             <button @click="startVideoCall" title="Video Call">📹</button>
             <button @click="deleteConversation" title="Delete Chat" class="delete-chat-btn">🗑️</button>
           </div>
         </div>
 
+        <!-- Conversation Search Bar -->
+        <div v-if="showConversationSearch" class="conversation-search-bar">
+          <input 
+            v-model="conversationSearchQuery" 
+            type="text" 
+            placeholder="Search messages..." 
+            class="search-input"
+            @input="filterMessages"
+          />
+          <button @click="toggleConversationSearch" class="close-search-btn">✕</button>
+          <div v-if="conversationSearchQuery" class="search-results-count">
+            {{ filteredMessagesCount }} result(s) found
+          </div>
+        </div>
+
         <div ref="messagesContainer" class="messages">
           <div v-if="messagesLoading" class="loading">Loading messages...</div>
           <div 
-            v-for="message in messages" 
+            v-for="message in displayMessages" 
             :key="message.id" 
             class="message" 
-            :class="Number(message.sender_id) === currentUserId ? 'sent' : 'received'"
+            :class="[Number(message.sender_id) === currentUserId ? 'sent' : 'received', { highlighted: isMessageHighlighted(message) }]"
             @contextmenu.prevent="openMessageMenu(message, $event)"
           >
             <!-- Show avatar for received messages -->
@@ -150,8 +229,18 @@
                 {{ message.sender_username || 'User' }}
               </div>
               <div class="message-content">
-                {{ message.content }}
-                <div class="message-time">{{ formatMessageTime(message.sent_at) }}</div>
+                <!-- Display media if present -->
+                <div v-if="message.media_url" class="message-media">
+                  <img v-if="isImage(message.media_url)" :src="getMediaUrl(message.media_url)" alt="Image" class="media-image" />
+                  <video v-else-if="isVideo(message.media_url)" :src="getMediaUrl(message.media_url)" controls class="media-video"></video>
+                </div>
+                <div v-if="message.content" class="message-text">{{ message.content }}</div>
+                <div class="message-footer">
+                  <span class="message-time">{{ formatMessageTime(message.sent_at) }}</span>
+                  <span v-if="Number(message.sender_id) === currentUserId" class="message-status">
+                    {{ getMessageStatus(message) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -180,7 +269,20 @@
         </div>
 
         <div class="message-input-area">
+          <input 
+            type="file" 
+            ref="mediaFileInput" 
+            @change="handleMediaUpload" 
+            accept="image/*,video/*,.gif" 
+            style="display: none"
+          />
+          <button class="media-btn" @click="openMediaUpload" title="Add Image/GIF/Video">📷</button>
           <button class="emoji-btn" @click="insertEmoji" title="Add emoji">😊</button>
+          <div v-if="selectedMedia" class="media-preview">
+            <img v-if="isImage(selectedMedia.name)" :src="selectedMedia.preview" alt="Preview" class="preview-image" />
+            <video v-else-if="isVideo(selectedMedia.name)" :src="selectedMedia.preview" class="preview-video"></video>
+            <button @click="clearMediaSelection" class="clear-media-btn">✕</button>
+          </div>
           <input 
             v-model="messageText" 
             type="text" 
@@ -190,7 +292,7 @@
             ref="messageInputRef"
           />
           <button 
-            v-if="messageText.trim()" 
+            v-if="messageText.trim() || selectedMedia" 
             @click="sendMessage" 
             class="send-btn"
             :disabled="sending"
@@ -228,6 +330,9 @@ interface Message {
   content: string
   sent_at: string
   sender_username: string
+  media_url?: string
+  status?: 'sent' | 'delivered' | 'seen'
+  seen_by?: string[]
 }
 
 interface Conversation {
@@ -273,6 +378,21 @@ const isMuted = ref(false)
 const isVideoEnabled = ref(true)
 const localStream = ref<MediaStream | null>(null)
 
+// Edit Participants states
+const showEditParticipants = ref(false)
+const participantSearchQuery = ref('')
+const participantSearchResults = ref<any[]>([])
+const currentParticipants = ref<Participant[]>([])
+
+// Media upload states
+const mediaFileInput = ref<HTMLInputElement | null>(null)
+const selectedMedia = ref<{ file: File; preview: string; name: string } | null>(null)
+
+// Conversation search states
+const showConversationSearch = ref(false)
+const conversationSearchQuery = ref('')
+const filteredMessagesIndices = ref<number[]>([])
+
 // WebSocket connection
 let ws: WebSocket | null = null
 
@@ -292,6 +412,25 @@ const filteredConversations = computed(() => {
   return conversations.value.filter(conv => 
     getConversationName(conv).toLowerCase().includes(search)
   )
+})
+
+const canEditParticipants = computed(() => {
+  if (!activeConversation.value) return false
+  // Allow editing for group chats or 1-on-1 that can become groups
+  return activeConversation.value.participants.length >= 1
+})
+
+const displayMessages = computed(() => {
+  if (!conversationSearchQuery.value.trim()) {
+    return messages.value
+  }
+  return messages.value.filter((msg, index) => 
+    filteredMessagesIndices.value.includes(index)
+  )
+})
+
+const filteredMessagesCount = computed(() => {
+  return filteredMessagesIndices.value.length
 })
 
 onMounted(async () => {
@@ -319,6 +458,9 @@ onUnmounted(() => {
 watch(activeConversation, async (newConv) => {
   if (newConv) {
     await loadMessages(newConv.id)
+    currentParticipants.value = newConv.participants || []
+    conversationSearchQuery.value = ''
+    showConversationSearch.value = false
   }
 })
 
@@ -385,16 +527,207 @@ const selectConversation = async (conversation: Conversation) => {
   activeConversation.value = conversation
 }
 
+// Participant management functions
+const searchUsersForParticipants = async () => {
+  if (!participantSearchQuery.value.trim()) {
+    participantSearchResults.value = []
+    return
+  }
+  
+  try {
+    const data = await userAPI.searchUsers(participantSearchQuery.value)
+    const users = Array.isArray(data) ? data : []
+    // Filter out users already in the conversation
+    const currentParticipantIds = currentParticipants.value.map(p => p.id || p.user_id)
+    participantSearchResults.value = users.filter(u => !currentParticipantIds.includes(u.user_id))
+  } catch (error) {
+    console.error('Failed to search users:', error)
+  }
+}
+
+const addParticipant = async (user: any) => {
+  if (!activeConversation.value) return
+  
+  try {
+    // Add participant to conversation via API
+    await messageAPI.addParticipant(activeConversation.value.id, user.user_id)
+    
+    // Update local state
+    currentParticipants.value.push({
+      id: user.user_id,
+      user_id: user.user_id,
+      username: user.username,
+      name: user.name,
+      profile_picture_url: user.profile_picture_url
+    })
+    
+    // Update conversation
+    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id)
+    if (convIndex !== -1) {
+      conversations.value[convIndex].participants = [...currentParticipants.value]
+      conversations.value[convIndex].is_group = currentParticipants.value.length > 2
+    }
+    
+    participantSearchQuery.value = ''
+    participantSearchResults.value = []
+  } catch (error) {
+    console.error('Failed to add participant:', error)
+    alert('Failed to add participant. This feature may require backend support.')
+  }
+}
+
+const removeParticipant = async (participant: Participant) => {
+  if (!activeConversation.value) return
+  
+  const participantId = participant.id || participant.user_id
+  if (!participantId) return
+  
+  if (!confirm(`Remove ${participant.username} from this conversation?`)) return
+  
+  try {
+    // Remove participant from conversation via API
+    await messageAPI.removeParticipant(activeConversation.value.id, participantId)
+    
+    // Update local state
+    currentParticipants.value = currentParticipants.value.filter(p => 
+      (p.id || p.user_id) !== participantId
+    )
+    
+    // Update conversation
+    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id)
+    if (convIndex !== -1) {
+      conversations.value[convIndex].participants = [...currentParticipants.value]
+      conversations.value[convIndex].is_group = currentParticipants.value.length > 2
+    }
+  } catch (error) {
+    console.error('Failed to remove participant:', error)
+    alert('Failed to remove participant. This feature may require backend support.')
+  }
+}
+
+const getParticipantAvatar = (participant: Participant): string => {
+  const avatar = participant.profile_picture_url || participant.profilePictureUrl || participant.profile_url || ''
+  return getMediaUrl(avatar)
+}
+
+// Media upload functions
+const openMediaUpload = () => {
+  mediaFileInput.value?.click()
+}
+
+const handleMediaUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+  
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']
+  if (!validTypes.includes(file.type)) {
+    alert('Please select a valid image or video file')
+    return
+  }
+  
+  // Validate file size (max 50MB)
+  if (file.size > 50 * 1024 * 1024) {
+    alert('File size must be less than 50MB')
+    return
+  }
+  
+  // Create preview
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    selectedMedia.value = {
+      file: file,
+      preview: e.target?.result as string,
+      name: file.name
+    }
+  }
+  reader.readAsDataURL(file)
+}
+
+const clearMediaSelection = () => {
+  selectedMedia.value = null
+  if (mediaFileInput.value) {
+    mediaFileInput.value.value = ''
+  }
+}
+
+const isImage = (filename: string): boolean => {
+  return /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)
+}
+
+const isVideo = (filename: string): boolean => {
+  return /\.(mp4|webm|mov)$/i.test(filename)
+}
+
+// Conversation search functions
+const toggleConversationSearch = () => {
+  showConversationSearch.value = !showConversationSearch.value
+  if (!showConversationSearch.value) {
+    conversationSearchQuery.value = ''
+    filteredMessagesIndices.value = []
+  }
+}
+
+const filterMessages = () => {
+  if (!conversationSearchQuery.value.trim()) {
+    filteredMessagesIndices.value = []
+    return
+  }
+  
+  const query = conversationSearchQuery.value.toLowerCase()
+  filteredMessagesIndices.value = messages.value
+    .map((msg, index) => ({ msg, index }))
+    .filter(({ msg }) => msg.content.toLowerCase().includes(query))
+    .map(({ index }) => index)
+}
+
+const isMessageHighlighted = (message: Message): boolean => {
+  if (!conversationSearchQuery.value.trim()) return false
+  return message.content.toLowerCase().includes(conversationSearchQuery.value.toLowerCase())
+}
+
+// Message status functions
+const getMessageStatus = (message: Message): string => {
+  // Check if message has explicit status
+  if (message.status === 'seen') return '✓✓'
+  if (message.status === 'delivered') return '✓✓'
+  if (message.status === 'sent') return '✓'
+  
+  // Default to sent status
+  return '✓'
+}
+
 const sendMessage = async () => {
-  if (!messageText.value.trim() || !activeConversation.value || sending.value) return
+  if ((!messageText.value.trim() && !selectedMedia.value) || !activeConversation.value || sending.value) return
   
   sending.value = true
   const content = messageText.value
+  const media = selectedMedia.value
   messageText.value = '' // Clear immediately for better UX
   
   try {
-    console.log('Sending message:', content, 'to conversation:', activeConversation.value.id)
-    const newMessage = await messageAPI.sendMessage(activeConversation.value.id, content)
+    let newMessage
+    
+    if (media) {
+      // Upload media and send message with media
+      console.log('Uploading media:', media.file.name)
+      const formData = new FormData()
+      formData.append('file', media.file)
+      if (content.trim()) {
+        formData.append('content', content)
+      }
+      formData.append('conversation_id', activeConversation.value.id)
+      
+      // This would require a media upload endpoint
+      newMessage = await messageAPI.sendMessageWithMedia(activeConversation.value.id, formData)
+      clearMediaSelection()
+    } else {
+      // Send text-only message
+      console.log('Sending message:', content, 'to conversation:', activeConversation.value.id)
+      newMessage = await messageAPI.sendMessage(activeConversation.value.id, content)
+    }
+    
     console.log('Message sent successfully:', newMessage)
     
     // Add message immediately for instant feedback
@@ -414,6 +747,7 @@ const sendMessage = async () => {
   } catch (error) {
     console.error('Failed to send message:', error)
     messageText.value = content // Restore message on error
+    alert('Failed to send message. Media upload may require backend support.')
   } finally {
     sending.value = false
   }
@@ -1556,5 +1890,229 @@ const toggleVideo = () => {
   .chat-area {
     flex: 1;
   }
+}
+
+// Conversation Search Bar
+.conversation-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #262626;
+
+  .search-input {
+    flex: 1;
+    background-color: #262626;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+
+    &::placeholder {
+      color: #a8a8a8;
+    }
+  }
+
+  .close-search-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .search-results-count {
+    font-size: 12px;
+    color: #a8a8a8;
+    white-space: nowrap;
+  }
+}
+
+// Participants Section in Modal
+.participants-section,
+.add-participants-section {
+  margin-bottom: 20px;
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+
+  .participants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .participant-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #262626;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .user-info {
+      flex: 1;
+
+      .username {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .name {
+        font-size: 12px;
+        color: #a8a8a8;
+      }
+    }
+
+    .remove-btn,
+    .add-btn {
+      background-color: #dc3545;
+      border: none;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #c82333;
+      }
+    }
+
+    .add-btn {
+      background-color: #28a745;
+
+      &:hover {
+        background-color: #218838;
+      }
+    }
+  }
+}
+
+// Media Upload Styles
+.media-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+.media-preview {
+  position: absolute;
+  bottom: 60px;
+  left: 50px;
+  background-color: #262626;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  .preview-image,
+  .preview-video {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 4px;
+  }
+
+  .clear-media-btn {
+    background-color: #dc3545;
+    border: none;
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background-color: #c82333;
+    }
+  }
+}
+
+// Message Media Display
+.message-media {
+  margin-bottom: 8px;
+
+  .media-image {
+    max-width: 300px;
+    max-height: 400px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .media-video {
+    max-width: 300px;
+    max-height: 400px;
+    border-radius: 8px;
+  }
+}
+
+.message-text {
+  margin-bottom: 4px;
+}
+
+.message-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+
+  .message-status {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+// Highlighted message for search
+.message.highlighted {
+  .message-content {
+    background-color: #1a4d7a !important;
+    animation: highlight-pulse 1s ease-in-out;
+  }
+}
+
+@keyframes highlight-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 </style>

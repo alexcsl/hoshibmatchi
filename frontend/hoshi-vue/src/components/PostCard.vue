@@ -60,12 +60,12 @@
     </div>
 
     <div class="post-content">
-      <div class="likes">
+      <div class="likes" @click.stop="handleShowLikes" style="cursor: pointer;">
         <strong>{{ formatLikes(post.like_count) }}</strong>
       </div>
       <div class="caption">
           <strong>{{ post.author_username }}</strong>
-          <span v-if="!showingSummary" v-html="formattedCaption"></span>
+          <span v-if="!showingSummary" v-html="formattedCaption" @click="handleRichTextClick"></span>
           <span v-else>{{ aiSummary }}</span>
       </div>
       
@@ -139,6 +139,34 @@
         </button>
       </div>
     </div>
+
+    <!-- Likes Modal -->
+    <div v-if="showLikesModal" class="share-modal-overlay" @click.stop="showLikesModal = false">
+      <div class="likes-modal" @click.stop>
+        <div class="likes-header">
+          <h3>Likes</h3>
+          <button class="close-likes-btn" @click="showLikesModal = false">✕</button>
+        </div>
+        <div class="likes-list">
+          <div v-if="loadingLikers" class="loading-likers">Loading...</div>
+          <div v-else-if="likers.length === 0" class="no-likers">No likes yet</div>
+          <div v-else v-for="liker in likers" :key="liker.user_id" class="liker-item">
+            <img 
+              :src="liker.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
+              :alt="liker.username" 
+              class="liker-avatar" 
+            />
+            <div class="liker-info">
+              <div class="liker-username">
+                {{ liker.username }}
+                <span v-if="liker.is_verified" class="verified">✓</span>
+              </div>
+              <div v-if="liker.full_name" class="liker-fullname">{{ liker.full_name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -146,6 +174,7 @@
 import { ref, computed } from 'vue'
 import { postAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { useRichText } from '@/composables/useRichText'
 
 interface Post {
   id: string
@@ -184,6 +213,7 @@ const commentText = ref('')
 const isSubmitting = ref(false)
 const currentMediaIndex = ref(0)
 const authStore = useAuthStore()
+const { formatRichText, handleRichTextClick } = useRichText()
 
 const isOwnPost = computed(() => {
   return authStore.user?.user_id === props.post.author_id
@@ -258,9 +288,29 @@ const handleComment = () => {
 // Share Modal State
 const showShareModal = ref(false)
 const showOptionsModal = ref(false)
+const showLikesModal = ref(false)
+const likers = ref<any[]>([])
+const loadingLikers = ref(false)
 
 const handleShare = () => {
   showShareModal.value = true
+}
+
+const handleShowLikes = async () => {
+  if (props.post.like_count === 0) return
+  
+  showLikesModal.value = true
+  loadingLikers.value = true
+  
+  try {
+    const response = await postAPI.getPostLikers(props.post.id)
+    likers.value = response
+  } catch (error) {
+    console.error('Failed to load likers:', error)
+    likers.value = []
+  } finally {
+    loadingLikers.value = false
+  }
 }
 
 const copyLink = async () => {
@@ -340,10 +390,10 @@ const showingSummary = ref(false)
 const aiSummary = ref('')
 const loadingAi = ref(false)
 
-// Fixed Hashtag Formatter
+// Rich Text Formatter for hashtags and mentions
 const formattedCaption = computed(() => {
   if (!props.post.caption) return ''
-  return props.post.caption.replace(/#(\w+)/g, '<span class="hashtag" style="color: #0095f6; cursor: pointer;">#$1</span>')
+  return formatRichText(props.post.caption)
 })
 
 const toggleSummary = async () => {
@@ -384,10 +434,12 @@ const toggleSummary = async () => {
   color: #fff;
 }
 
-/* Add this to make hashtags look clickable */
-:deep(.hashtag) {
+/* Rich text styles for hashtags and mentions */
+:deep(.rich-text-hashtag),
+:deep(.rich-text-mention) {
   color: #0095f6;
   font-weight: 500;
+  cursor: pointer;
   &:hover {
     text-decoration: underline;
   }
@@ -726,4 +778,104 @@ const toggleSummary = async () => {
     }
   }
 }
+
+.likes-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .likes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close-likes-btn {
+      background: none;
+      border: none;
+      color: #8e8e8e;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .likes-list {
+    overflow-y: auto;
+    padding: 12px 20px;
+    flex: 1;
+
+    .loading-likers,
+    .no-likers {
+      text-align: center;
+      padding: 20px;
+      color: #8e8e8e;
+    }
+
+    .liker-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #404040;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .liker-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .liker-info {
+        flex: 1;
+
+        .liker-username {
+          font-size: 14px;
+          font-weight: 600;
+          color: #fff;
+
+          .verified {
+            color: #4a9eff;
+            margin-left: 4px;
+          }
+        }
+
+        .liker-fullname {
+          font-size: 12px;
+          color: #8e8e8e;
+          margin-top: 2px;
+        }
+      }
+    }
+  }
+}
 </style>
+

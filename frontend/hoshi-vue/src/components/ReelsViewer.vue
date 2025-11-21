@@ -62,7 +62,7 @@
 
         <!-- Caption - Centered at bottom -->
         <div v-if="currentReel.caption" class="caption-section">
-          <p class="caption-text">{{ currentReel.caption }}</p>
+          <p class="caption-text" v-html="formattedCaption" @click="handleRichTextClick"></p>
         </div>
 
         <!-- Comments Overlay -->
@@ -134,6 +134,7 @@
 import { ref, computed, watch } from 'vue'
 import { useFeedStore } from '@/stores/feed'
 import { commentAPI } from '@/services/api'
+import { useRichText } from '@/composables/useRichText'
 
 interface Comment {
   id: string
@@ -158,9 +159,15 @@ const showComments = ref(false)
 const comments = ref<Comment[]>([])
 const newComment = ref('')
 const isSubmitting = ref(false)
+const { formatRichText, handleRichTextClick } = useRichText()
 
 const reels = computed(() => feedStore.reelsFeed)
 const currentReel = computed(() => reels.value[currentIndex.value])
+
+const formattedCaption = computed(() => {
+  if (!currentReel.value?.caption) return ''
+  return formatRichText(currentReel.value.caption)
+})
 
 // Load comments when reel changes
 watch(currentIndex, async (newIndex) => {
@@ -481,6 +488,17 @@ const formatTimestamp = (timestamp: string) => {
     padding: 12px 16px;
     border-radius: 8px;
     backdrop-filter: blur(10px);
+  }
+}
+
+/* Rich text styles for hashtags and mentions */
+:deep(.rich-text-hashtag),
+:deep(.rich-text-mention) {
+  color: #0095f6;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
   }
 }
 

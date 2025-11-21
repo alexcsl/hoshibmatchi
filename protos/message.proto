@@ -50,9 +50,11 @@ message Message {
   string id = 1;
   string conversation_id = 2;
   string sender_id = 3;
-  string content = 4; // Text, image URL, GIF URL, etc.
+  string content = 4; // Text content (can be empty if media-only)
   string sent_at = 5;
   string sender_username = 6; // Denormalized
+  string media_url = 7; // URL of image/gif/video (optional)
+  string media_type = 8; // "image", "gif", "video" (optional)
 }
 
 // --- GetConversations ---
@@ -82,7 +84,9 @@ message GetMessagesResponse {
 message SendMessageRequest {
   int64 sender_id = 1; // From JWT
   string conversation_id = 2;
-  string content = 3;
+  string content = 3; // Text content (optional if media is present)
+  string media_url = 4; // URL of uploaded media (optional)
+  string media_type = 5; // "image", "gif", "video" (optional)
 }
 
 message SendMessageResponse {

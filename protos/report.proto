@@ -23,6 +23,9 @@ message PostReport {
   int64 post_id = 3;
   string reason = 4;
   string created_at = 5;
+  bool is_resolved = 6;
+  string reporter_username = 7;
+  int64 reported_post_id = 8;
 }
 
 message UserReport {
@@ -31,6 +34,9 @@ message UserReport {
   int64 reported_user_id = 3;
   string reason = 4;
   string created_at = 5;
+  bool is_resolved = 6;
+  string reporter_username = 7;
+  string reported_username = 8;
 }
 
 // --- User-facing Messages ---

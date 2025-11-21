@@ -1,5 +1,5 @@
 <template>
-  <div class="story-viewer" @click="handleClick">
+  <div class="story-viewer" @click="handleClick" @mousedown="handlePauseStart" @mouseup="handlePauseEnd" @mouseleave="handlePauseEnd">
     <button class="close-btn" @click.stop="$emit('close')">✕</button>
 
     <div class="story-container">
@@ -10,6 +10,11 @@
           class="story-image" 
           :style="{ filter: getFilterStyle(story.filter_name) }"
         />
+        
+        <!-- Pause Indicator -->
+        <div v-if="isPaused" class="pause-indicator">
+          <div class="pause-icon">⏸</div>
+        </div>
         
         <!-- Text Overlay -->
         <div v-if="story.caption" class="text-overlay">
@@ -39,15 +44,46 @@
             <div class="timestamp">{{ formatTime(story.created_at) }}</div>
           </div>
         </div>
-        <button class="more-btn">⋯</button>
+        <button class="more-btn" @click.stop>⋯</button>
       </div>
 
       <button v-if="canGoPrev" class="nav-btn prev" @click.stop="goToPrev">◀</button>
       <button v-if="canGoNext" class="nav-btn next" @click.stop="goToNext">▶</button>
 
-      <div class="story-reply">
-        <input type="text" placeholder="Reply..." class="reply-input" />
-        <button class="send-btn">📤</button>
+      <!-- Action Buttons -->
+      <div class="story-actions" @click.stop>
+        <button class="action-btn" @click="toggleLike" :class="{ liked: isLiked }">
+          <span class="icon">{{ isLiked ? '❤️' : '🤍' }}</span>
+        </button>
+        <button class="action-btn" @click="handleShare">
+          <span class="icon">📤</span>
+        </button>
+      </div>
+
+      <div class="story-reply" @click.stop>
+        <input 
+          v-model="replyMessage" 
+          type="text" 
+          placeholder="Reply..." 
+          class="reply-input"
+          @keyup.enter="sendReply"
+        />
+        <button class="send-btn" @click="sendReply" :disabled="!replyMessage.trim()">📤</button>
+      </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div v-if="showShareModal" class="modal-overlay" @click.stop="closeShareModal">
+      <div class="modal-content" @click.stop>
+        <h3>Share Story</h3>
+        <p>Choose a recipient:</p>
+        <div class="share-options">
+          <div class="share-option" @click="shareToMessages">
+            <span class="icon">💬</span>
+            <span>Send in Message</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" @click="closeShareModal">Cancel</button>
       </div>
     </div>
   </div>
@@ -55,6 +91,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { storyAPI } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 // Interface matching Backend Protobuf/JSON
 export interface Story {
@@ -66,6 +108,7 @@ export interface Story {
   caption?: string
   filter_name?: string
   stickers_json?: string
+  is_liked?: boolean
 }
 
 const props = defineProps<{
@@ -82,11 +125,20 @@ const emit = defineEmits<{
 const currentIndex = ref(props.initialIndex || 0)
 const progress = ref(0)
 const storyDuration = 5000 
+const isPaused = ref(false)
+const isLiked = ref(false)
+const replyMessage = ref('')
+const showShareModal = ref(false)
 
 const story = computed(() => props.stories[currentIndex.value])
 const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100))
 const canGoPrev = computed(() => currentIndex.value > 0)
 const canGoNext = computed(() => currentIndex.value < props.stories.length - 1)
+
+// Update liked status when story changes
+const updateLikedStatus = () => {
+  isLiked.value = story.value.is_liked || false
+}
 
 // Parse stickers from JSON
 const parsedStickers = computed(() => {
@@ -138,15 +190,18 @@ const formatTime = (dateStr: string) => {
 let interval: number | null = null
 
 const startProgress = () => {
+  if (isPaused.value) return
   stopProgress() // Ensure no duplicate intervals
   progress.value = 0
   interval = setInterval(() => {
-    progress.value += 100
-    if (progress.value >= storyDuration) {
-      if (canGoNext.value) {
-        goToNext()
-      } else {
-        emit('close')
+    if (!isPaused.value) {
+      progress.value += 100
+      if (progress.value >= storyDuration) {
+        if (canGoNext.value) {
+          goToNext()
+        } else {
+          emit('close')
+        }
       }
     }
   }, 100)
@@ -159,10 +214,19 @@ const stopProgress = () => {
   }
 }
 
+const handlePauseStart = () => {
+  isPaused.value = true
+}
+
+const handlePauseEnd = () => {
+  isPaused.value = false
+}
+
 const goToNext = () => {
   if (canGoNext.value) {
     currentIndex.value++
     emit('next')
+    updateLikedStatus()
     startProgress()
   } else {
     emit('close')
@@ -173,6 +237,7 @@ const goToPrev = () => {
   if (canGoPrev.value) {
     currentIndex.value--
     emit('prev')
+    updateLikedStatus()
     startProgress()
   } else {
       // Restart current story if at beginning
@@ -181,6 +246,12 @@ const goToPrev = () => {
 }
 
 const handleClick = (event: MouseEvent) => {
+  // Don't navigate if clicking on buttons or inputs
+  const target = event.target as HTMLElement
+  if (target.closest('.action-btn, .reply-input, .send-btn, .nav-btn, .close-btn, .more-btn')) {
+    return
+  }
+
   const element = event.currentTarget as HTMLElement
   const rect = element.getBoundingClientRect()
   const x = event.clientX - rect.left
@@ -192,7 +263,63 @@ const handleClick = (event: MouseEvent) => {
   }
 }
 
+// Like functionality
+const toggleLike = async () => {
+  try {
+    if (isLiked.value) {
+      await storyAPI.unlikeStory(story.value.id)
+      isLiked.value = false
+    } else {
+      await storyAPI.likeStory(story.value.id)
+      isLiked.value = true
+    }
+  } catch (error) {
+    console.error('Failed to toggle like:', error)
+  }
+}
+
+// Reply functionality
+const sendReply = () => {
+  if (!replyMessage.value.trim()) return
+  
+  // Navigate to messages with the story author
+  router.push({
+    name: 'Messages',
+    query: {
+      user: story.value.author_username,
+      message: `Story reply: ${replyMessage.value}`
+    }
+  })
+  
+  replyMessage.value = ''
+  emit('close')
+}
+
+// Share functionality
+const handleShare = () => {
+  showShareModal.value = true
+}
+
+const closeShareModal = () => {
+  showShareModal.value = false
+}
+
+const shareToMessages = () => {
+  // Navigate to messages to share the story
+  router.push({
+    name: 'Messages',
+    query: {
+      shareStory: story.value.id,
+      shareUrl: getMediaUrl(story.value.media_url)
+    }
+  })
+  
+  closeShareModal()
+  emit('close')
+}
+
 onMounted(() => {
+  updateLikedStatus()
   startProgress()
 })
 
@@ -284,6 +411,32 @@ onUnmounted(() => {
       transition: width 0.1s linear;
     }
   }
+
+  .pause-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+
+    .pause-icon {
+      font-size: 48px;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+      animation: pulse 1s ease-in-out infinite;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
 }
 
 .story-header {
@@ -356,6 +509,54 @@ onUnmounted(() => {
   }
 }
 
+.story-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 5;
+
+  .action-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+
+    .icon {
+      font-size: 24px;
+    }
+
+    &:hover {
+      transform: scale(1.1);
+      background: rgba(0, 0, 0, 0.7);
+    }
+
+    &.liked {
+      animation: heartBeat 0.3s ease;
+    }
+  }
+
+  @keyframes heartBeat {
+    0%, 100% {
+      transform: scale(1);
+    }
+    25% {
+      transform: scale(1.3);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+}
+
 .story-reply {
   position: absolute;
   bottom: 20px;
@@ -390,6 +591,93 @@ onUnmounted(() => {
     color: #fff;
     font-size: 18px;
     cursor: pointer;
+    transition: opacity 0.2s;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:not(:disabled):hover {
+      transform: scale(1.1);
+    }
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #262626;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  color: #fff;
+
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0 0 16px 0;
+    color: #a8a8a8;
+    font-size: 14px;
+  }
+
+  .share-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    .share-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #363636;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+
+      .icon {
+        font-size: 24px;
+      }
+
+      &:hover {
+        background: #404040;
+      }
+    }
+  }
+
+  .modal-close-btn {
+    width: 100%;
+    padding: 12px;
+    background: #363636;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #404040;
+    }
   }
 }
 </style>

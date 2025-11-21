@@ -128,7 +128,7 @@ import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
-import { commentAPI, postAPI, feedAPI } from '@/services/api' // Added postAPI
+import { commentAPI, postAPI, feedAPI, userAPI } from '@/services/api' // Added postAPI and userAPI
 import PostCard from '@/components/PostCard.vue'
 import StoryViewer from '@/components/StoryViewer.vue'
 
@@ -161,8 +161,23 @@ onUnmounted(() => {
 // Helper to mock "Top Users" by fetching explore feed authors
 const loadSuggestions = async () => {
   try {
+    // Try to get top users by follower count first
+    try {
+      const topUsers = await userAPI.getTopUsers(5)
+      if (topUsers && topUsers.length > 0) {
+        suggestedUsers.value = topUsers.map((user: any) => ({
+          id: user.user_id || user.id,
+          username: user.username,
+          profile_picture_url: user.profile_picture_url || user.profile_picture
+        }))
+        return
+      }
+    } catch (topUsersErr) {
+      console.log('Top users endpoint not available, falling back to explore')
+    }
+
+    // Fallback: Extract unique authors from explore feed
     const explorePosts = await feedAPI.getExploreFeed(1)
-    // Extract unique authors
     const uniqueAuthors = new Map()
     explorePosts.forEach((post: any) => {
        // Don't suggest self

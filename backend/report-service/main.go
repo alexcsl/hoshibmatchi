@@ -239,7 +239,23 @@ func (s *server) GetPostReports(ctx context.Context, req *pb.GetReportsRequest) 
 
 	var grpcReports []*pb.PostReport
 	for _, report := range reports {
-		grpcReports = append(grpcReports, gormToGrpcPostReport(&report))
+		// Fetch reporter username
+		reporterUsername := "unknown"
+		userRes, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: report.ReporterID})
+		if err == nil {
+			reporterUsername = userRes.Username
+		}
+
+		grpcReports = append(grpcReports, &pb.PostReport{
+			Id:               strconv.FormatUint(uint64(report.ID), 10),
+			ReporterId:       report.ReporterID,
+			PostId:           report.PostID,
+			Reason:           report.Reason,
+			CreatedAt:        report.CreatedAt.Format(time.RFC3339),
+			IsResolved:       report.IsResolved,
+			ReporterUsername: reporterUsername,
+			ReportedPostId:   report.PostID,
+		})
 	}
 
 	return &pb.GetPostReportsResponse{Reports: grpcReports}, nil
@@ -262,7 +278,28 @@ func (s *server) GetUserReports(ctx context.Context, req *pb.GetReportsRequest) 
 
 	var grpcReports []*pb.UserReport
 	for _, report := range reports {
-		grpcReports = append(grpcReports, gormToGrpcUserReport(&report))
+		// Fetch reporter and reported usernames
+		reporterUsername := "unknown"
+		reportedUsername := "unknown"
+
+		if userRes, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: report.ReporterID}); err == nil {
+			reporterUsername = userRes.Username
+		}
+
+		if userRes, err := s.userClient.GetUserData(ctx, &userPb.GetUserDataRequest{UserId: report.ReportedUserID}); err == nil {
+			reportedUsername = userRes.Username
+		}
+
+		grpcReports = append(grpcReports, &pb.UserReport{
+			Id:               strconv.FormatUint(uint64(report.ID), 10),
+			ReporterId:       report.ReporterID,
+			ReportedUserId:   report.ReportedUserID,
+			Reason:           report.Reason,
+			CreatedAt:        report.CreatedAt.Format(time.RFC3339),
+			IsResolved:       report.IsResolved,
+			ReporterUsername: reporterUsername,
+			ReportedUsername: reportedUsername,
+		})
 	}
 
 	return &pb.GetUserReportsResponse{Reports: grpcReports}, nil

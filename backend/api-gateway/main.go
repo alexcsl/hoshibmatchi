@@ -2,6 +2,26 @@ package main
 
 // API Gateway: Main entry point for all client requests
 
+// @title           Hoshibmatchi API
+// @version         1.0
+// @description     API Gateway for Hoshibmatchi social media platform
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.hoshibmatchi.com/support
+// @contact.email  support@hoshibmatchi.com
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8000
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 import (
 	"bytes"
 	"context"
@@ -11,12 +31,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	// Import the gRPC client connection library
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -37,6 +60,8 @@ import (
 	reportPb "github.com/hoshibmatchi/report-service/proto"
 	storyPb "github.com/hoshibmatchi/story-service/proto"
 	pb "github.com/hoshibmatchi/user-service/proto"
+
+	_ "github.com/hoshibmatchi/api-gateway/docs" // This will be generated
 )
 
 // client will hold the persistent gRPC connection
@@ -146,6 +171,9 @@ func main() {
 		c.Next()
 	})
 
+	// Swagger documentation route
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// Public routes (no auth required)
 	router.GET("/health", func(c *gin.Context) {
 		c.String(http.StatusOK, "API Gateway is running")
@@ -210,6 +238,9 @@ func main() {
 		protected.POST("/users/:id/follow", handleFollowUser_Gin)
 		protected.DELETE("/users/:id/follow", handleFollowUser_Gin)
 		protected.GET("/users/:id/followers", handleGetFollowersList_Gin)
+		protected.GET("/users/:id/following", handleGetFollowingList_Gin)
+		protected.GET("/users/top", handleGetTopUsers_Gin)
+		protected.GET("/posts/:id/likes", handleGetPostLikers_Gin)
 
 		// Profile
 		protected.GET("/users/:id", handleGetUserProfile_Gin)
@@ -236,6 +267,7 @@ func main() {
 		// Messsage
 		protected.POST("/conversations", handleCreateConversation_Gin)
 		protected.POST("/conversations/:id/messages", handleSendMessage_Gin)
+		protected.POST("/conversations/:id/messages/media", handleSendMessageWithMedia_Gin)
 
 		protected.GET("/conversations", handleGetConversations_Gin)
 		protected.GET("/conversations/:id/messages", handleGetMessages_Gin)
@@ -268,6 +300,7 @@ func main() {
 	admin := router.Group("/admin")
 	admin.Use(AdminAuthMiddleware()) // Use our new middleware
 	{
+		admin.GET("/users", handleGetAllUsers_Gin)
 		admin.POST("/users/:id/ban", handleBanUser_Gin)
 		admin.POST("/users/:id/unban", handleUnbanUser_Gin)
 
@@ -746,6 +779,18 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 // --- GIN-NATIVE HANDLER: handleCreatePost ---
+// handleCreatePost_Gin godoc
+// @Summary Create a new post
+// @Description Create a new post with caption and media
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param request body object true "Post data"
+// @Success 201 {object} object "Created post"
+// @Failure 400 {object} object "Bad request"
+// @Failure 401 {object} object "Unauthorized"
+// @Security BearerAuth
+// @Router /posts [post]
 func handleCreatePost_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -908,6 +953,18 @@ func handleFollowUser_Gin(c *gin.Context) {
 	}
 }
 
+// handlePostLike_Gin godoc
+// @Summary Like or unlike a post
+// @Description Like a post (POST) or unlike a post (DELETE)
+// @Tags posts
+// @Accept json
+// @Produce json
+// @Param id path string true "Post ID"
+// @Success 200 {object} object "Success message"
+// @Failure 400 {object} object "Bad request"
+// @Failure 401 {object} object "Unauthorized"
+// @Security BearerAuth
+// @Router /posts/{id}/like [post]
 func handlePostLike_Gin(c *gin.Context) {
 	// --- THIS IS THE FIX ---
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -1150,6 +1207,18 @@ func handleGetUploadURL_Gin(c *gin.Context) {
 }
 
 // --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
+// handleGetHomeFeed_Gin godoc
+// @Summary Get home feed
+// @Description Get personalized home feed for the authenticated user
+// @Tags feed
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {array} object "List of posts"
+// @Failure 401 {object} object "Unauthorized"
+// @Security BearerAuth
+// @Router /feed/home [get]
 func handleGetHomeFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1258,6 +1327,17 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLER: handleGetUserProfile ---
 // This is a complex aggregator handler
+// handleGetUserProfile_Gin godoc
+// @Summary Get user profile
+// @Description Get user profile by user ID or username
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID or username"
+// @Success 200 {object} object "User profile"
+// @Failure 404 {object} object "User not found"
+// @Security BearerAuth
+// @Router /users/{id} [get]
 func handleGetUserProfile_Gin(c *gin.Context) {
 	selfUserID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1839,6 +1919,92 @@ func handleSendMessage_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Message)
 }
 
+// --- GIN-NATIVE HANDLER: handleSendMessageWithMedia ---
+func handleSendMessageWithMedia_Gin(c *gin.Context) {
+	senderID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get conversation ID from URL param
+	convoID := c.Param("id")
+
+	// Parse multipart form
+	if err := c.Request.ParseMultipartForm(50 << 20); err != nil { // 50MB max
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse multipart form"})
+		return
+	}
+
+	// Get optional text content
+	content := c.PostForm("content")
+
+	// Get the uploaded file
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'file' in request"})
+		return
+	}
+	defer file.Close()
+
+	// Determine media type based on content type
+	contentType := header.Header.Get("Content-Type")
+	var mediaType string
+	if strings.HasPrefix(contentType, "image/gif") {
+		mediaType = "gif"
+	} else if strings.HasPrefix(contentType, "image/") {
+		mediaType = "image"
+	} else if strings.HasPrefix(contentType, "video/") {
+		mediaType = "video"
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported media type. Only images, GIFs, and videos are allowed"})
+		return
+	}
+
+	// Read file content
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Printf("Failed to read file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		return
+	}
+
+	// Upload file directly via media service gRPC
+	uploadReq := &mediaPb.UploadMediaRequest{
+		Filename:    header.Filename,
+		ContentType: contentType,
+		UserId:      senderID,
+		FileData:    fileBytes,
+	}
+
+	uploadRes, err := mediaClient.UploadMedia(c.Request.Context(), uploadReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("Failed to upload media: %v", err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": "Failed to upload media"})
+		return
+	}
+
+	// Send message with media URL
+	grpcReq := &messagePb.SendMessageRequest{
+		SenderId:       senderID,
+		ConversationId: convoID,
+		Content:        content,
+		MediaUrl:       uploadRes.MediaUrl,
+		MediaType:      mediaType,
+	}
+
+	grpcRes, err := messageClient.SendMessage(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to SendMessage failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, grpcRes.Message)
+}
+
 // --- GIN-NATIVE HANDLER: handleGetConversations ---
 func handleGetConversations_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -2072,6 +2238,31 @@ func handleReportUser_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetAllUsers (Admin) ---
+func handleGetAllUsers_Gin(c *gin.Context) {
+	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get admin ID from token"})
+		return
+	}
+
+	// Use search with empty/wildcard query to get all users
+	grpcReq := &pb.SearchUsersRequest{
+		Query:      " ", // Space as query to match all
+		SelfUserId: adminID,
+	}
+
+	grpcRes, err := client.SearchUsers(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to SearchUsers (GetAllUsers) failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Users)
 }
 
 // --- GIN-NATIVE HANDLER: handleBanUser ---
@@ -2608,12 +2799,119 @@ func handleGetFollowersList_Gin(c *gin.Context) {
 
 	res, err := client.GetFollowersList(c.Request.Context(), &pb.GetFollowersListRequest{UserId: userID})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get followers"})
 		return
 	}
-	// We just return IDs for now, ideally we'd hydrate them with profiles,
-	// but the frontend asked for the list/count fix first.
-	c.JSON(http.StatusOK, res.FollowerUserIds)
+
+	// Hydrate user IDs with full user data
+	users := make([]map[string]interface{}, 0)
+	for _, followerID := range res.FollowerUserIds {
+		userRes, err := client.GetUserData(c.Request.Context(), &pb.GetUserDataRequest{UserId: followerID})
+		if err != nil {
+			continue
+		}
+		users = append(users, map[string]interface{}{
+			"user_id":             userRes.Id,
+			"username":            userRes.Username,
+			"profile_picture_url": userRes.ProfilePictureUrl,
+			"is_verified":         userRes.IsVerified,
+		})
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+// --- HANDLER: GetFollowingList ---
+func handleGetFollowingList_Gin(c *gin.Context) {
+	userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	res, err := client.GetFollowingList(c.Request.Context(), &pb.GetFollowingListRequest{UserId: userID})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get following"})
+		return
+	}
+
+	// Hydrate user IDs with full user data
+	users := make([]map[string]interface{}, 0)
+	for _, followingID := range res.FollowingUserIds {
+		userRes, err := client.GetUserData(c.Request.Context(), &pb.GetUserDataRequest{UserId: followingID})
+		if err != nil {
+			continue
+		}
+		users = append(users, map[string]interface{}{
+			"user_id":             userRes.Id,
+			"username":            userRes.Username,
+			"profile_picture_url": userRes.ProfilePictureUrl,
+			"is_verified":         userRes.IsVerified,
+		})
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+// --- HANDLER: GetPostLikers ---
+func handleGetPostLikers_Gin(c *gin.Context) {
+	postIDStr := c.Param("id")
+
+	// For now, return empty array as this requires querying post_likes table
+	// which needs to be added to post-service proto
+	// TODO: Add GetPostLikers RPC to post-service
+	_ = postIDStr
+	c.JSON(http.StatusOK, []map[string]interface{}{})
+}
+
+// --- HANDLER: GetTopUsers ---
+func handleGetTopUsers_Gin(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50 // Cap at 50
+	}
+
+	userID, _ := c.Request.Context().Value(userIDKey).(int64)
+
+	// Use SearchUsers with empty query to get all users
+	res, err := client.SearchUsers(c.Request.Context(), &pb.SearchUsersRequest{
+		Query:      "",
+		SelfUserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
+		return
+	}
+
+	// Convert to slice for sorting
+	type userWithFollowers struct {
+		UserID            int64  `json:"user_id"`
+		Username          string `json:"username"`
+		ProfilePictureURL string `json:"profile_picture_url"`
+		IsVerified        bool   `json:"is_verified"`
+		FollowerCount     int64  `json:"follower_count"`
+	}
+
+	users := make([]userWithFollowers, 0)
+	for _, user := range res.Users {
+		users = append(users, userWithFollowers{
+			UserID:            user.UserId,
+			Username:          user.Username,
+			ProfilePictureURL: user.ProfilePictureUrl,
+			IsVerified:        user.IsVerified,
+			FollowerCount:     user.FollowerCount,
+		})
+	}
+
+	// Sort by follower count descending
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].FollowerCount > users[j].FollowerCount
+	})
+
+	// Take top N
+	if len(users) > limit {
+		users = users[:limit]
+	}
+
+	c.JSON(http.StatusOK, users)
 }
 
 // --- HANDLER: GetStoryFeed ---

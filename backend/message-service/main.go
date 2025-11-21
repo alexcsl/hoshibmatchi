@@ -52,9 +52,11 @@ type Participant struct {
 // Message is a single message within a conversation.
 type Message struct {
 	gorm.Model
-	ConversationID uint  `gorm:"index"` // Foreign key to Conversation
-	SenderID       int64 `gorm:"index"` // The UserID of the sender
-	Content        string
+	ConversationID uint   `gorm:"index"` // Foreign key to Conversation
+	SenderID       int64  `gorm:"index"` // The UserID of the sender
+	Content        string // Text content (can be empty if media-only)
+	MediaURL       string // URL of image/gif/video (optional)
+	MediaType      string // "image", "gif", "video" (optional)
 }
 
 type HiddenConversation struct {
@@ -392,6 +394,8 @@ func (s *server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 		ConversationID: uint(convoID),
 		SenderID:       req.SenderId,
 		Content:        req.Content,
+		MediaURL:       req.MediaUrl,
+		MediaType:      req.MediaType,
 	}
 
 	// We use a transaction to save the message AND update the conversation's timestamp
@@ -446,6 +450,8 @@ func (s *server) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*
 			Content:        newMessage.Content,
 			SentAt:         newMessage.CreatedAt.Format(time.RFC3339),
 			SenderUsername: "...", // Denormalization failed
+			MediaUrl:       newMessage.MediaURL,
+			MediaType:      newMessage.MediaType,
 		}
 	}
 
@@ -472,6 +478,8 @@ func (s *server) gormToGrpcMessage(ctx context.Context, msg *Message) (*pb.Messa
 		Content:        msg.Content,
 		SentAt:         msg.CreatedAt.Format(time.RFC3339),
 		SenderUsername: userData.Username,
+		MediaUrl:       msg.MediaURL,
+		MediaType:      msg.MediaType,
 	}, nil
 }
 

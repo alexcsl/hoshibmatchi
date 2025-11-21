@@ -1,0 +1,146 @@
+basePath: /
+host: localhost:8000
+info:
+  contact:
+    email: support@hoshibmatchi.com
+    name: API Support
+    url: http://www.hoshibmatchi.com/support
+  description: API Gateway for Hoshibmatchi social media platform
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Hoshibmatchi API
+  version: "1.0"
+paths:
+  /feed/home:
+    get:
+      consumes:
+      - application/json
+      description: Get personalized home feed for the authenticated user
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of posts
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get home feed
+      tags:
+      - feed
+  /posts:
+    post:
+      consumes:
+      - application/json
+      description: Create a new post with caption and media
+      parameters:
+      - description: Post data
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created post
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new post
+      tags:
+      - posts
+  /posts/{id}/like:
+    post:
+      consumes:
+      - application/json
+      description: Like a post (POST) or unlike a post (DELETE)
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success message
+          schema:
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Like or unlike a post
+      tags:
+      - posts
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user profile by user ID or username
+      parameters:
+      - description: User ID or username
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile
+          schema:
+            type: object
+        "404":
+          description: User not found
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

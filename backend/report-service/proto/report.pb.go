@@ -23,14 +23,17 @@ const (
 
 // --- Data Structures ---
 type PostReport struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ReporterId    int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
-	PostId        int64                  `protobuf:"varint,3,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId       int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	PostId           int64                  `protobuf:"varint,3,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	Reason           string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt        string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	IsResolved       bool                   `protobuf:"varint,6,opt,name=is_resolved,json=isResolved,proto3" json:"is_resolved,omitempty"`
+	ReporterUsername string                 `protobuf:"bytes,7,opt,name=reporter_username,json=reporterUsername,proto3" json:"reporter_username,omitempty"`
+	ReportedPostId   int64                  `protobuf:"varint,8,opt,name=reported_post_id,json=reportedPostId,proto3" json:"reported_post_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PostReport) Reset() {
@@ -98,15 +101,39 @@ func (x *PostReport) GetCreatedAt() string {
 	return ""
 }
 
+func (x *PostReport) GetIsResolved() bool {
+	if x != nil {
+		return x.IsResolved
+	}
+	return false
+}
+
+func (x *PostReport) GetReporterUsername() string {
+	if x != nil {
+		return x.ReporterUsername
+	}
+	return ""
+}
+
+func (x *PostReport) GetReportedPostId() int64 {
+	if x != nil {
+		return x.ReportedPostId
+	}
+	return 0
+}
+
 type UserReport struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ReporterId     int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
-	ReportedUserId int64                  `protobuf:"varint,3,opt,name=reported_user_id,json=reportedUserId,proto3" json:"reported_user_id,omitempty"`
-	Reason         string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
-	CreatedAt      string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId       int64                  `protobuf:"varint,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	ReportedUserId   int64                  `protobuf:"varint,3,opt,name=reported_user_id,json=reportedUserId,proto3" json:"reported_user_id,omitempty"`
+	Reason           string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	CreatedAt        string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	IsResolved       bool                   `protobuf:"varint,6,opt,name=is_resolved,json=isResolved,proto3" json:"is_resolved,omitempty"`
+	ReporterUsername string                 `protobuf:"bytes,7,opt,name=reporter_username,json=reporterUsername,proto3" json:"reporter_username,omitempty"`
+	ReportedUsername string                 `protobuf:"bytes,8,opt,name=reported_username,json=reportedUsername,proto3" json:"reported_username,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UserReport) Reset() {
@@ -170,6 +197,27 @@ func (x *UserReport) GetReason() string {
 func (x *UserReport) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *UserReport) GetIsResolved() bool {
+	if x != nil {
+		return x.IsResolved
+	}
+	return false
+}
+
+func (x *UserReport) GetReporterUsername() string {
+	if x != nil {
+		return x.ReporterUsername
+	}
+	return ""
+}
+
+func (x *UserReport) GetReportedUsername() string {
+	if x != nil {
+		return x.ReportedUsername
 	}
 	return ""
 }
@@ -552,7 +600,7 @@ var File_report_proto protoreflect.FileDescriptor
 
 const file_report_proto_rawDesc = "" +
 	"\n" +
-	"\freport.proto\x12\x06report\"\x8d\x01\n" +
+	"\freport.proto\x12\x06report\"\x85\x02\n" +
 	"\n" +
 	"PostReport\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
@@ -561,7 +609,11 @@ const file_report_proto_rawDesc = "" +
 	"\apost_id\x18\x03 \x01(\x03R\x06postId\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\tR\tcreatedAt\"\x9e\x01\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1f\n" +
+	"\vis_resolved\x18\x06 \x01(\bR\n" +
+	"isResolved\x12+\n" +
+	"\x11reporter_username\x18\a \x01(\tR\x10reporterUsername\x12(\n" +
+	"\x10reported_post_id\x18\b \x01(\x03R\x0ereportedPostId\"\x99\x02\n" +
 	"\n" +
 	"UserReport\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
@@ -570,7 +622,11 @@ const file_report_proto_rawDesc = "" +
 	"\x10reported_user_id\x18\x03 \x01(\x03R\x0ereportedUserId\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\tR\tcreatedAt\"e\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x1f\n" +
+	"\vis_resolved\x18\x06 \x01(\bR\n" +
+	"isResolved\x12+\n" +
+	"\x11reporter_username\x18\a \x01(\tR\x10reporterUsername\x12+\n" +
+	"\x11reported_username\x18\b \x01(\tR\x10reportedUsername\"e\n" +
 	"\x11ReportPostRequest\x12\x1f\n" +
 	"\vreporter_id\x18\x01 \x01(\x03R\n" +
 	"reporterId\x12\x17\n" +

@@ -114,6 +114,62 @@
       @like="handlePostLike"
       @save="handlePostSave"
     />
+
+    <!-- Followers Modal -->
+    <div v-if="showFollowersModal" class="modal-overlay" @click="showFollowersModal = false">
+      <div class="followers-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Followers</h3>
+          <button class="close-btn" @click="showFollowersModal = false">✕</button>
+        </div>
+        <div class="users-list">
+          <div v-if="loadingFollowers" class="loading-users">Loading...</div>
+          <div v-else-if="followers.length === 0" class="no-users">No followers yet</div>
+          <div v-else v-for="user in followers" :key="user.user_id" class="user-item" @click="navigateToProfile(user.username)">
+            <img 
+              :src="user.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
+              :alt="user.username" 
+              class="user-avatar" 
+            />
+            <div class="user-info">
+              <div class="user-username">
+                {{ user.username }}
+                <span v-if="user.is_verified" class="verified">✓</span>
+              </div>
+              <div v-if="user.full_name" class="user-fullname">{{ user.full_name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Following Modal -->
+    <div v-if="showFollowingModal" class="modal-overlay" @click="showFollowingModal = false">
+      <div class="followers-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Following</h3>
+          <button class="close-btn" @click="showFollowingModal = false">✕</button>
+        </div>
+        <div class="users-list">
+          <div v-if="loadingFollowing" class="loading-users">Loading...</div>
+          <div v-else-if="following.length === 0" class="no-users">Not following anyone yet</div>
+          <div v-else v-for="user in following" :key="user.user_id" class="user-item" @click="navigateToProfile(user.username)">
+            <img 
+              :src="user.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
+              :alt="user.username" 
+              class="user-avatar" 
+            />
+            <div class="user-info">
+              <div class="user-username">
+                {{ user.username }}
+                <span v-if="user.is_verified" class="verified">✓</span>
+              </div>
+              <div v-if="user.full_name" class="user-fullname">{{ user.full_name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -371,8 +427,55 @@ const toggleFollow = async () => {
 }
 
 const sendMessage = () => router.push({ name: 'Messages', query: { user: profile.value.username } })
-const showFollowers = () => console.log('Show followers')
-const showFollowing = () => console.log('Show following')
+
+const showFollowersModal = ref(false)
+const showFollowingModal = ref(false)
+const followers = ref<any[]>([])
+const following = ref<any[]>([])
+const loadingFollowers = ref(false)
+const loadingFollowing = ref(false)
+
+const showFollowers = async () => {
+  showFollowersModal.value = true
+  loadingFollowers.value = true
+  
+  try {
+    const userId = profile.value?.user_id || authStore.user?.user_id
+    if (userId) {
+      const response = await userAPI.getFollowers(userId)
+      followers.value = response
+    }
+  } catch (err) {
+    console.error('Failed to load followers:', err)
+    followers.value = []
+  } finally {
+    loadingFollowers.value = false
+  }
+}
+
+const showFollowing = async () => {
+  showFollowingModal.value = true
+  loadingFollowing.value = true
+  
+  try {
+    const userId = profile.value?.user_id || authStore.user?.user_id
+    if (userId) {
+      const response = await userAPI.getFollowing(userId)
+      following.value = response
+    }
+  } catch (err) {
+    console.error('Failed to load following:', err)
+    following.value = []
+  } finally {
+    loadingFollowing.value = false
+  }
+}
+
+const navigateToProfile = (username: string) => {
+  showFollowersModal.value = false
+  showFollowingModal.value = false
+  router.push(`/${username}`)
+}
 
 const formatNumber = (num: number) => {
   if (!num) return '0'
@@ -577,6 +680,123 @@ watch(() => route.params.username, () => {
     .profile-info {
         .profile-top { grid-column: 1 / -1; display: block; margin-top: 12px; }
         .stats { justify-content: space-around; border-top: 1px solid #262626; padding: 12px 0; margin: 0; grid-column: 1 / -1; }
+    }
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.followers-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+
+    h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #8e8e8e;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .users-list {
+    overflow-y: auto;
+    padding: 12px 20px;
+    flex: 1;
+
+    .loading-users,
+    .no-users {
+      text-align: center;
+      padding: 20px;
+      color: #8e8e8e;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #404040;
+      cursor: pointer;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+
+      .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+
+      .user-info {
+        flex: 1;
+
+        .user-username {
+          font-size: 14px;
+          font-weight: 600;
+          color: #fff;
+
+          .verified {
+            color: #4a9eff;
+            margin-left: 4px;
+          }
+        }
+
+        .user-fullname {
+          font-size: 12px;
+          color: #8e8e8e;
+          margin-top: 2px;
+        }
+      }
     }
   }
 }

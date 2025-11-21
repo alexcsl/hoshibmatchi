@@ -123,9 +123,11 @@ type Message struct {
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
 	SenderId       string                 `protobuf:"bytes,3,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
-	Content        string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"` // Text, image URL, GIF URL, etc.
+	Content        string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"` // Text content (can be empty if media-only)
 	SentAt         string                 `protobuf:"bytes,5,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
 	SenderUsername string                 `protobuf:"bytes,6,opt,name=sender_username,json=senderUsername,proto3" json:"sender_username,omitempty"` // Denormalized
+	MediaUrl       string                 `protobuf:"bytes,7,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`                   // URL of image/gif/video (optional)
+	MediaType      string                 `protobuf:"bytes,8,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`                // "image", "gif", "video" (optional)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -198,6 +200,20 @@ func (x *Message) GetSentAt() string {
 func (x *Message) GetSenderUsername() string {
 	if x != nil {
 		return x.SenderUsername
+	}
+	return ""
+}
+
+func (x *Message) GetMediaUrl() string {
+	if x != nil {
+		return x.MediaUrl
+	}
+	return ""
+}
+
+func (x *Message) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
 	}
 	return ""
 }
@@ -425,7 +441,9 @@ type SendMessageRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	SenderId       int64                  `protobuf:"varint,1,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"` // From JWT
 	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
-	Content        string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
+	Content        string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`                      // Text content (optional if media is present)
+	MediaUrl       string                 `protobuf:"bytes,4,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`    // URL of uploaded media (optional)
+	MediaType      string                 `protobuf:"bytes,5,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"` // "image", "gif", "video" (optional)
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -477,6 +495,20 @@ func (x *SendMessageRequest) GetConversationId() string {
 func (x *SendMessageRequest) GetContent() string {
 	if x != nil {
 		return x.Content
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetMediaUrl() string {
+	if x != nil {
+		return x.MediaUrl
+	}
+	return ""
+}
+
+func (x *SendMessageRequest) GetMediaType() string {
+	if x != nil {
+		return x.MediaType
 	}
 	return ""
 }
@@ -1325,14 +1357,17 @@ const file_message_proto_rawDesc = "" +
 	"\bis_group\x18\x05 \x01(\bR\aisGroup\x12\x1d\n" +
 	"\n" +
 	"group_name\x18\x06 \x01(\tR\tgroupName\x12&\n" +
-	"\x0fgroup_image_url\x18\a \x01(\tR\rgroupImageUrl\"\xbb\x01\n" +
+	"\x0fgroup_image_url\x18\a \x01(\tR\rgroupImageUrl\"\xf7\x01\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x1b\n" +
 	"\tsender_id\x18\x03 \x01(\tR\bsenderId\x12\x18\n" +
 	"\acontent\x18\x04 \x01(\tR\acontent\x12\x17\n" +
 	"\asent_at\x18\x05 \x01(\tR\x06sentAt\x12'\n" +
-	"\x0fsender_username\x18\x06 \x01(\tR\x0esenderUsername\"p\n" +
+	"\x0fsender_username\x18\x06 \x01(\tR\x0esenderUsername\x12\x1b\n" +
+	"\tmedia_url\x18\a \x01(\tR\bmediaUrl\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\b \x01(\tR\tmediaType\"p\n" +
 	"\x17GetConversationsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\x12\x1f\n" +
@@ -1347,11 +1382,14 @@ const file_message_proto_rawDesc = "" +
 	"\vpage_offset\x18\x04 \x01(\x05R\n" +
 	"pageOffset\"C\n" +
 	"\x13GetMessagesResponse\x12,\n" +
-	"\bmessages\x18\x01 \x03(\v2\x10.message.MessageR\bmessages\"t\n" +
+	"\bmessages\x18\x01 \x03(\v2\x10.message.MessageR\bmessages\"\xb0\x01\n" +
 	"\x12SendMessageRequest\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\x03R\bsenderId\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x18\n" +
-	"\acontent\x18\x03 \x01(\tR\acontent\"A\n" +
+	"\acontent\x18\x03 \x01(\tR\acontent\x12\x1b\n" +
+	"\tmedia_url\x18\x04 \x01(\tR\bmediaUrl\x12\x1d\n" +
+	"\n" +
+	"media_type\x18\x05 \x01(\tR\tmediaType\"A\n" +
 	"\x13SendMessageResponse\x12*\n" +
 	"\amessage\x18\x01 \x01(\v2\x10.message.MessageR\amessage\"\xaa\x01\n" +
 	"\x19CreateConversationRequest\x12\x1d\n" +

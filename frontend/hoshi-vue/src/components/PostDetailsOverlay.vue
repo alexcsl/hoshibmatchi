@@ -76,7 +76,7 @@
                 <div class="comment-content">
                   <div class="comment-text">
                     <strong>{{ postData.author_username }}</strong>
-                    {{ postData.caption }}
+                    <span v-html="formattedCaption" @click="handleRichTextClick"></span>
                   </div>
                   <div class="comment-time">{{ formatTimestamp(postData.created_at) }}</div>
                 </div>
@@ -267,6 +267,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useFeedStore } from '@/stores/feed'
 import { useAuthStore } from '@/stores/auth'
 import { commentAPI, postAPI } from '@/services/api'
+import { useRichText } from '@/composables/useRichText'
 
 interface Comment {
   id: string
@@ -296,6 +297,7 @@ const emit = defineEmits<{
 
 const feedStore = useFeedStore()
 const authStore = useAuthStore()
+const { formatRichText, handleRichTextClick } = useRichText()
 
 const loading = ref(false)
 const loadingComments = ref(false)
@@ -319,6 +321,11 @@ const postData = computed(() => {
   return feedStore.homeFeed.find(p => p.id === props.postId) ||
          feedStore.exploreFeed.find(p => p.id === props.postId) ||
          feedStore.reelsFeed.find(p => p.id === props.postId)
+})
+
+const formattedCaption = computed(() => {
+  if (!postData.value?.caption) return ''
+  return formatRichText(postData.value.caption)
 })
 
 const currentPostIndex = computed(() => {
@@ -1148,6 +1155,17 @@ const selectGif = (gif: any) => {
 
 .like-btn.liked {
   color: #ff4458;
+}
+
+/* Rich text styles for hashtags and mentions */
+:deep(.rich-text-hashtag),
+:deep(.rich-text-mention) {
+  color: #0095f6;
+  font-weight: 500;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 @media (max-width: 768px) {

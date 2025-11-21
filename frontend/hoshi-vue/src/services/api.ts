@@ -291,6 +291,24 @@ export const userAPI = {
   searchUsers: async (query: string) => {
     const response = await apiClient.get(`/search/users?q=${encodeURIComponent(query)}`)
     return response.data
+  },
+
+  // Get followers list
+  getFollowers: async (userId: number) => {
+    const response = await apiClient.get(`/users/${userId}/followers`)
+    return response.data
+  },
+
+  // Get following list
+  getFollowing: async (userId: number) => {
+    const response = await apiClient.get(`/users/${userId}/following`)
+    return response.data
+  },
+
+  // Get top users by follower count
+  getTopUsers: async (limit: number = 5) => {
+    const response = await apiClient.get(`/users/top?limit=${limit}`)
+    return response.data
   }
 }
 
@@ -365,6 +383,12 @@ export const postAPI = {
 
   sharePost: async (postId: string, caption?: string) => {
     const response = await apiClient.post(`/posts/${postId}/share`, { caption })
+    return response.data
+  },
+
+  // Get post likers
+  getPostLikers: async (postId: string) => {
+    const response = await apiClient.get(`/posts/${postId}/likes`)
     return response.data
   },
 
@@ -540,6 +564,25 @@ export const messageAPI = {
   getVideoToken: async (conversationId: string) => {
     const response = await apiClient.get(`/conversations/${conversationId}/video_token`)
     return response.data
+  },
+
+  sendMessageWithMedia: async (conversationId: string, formData: FormData) => {
+    const response = await apiClient.post(`/conversations/${conversationId}/messages/media`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  },
+
+  addParticipant: async (conversationId: string, userId: number) => {
+    const response = await apiClient.post(`/conversations/${conversationId}/participants`, { user_id: userId })
+    return response.data
+  },
+
+  removeParticipant: async (conversationId: string, userId: number) => {
+    const response = await apiClient.delete(`/conversations/${conversationId}/participants/${userId}`)
+    return response.data
   }
 }
 
@@ -603,8 +646,8 @@ export interface UserListItem {
 export const adminAPI = {
   // User Management
   getAllUsers: async () => {
-    const response = await apiClient.get<{ users: UserListItem[] }>('/users')
-    return response.data
+    const response = await apiClient.get<UserListItem[]>('/admin/users')
+    return { users: response.data }
   },
 
   banUser: async (userId: number) => {
@@ -617,15 +660,15 @@ export const adminAPI = {
     return response.data
   },
 
-  // Reports Management
+  // Reports Management - backend returns arrays directly
   getPostReports: async () => {
-    const response = await apiClient.get<{ reports: PostReport[] }>('/admin/reports/posts')
-    return response.data
+    const response = await apiClient.get<PostReport[]>('/admin/reports/posts?unresolved_only=false')
+    return { reports: response.data }
   },
 
   getUserReports: async () => {
-    const response = await apiClient.get<{ reports: UserReport[] }>('/admin/reports/users')
-    return response.data
+    const response = await apiClient.get<UserReport[]>('/admin/reports/users?unresolved_only=false')
+    return { reports: response.data }
   },
 
   resolvePostReport: async (reportId: number, action: 'ACCEPT' | 'REJECT') => {
@@ -638,10 +681,10 @@ export const adminAPI = {
     return response.data
   },
 
-  // Verification Requests
+  // Verification Requests - backend returns array directly
   getVerifications: async () => {
-    const response = await apiClient.get<{ requests: VerificationRequest[] }>('/admin/verifications')
-    return response.data
+    const response = await apiClient.get<VerificationRequest[]>('/admin/verifications?status=all')
+    return { requests: response.data }
   },
 
   resolveVerification: async (verificationId: number, action: 'APPROVE' | 'REJECT', reason?: string) => {

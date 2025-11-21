@@ -10,7 +10,7 @@
       <div class="form-section">
         <div class="form-content">
           <!-- Logo -->
-          <h1 class="logo">Instagram</h1>
+          <h1 class="logo">hoshiBmaTchi</h1>
 
           <!-- Success Message -->
           <div v-if="successMessage" class="success-alert">
