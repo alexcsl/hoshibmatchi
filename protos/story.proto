@@ -16,6 +16,8 @@ service StoryService {
   rpc GetStoryFeed (GetStoryFeedRequest) returns (GetStoryFeedResponse);
   // NEW: Delete story (for worker or user)
   rpc DeleteStory (DeleteStoryRequest) returns (DeleteStoryResponse);
+  // NEW: Get user's archive (all their stories)
+  rpc GetUserArchive (GetUserArchiveRequest) returns (GetUserArchiveResponse);
 }
 
 // Data from the API Gateway
@@ -86,4 +88,11 @@ message DeleteStoryRequest {
 }
 message DeleteStoryResponse {
     string message = 1;
+}
+
+message GetUserArchiveRequest {
+    int64 user_id = 1; // The user whose archive we want to fetch
+}
+message GetUserArchiveResponse {
+    repeated Story stories = 1;
 }

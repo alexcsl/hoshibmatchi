@@ -3,12 +3,8 @@
     <div class="sidebar-content">
       <!-- Logo -->
       <router-link to="/feed" class="logo">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-          <path d="M8 12a4 4 0 108 0 4 4 0 00-8 0z" stroke="currentColor" stroke-width="2" fill="none"/>
-          <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/>
-        </svg>
-        <span class="logo-text">Instagram</span>
+        <img class="logo-image" src="../../public/instagram-logo.png" alt="Hoshi Logo" />
+        <span class="logo-text">hoshiBmaTchi</span>
       </router-link>
 
       <!-- Navigation Items -->
@@ -49,6 +45,7 @@
         <NavItem 
           icon="heart"
           label="Notifications"
+          :badge="unreadNotificationCount"
           @click="$emit('open-notifications')"
         />
         <NavItem 
@@ -81,6 +78,10 @@
             <span class="icon">🔖</span>
             <span>Saved</span>
           </button>
+          <button v-if="isAdmin" class="dropdown-item" @click="handleAdmin">
+            <span class="icon">👑</span>
+            <span>Admin Dashboard</span>
+          </button>
           <div class="dropdown-divider"></div>
           <button class="dropdown-item theme-switcher">
             <span class="icon">🌙</span>
@@ -98,8 +99,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import NavItem from './NavItem.vue'
+import { notificationAPI } from '../services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const props = defineProps<{
   currentRoute: string
@@ -117,6 +122,37 @@ const emit = defineEmits<{
 
 const showMoreMenu = ref(false)
 const currentTheme = ref('dark')
+const unreadNotificationCount = ref(0)
+let pollInterval: ReturnType<typeof setInterval> | null = null
+
+// Check if user is admin
+const isAdmin = computed(() => {
+  const token = authStore.token
+  if (!token) return false
+  
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    }).join(''))
+    const decoded = JSON.parse(jsonPayload)
+    return decoded.role === 'admin'
+  } catch {
+    return false
+  }
+})
+
+const fetchUnreadCount = async () => {
+  try {
+    const data = await notificationAPI.getNotifications(1) // Only fetch 1 to get count
+    unreadNotificationCount.value = data.unread_count
+  } catch (error) {
+    // Silently fail - don't spam console if backend is unavailable
+    // Just keep the badge at 0
+    unreadNotificationCount.value = 0
+  }
+}
 
 const handleSettings = () => {
   showMoreMenu.value = false
@@ -128,10 +164,27 @@ const handleSaved = () => {
   emit('open-saved')
 }
 
+const handleAdmin = () => {
+  showMoreMenu.value = false
+  emit('navigate', 'admin')
+}
+
 const handleLogout = () => {
   showMoreMenu.value = false
   emit('logout')
 }
+
+onMounted(() => {
+  fetchUnreadCount()
+  // Poll for unread count every 10 seconds
+  pollInterval = setInterval(fetchUnreadCount, 10000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -172,6 +225,12 @@ const handleLogout = () => {
   svg {
     width: 24px;
     height: 24px;
+  }
+
+  .logo-image {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
   }
 
   .logo-text {

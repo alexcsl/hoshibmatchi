@@ -34,6 +34,7 @@ const (
 	UserService_GetFollowersList_FullMethodName           = "/user.UserService/GetFollowersList"
 	UserService_GetUserProfile_FullMethodName             = "/user.UserService/GetUserProfile"
 	UserService_UpdateUserProfile_FullMethodName          = "/user.UserService/UpdateUserProfile"
+	UserService_CompleteProfile_FullMethodName            = "/user.UserService/CompleteProfile"
 	UserService_SetAccountPrivacy_FullMethodName          = "/user.UserService/SetAccountPrivacy"
 	UserService_BlockUser_FullMethodName                  = "/user.UserService/BlockUser"
 	UserService_UnblockUser_FullMethodName                = "/user.UserService/UnblockUser"
@@ -71,6 +72,7 @@ type UserServiceClient interface {
 	GetFollowersList(ctx context.Context, in *GetFollowersListRequest, opts ...grpc.CallOption) (*GetFollowersListResponse, error)
 	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
 	UpdateUserProfile(ctx context.Context, in *UpdateUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
+	CompleteProfile(ctx context.Context, in *CompleteProfileRequest, opts ...grpc.CallOption) (*CompleteProfileResponse, error)
 	SetAccountPrivacy(ctx context.Context, in *SetAccountPrivacyRequest, opts ...grpc.CallOption) (*SetAccountPrivacyResponse, error)
 	BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*BlockUserResponse, error)
 	UnblockUser(ctx context.Context, in *UnblockUserRequest, opts ...grpc.CallOption) (*UnblockUserResponse, error)
@@ -246,6 +248,16 @@ func (c *userServiceClient) UpdateUserProfile(ctx context.Context, in *UpdateUse
 	return out, nil
 }
 
+func (c *userServiceClient) CompleteProfile(ctx context.Context, in *CompleteProfileRequest, opts ...grpc.CallOption) (*CompleteProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CompleteProfileResponse)
+	err := c.cc.Invoke(ctx, UserService_CompleteProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetAccountPrivacy(ctx context.Context, in *SetAccountPrivacyRequest, opts ...grpc.CallOption) (*SetAccountPrivacyResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetAccountPrivacyResponse)
@@ -380,6 +392,7 @@ type UserServiceServer interface {
 	GetFollowersList(context.Context, *GetFollowersListRequest) (*GetFollowersListResponse, error)
 	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
 	UpdateUserProfile(context.Context, *UpdateUserProfileRequest) (*GetUserProfileResponse, error)
+	CompleteProfile(context.Context, *CompleteProfileRequest) (*CompleteProfileResponse, error)
 	SetAccountPrivacy(context.Context, *SetAccountPrivacyRequest) (*SetAccountPrivacyResponse, error)
 	BlockUser(context.Context, *BlockUserRequest) (*BlockUserResponse, error)
 	UnblockUser(context.Context, *UnblockUserRequest) (*UnblockUserResponse, error)
@@ -449,6 +462,9 @@ func (UnimplementedUserServiceServer) GetUserProfile(context.Context, *GetUserPr
 }
 func (UnimplementedUserServiceServer) UpdateUserProfile(context.Context, *UpdateUserProfileRequest) (*GetUserProfileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserProfile not implemented")
+}
+func (UnimplementedUserServiceServer) CompleteProfile(context.Context, *CompleteProfileRequest) (*CompleteProfileResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteProfile not implemented")
 }
 func (UnimplementedUserServiceServer) SetAccountPrivacy(context.Context, *SetAccountPrivacyRequest) (*SetAccountPrivacyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAccountPrivacy not implemented")
@@ -774,6 +790,24 @@ func _UserService_UpdateUserProfile_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_CompleteProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CompleteProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CompleteProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CompleteProfile(ctx, req.(*CompleteProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetAccountPrivacy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetAccountPrivacyRequest)
 	if err := dec(in); err != nil {
@@ -1038,6 +1072,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateUserProfile",
 			Handler:    _UserService_UpdateUserProfile_Handler,
+		},
+		{
+			MethodName: "CompleteProfile",
+			Handler:    _UserService_CompleteProfile_Handler,
 		},
 		{
 			MethodName: "SetAccountPrivacy",

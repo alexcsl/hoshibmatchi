@@ -8,6 +8,7 @@
   >
     <span class="icon" v-html="getIcon(icon)"></span>
     <span class="label">{{ label }}</span>
+    <span v-if="badge && badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
   </router-link>
   <button 
     v-else
@@ -16,6 +17,7 @@
   >
     <span class="icon" v-html="getIcon(icon)"></span>
     <span class="label">{{ label }}</span>
+    <span v-if="badge && badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
   </button>
 </template>
 
@@ -25,6 +27,7 @@ const props = defineProps<{
   label: string
   active?: boolean
   route?: string
+  badge?: number
 }>()
 
 const emit = defineEmits<{
@@ -61,6 +64,7 @@ const getIcon = (icon: string) => {
   transition: all 0.2s;
   text-decoration: none;
   font-weight: 400;
+  position: relative;
 
   .icon {
     font-size: 20px;
@@ -68,6 +72,18 @@ const getIcon = (icon: string) => {
 
   .label {
     font-weight: 500;
+  }
+
+  .badge {
+    background-color: #ff3040;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+    margin-left: auto;
   }
 
   &:hover {

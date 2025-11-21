@@ -21,9 +21,11 @@ import Reels from '../pages/Reels.vue'
 import Messages from '../pages/Messages.vue'
 import Profile from '../pages/Profile.vue'
 import GoogleCallback from '../pages/GoogleCallback.vue'
+import GoogleCompleteProfile from '../pages/GoogleCompleteProfile.vue'
 import VerifyOTP from '../pages/VerifyOTP.vue'
 import EditProfile from '../pages/EditProfile.vue'
 import CreateStory from '../pages/CreateStory.vue'
+import Admin from '../pages/Admin.vue'
 
 const routes = [
   // Auth Routes (no sidebar layout)
@@ -68,6 +70,12 @@ const routes = [
     name: 'GoogleCallback',
     component: GoogleCallback,
     meta: { guestsOnly: true }
+  },
+  {
+    path: '/auth/google/complete-profile',
+    name: 'google-complete-profile',
+    component: GoogleCompleteProfile,
+    meta: { requiresAuth: true }
   },
   
   // Main App Routes (with sidebar layout)
@@ -135,6 +143,12 @@ const routes = [
       name: 'create-story', 
       component: CreateStory 
       },
+      { 
+        path: 'admin', 
+        name: 'Admin', 
+        component: Admin,
+        meta: { requiresAdmin: true }
+      },
 
       // Future routes
       // { path: ':username', name: 'Profile', component: () => import('../views/ProfileView.vue') },
@@ -169,6 +183,32 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authenticated) {
     next('/login')
     return
+  }
+
+  // Check admin access
+  if (to.meta.requiresAdmin) {
+    const token = localStorage.getItem('jwt_token')
+    if (!token) {
+      next('/login')
+      return
+    }
+    
+    try {
+      const base64Url = token.split('.')[1]
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+      }).join(''))
+      const decoded = JSON.parse(jsonPayload)
+      
+      if (decoded.role !== 'admin') {
+        next('/feed')
+        return
+      }
+    } catch {
+      next('/login')
+      return
+    }
   }
 
   next()

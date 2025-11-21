@@ -26,7 +26,7 @@
 
       <!-- Overlays -->
       <SearchPanel v-if="isSearchOpen" @close="isSearchOpen = false" />
-      <NotificationOverlay v-if="isNotificationsOpen" @close="isNotificationsOpen = false" :notifications="notifications" />
+      <NotificationOverlay v-if="isNotificationsOpen" @close="isNotificationsOpen = false" />
       <CreatePostOverlay v-if="isCreatePostOpen" @close="isCreatePostOpen = false" @posted="handlePostCreated" />
       <PostDetailsOverlay 
         v-if="isPostDetailsOpen && selectedPostId" 
@@ -106,12 +106,6 @@ const recentMessages = ref([
   { id: 1, username: 'user_1', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 2 },
   { id: 2, username: 'user_2', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 0 },
   { id: 3, username: 'user_3', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 1 }
-])
-
-const notifications = ref([
-  { id: 1, type: 'like', username: 'user_1', avatar: '/placeholder.svg?height=48&width=48', text: 'liked your post', timestamp: '2 hours ago' },
-  { id: 2, type: 'follow', username: 'user_2', avatar: '/placeholder.svg?height=48&width=48', text: 'started following you', timestamp: '5 hours ago' },
-  { id: 3, type: 'comment', username: 'user_3', avatar: '/placeholder.svg?height=48&width=48', text: 'commented on your post', timestamp: '1 day ago' }
 ])
 
 const stories = ref([

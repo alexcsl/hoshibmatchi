@@ -67,6 +67,9 @@ export interface LoginResponse {
   user_id?: number
   username?: string
   email?: string
+  name?: string
+  profile_picture_url?: string
+  needs_profile_completion?: boolean
 }
 
 export interface Verify2FARequest {
@@ -139,7 +142,10 @@ export interface Story {
   author_username: string
   author_profile_url: string
   created_at: string
+  expires_at?: string
   is_liked?: boolean
+  filter_name?: string
+  stickers_json?: string
 }
 
 export interface StoryGroup {
@@ -399,6 +405,11 @@ export const storyAPI = {
   unlikeStory: async (storyId: string) => {
     const response = await apiClient.delete(`/stories/${storyId}/like`)
     return response.data
+  },
+
+  getArchive: async () => {
+    const response = await apiClient.get('/stories/archive')
+    return response.data // Returns Story[]
   }
 }
 
@@ -541,6 +552,140 @@ export const reportAPI = {
 
   reportUser: async (userId: number, reason: string) => {
     const response = await apiClient.post('/reports/user', { reported_user_id: userId, reason })
+    return response.data
+  }
+}
+
+// Admin APIs
+export interface PostReport {
+  id: number
+  reporter_user_id: number
+  reporter_username: string
+  reported_post_id: number
+  reason: string
+  is_resolved: boolean
+  created_at: string
+}
+
+export interface UserReport {
+  id: number
+  reporter_user_id: number
+  reporter_username: string
+  reported_user_id: number
+  reported_username: string
+  reason: string
+  is_resolved: boolean
+  created_at: string
+}
+
+export interface VerificationRequest {
+  id: number
+  user_id: number
+  username: string
+  id_card_number: string
+  face_picture_url: string
+  reason: string
+  status: string
+  created_at: string
+}
+
+export interface UserListItem {
+  user_id: number
+  username: string
+  name: string
+  email: string
+  profile_picture_url: string
+  is_verified: boolean
+  is_banned: boolean
+  created_at: string
+}
+
+export const adminAPI = {
+  // User Management
+  getAllUsers: async () => {
+    const response = await apiClient.get<{ users: UserListItem[] }>('/users')
+    return response.data
+  },
+
+  banUser: async (userId: number) => {
+    const response = await apiClient.post(`/admin/users/${userId}/ban`)
+    return response.data
+  },
+
+  unbanUser: async (userId: number) => {
+    const response = await apiClient.post(`/admin/users/${userId}/unban`)
+    return response.data
+  },
+
+  // Reports Management
+  getPostReports: async () => {
+    const response = await apiClient.get<{ reports: PostReport[] }>('/admin/reports/posts')
+    return response.data
+  },
+
+  getUserReports: async () => {
+    const response = await apiClient.get<{ reports: UserReport[] }>('/admin/reports/users')
+    return response.data
+  },
+
+  resolvePostReport: async (reportId: number, action: 'ACCEPT' | 'REJECT') => {
+    const response = await apiClient.post(`/admin/reports/posts/${reportId}/resolve`, { action })
+    return response.data
+  },
+
+  resolveUserReport: async (reportId: number, action: 'ACCEPT' | 'REJECT') => {
+    const response = await apiClient.post(`/admin/reports/users/${reportId}/resolve`, { action })
+    return response.data
+  },
+
+  // Verification Requests
+  getVerifications: async () => {
+    const response = await apiClient.get<{ requests: VerificationRequest[] }>('/admin/verifications')
+    return response.data
+  },
+
+  resolveVerification: async (verificationId: number, action: 'APPROVE' | 'REJECT', reason?: string) => {
+    const response = await apiClient.post(`/admin/verifications/${verificationId}/resolve`, { action, reason })
+    return response.data
+  },
+
+  // Newsletter
+  sendNewsletter: async (subject: string, content: string) => {
+    const response = await apiClient.post('/admin/newsletters', { subject, content })
+    return response.data
+  }
+}
+
+// Notification APIs
+export interface NotificationItem {
+  id: number
+  user_id: number
+  actor_id: number
+  actor_username: string
+  actor_profile_picture_url: string
+  actor_is_verified: boolean
+  type: string // e.g., "post.liked", "user.followed", "comment.created"
+  entity_id: number
+  is_read: boolean
+  created_at: string
+}
+
+export const notificationAPI = {
+  getNotifications: async (limit: number = 50) => {
+    const response = await apiClient.get<{
+      notifications: NotificationItem[]
+      unread_count: number
+    }>(`/notifications?limit=${limit}`)
+    return response.data
+  },
+
+  markAsRead: async (notificationId: number) => {
+    const response = await apiClient.put(`/notifications/${notificationId}/read`)
+    return response.data
+  },
+
+  markAllAsRead: async () => {
+    const response = await apiClient.put('/notifications/read-all')
     return response.data
   }
 }

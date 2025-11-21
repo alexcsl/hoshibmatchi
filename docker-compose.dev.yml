@@ -85,7 +85,7 @@ services:
       context: .
       dockerfile: ./backend/message-service/Dockerfile.dev
     environment:
-      - JWT_SECRET=${JWT_SECRET:-your-secret-key-min-32-characters-long}
+      - JWT_SECRET=${JWT_SECRET}
       - VIDEOSDK_API_KEY=${VIDEOSDK_API_KEY:-}
       - VIDEOSDK_API_SECRET=${VIDEOSDK_API_SECRET:-}
     volumes:

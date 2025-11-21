@@ -27,18 +27,18 @@ import (
 // Story defines the GORM model
 type Story struct {
 	gorm.Model
-	AuthorID         int64
-	MediaURL         string
-	MediaType        string // "image" or "video"
-	Caption          string
-	ExpiresAt        time.Time // Crucial for 24h logic
+	AuthorID  int64
+	MediaURL  string
+	MediaType string // "image" or "video"
+	Caption   string
+	ExpiresAt time.Time // Crucial for 24h logic
 
 	// Denormalized data
 	AuthorUsername   string
 	AuthorProfileURL string
 
 	FilterName   string
-    StickersJSON string `gorm:"type:text"`
+	StickersJSON string `gorm:"type:text"`
 }
 
 type StoryLike struct {
@@ -201,7 +201,7 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		AuthorUsername:   userRes.Username,
 		AuthorProfileURL: userRes.ProfilePictureUrl,
 		FilterName:       req.FilterName,
-        StickersJSON:     req.StickersJson,
+		StickersJSON:     req.StickersJson,
 	}
 
 	if err := s.db.Create(&newStory).Error; err != nil {
@@ -218,7 +218,7 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 	err = s.publishToQueue(ctx, "story_wait_24h", msgBody)
 	if err != nil {
 		log.Printf("Failed to schedule deletion task: %v", err)
-		// We don't fail the request, just log warning. 
+		// We don't fail the request, just log warning.
 		// In production, you might want a cron backup for cleanup.
 	} else {
 		log.Printf("Scheduled 24h deletion for story %d", newStory.ID)
@@ -273,12 +273,12 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 
 		// Add story to group
 		groupedMap[story.AuthorID].Stories = append(groupedMap[story.AuthorID].Stories, &pb.Story{
-			Id:               strconv.FormatUint(uint64(story.ID), 10),
-			MediaUrl:         story.MediaURL,
-			MediaType:        story.MediaType,
-			Caption:          story.Caption,
-			CreatedAt:        story.CreatedAt.Format(time.RFC3339),
-			ExpiresAt:        story.ExpiresAt.Format(time.RFC3339),
+			Id:        strconv.FormatUint(uint64(story.ID), 10),
+			MediaUrl:  story.MediaURL,
+			MediaType: story.MediaType,
+			Caption:   story.Caption,
+			CreatedAt: story.CreatedAt.Format(time.RFC3339),
+			ExpiresAt: story.ExpiresAt.Format(time.RFC3339),
 		})
 	}
 
@@ -347,4 +347,34 @@ func (s *server) UnlikeStory(ctx context.Context, req *pb.UnlikeStoryRequest) (*
 		return nil, status.Error(codes.NotFound, "Story was not liked")
 	}
 	return &pb.UnlikeStoryResponse{Message: "Story unliked"}, nil
+}
+
+// --- 6. Get User Archive (All Stories for a Specific User) ---
+func (s *server) GetUserArchive(ctx context.Context, req *pb.GetUserArchiveRequest) (*pb.GetUserArchiveResponse, error) {
+	// Fetch all stories by this user (including expired ones for archive)
+	var stories []Story
+	if err := s.db.Where("author_id = ?", req.UserId).
+		Order("created_at DESC"). // Newest first
+		Find(&stories).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch archive stories")
+	}
+
+	// Convert to protobuf
+	var pbStories []*pb.Story
+	for _, story := range stories {
+		pbStories = append(pbStories, &pb.Story{
+			Id:               strconv.FormatUint(uint64(story.ID), 10),
+			MediaUrl:         story.MediaURL,
+			MediaType:        story.MediaType,
+			Caption:          story.Caption,
+			AuthorUsername:   story.AuthorUsername,
+			AuthorProfileUrl: story.AuthorProfileURL,
+			CreatedAt:        story.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:        story.ExpiresAt.Format(time.RFC3339),
+			FilterName:       story.FilterName,
+			StickersJson:     story.StickersJSON,
+		})
+	}
+
+	return &pb.GetUserArchiveResponse{Stories: pbStories}, nil
 }

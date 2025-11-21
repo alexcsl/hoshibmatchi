@@ -232,6 +232,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      notification-db:
+        condition: service_healthy
     networks: [hoshi-net]
     labels:
       - "traefik.enable=true"

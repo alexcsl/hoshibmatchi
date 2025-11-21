@@ -36,11 +36,27 @@ onMounted(async () => {
     const token = response.access_token || response.token || ''
     saveAuthData(token, response)
 
-    // Redirect to feed
-    message.value = 'Login successful! Redirecting...'
-    setTimeout(() => {
-      router.push('/feed')
-    }, 1000)
+    // Check if user needs to complete their profile
+    if (response.needs_profile_completion) {
+      // New Google user - redirect to profile completion
+      message.value = 'Account created! Please complete your profile...'
+      setTimeout(() => {
+        router.push({
+          name: 'google-complete-profile',
+          query: {
+            name: response.name || '',
+            email: response.email || '',
+            picture: response.profile_picture_url || ''
+          }
+        })
+      }, 1000)
+    } else {
+      // Existing user - redirect to feed
+      message.value = 'Login successful! Redirecting...'
+      setTimeout(() => {
+        router.push('/feed')
+      }, 1000)
+    }
   } catch (err) {
     message.value = handleApiError(err)
     setTimeout(() => {

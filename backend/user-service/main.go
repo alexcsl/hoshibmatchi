@@ -892,6 +892,75 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 	})
 }
 
+// --- GPRC: CompleteProfile ---
+func (s *server) CompleteProfile(ctx context.Context, req *pb.CompleteProfileRequest) (*pb.CompleteProfileResponse, error) {
+	// 1. Find the user
+	var user User
+	if err := s.db.First(&user, req.UserId).Error; err != nil {
+		return nil, status.Error(codes.NotFound, "User not found")
+	}
+
+	// 2. Validate new username if provided
+	if req.Username != "" && req.Username != user.Username {
+		// Check if username is already taken
+		var existingUser User
+		if err := s.db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+			return nil, status.Error(codes.AlreadyExists, "Username is already taken")
+		}
+
+		// Validate username format
+		if len(req.Username) < 3 {
+			return nil, status.Error(codes.InvalidArgument, "Username must be at least 3 characters")
+		}
+		if !regexp.MustCompile(`^[a-zA-Z0-9._]+$`).MatchString(req.Username) {
+			return nil, status.Error(codes.InvalidArgument, "Username can only contain letters, numbers, dots, and underscores")
+		}
+
+		user.Username = req.Username
+	}
+
+	// 3. Update date of birth if provided
+	if req.DateOfBirth != "" {
+		dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "Invalid date format. Use YYYY-MM-DD")
+		}
+
+		// Check if user is at least 13 years old
+		age := time.Now().Year() - dob.Year()
+		if age < 13 {
+			return nil, status.Error(codes.InvalidArgument, "You must be at least 13 years old")
+		}
+
+		user.DateOfBirth = dob
+	}
+
+	// 4. Update gender if provided
+	if req.Gender != "" {
+		gender := strings.ToLower(req.Gender)
+		if gender != "male" && gender != "female" && gender != "other" {
+			return nil, status.Error(codes.InvalidArgument, "Gender must be 'male', 'female', or 'other'")
+		}
+		user.Gender = gender
+	}
+
+	// 5. Save the user
+	if err := s.db.Save(&user).Error; err != nil {
+		if strings.Contains(err.Error(), "unique constraint") {
+			return nil, status.Error(codes.AlreadyExists, "Username is already taken")
+		}
+		return nil, status.Error(codes.Internal, "Failed to complete profile")
+	}
+
+	// Invalidate cache
+	cacheKey := fmt.Sprintf("user:profile:%d", req.UserId)
+	s.rdb.Del(ctx, cacheKey)
+
+	log.Printf("Profile completed for user_id: %d", req.UserId)
+
+	return &pb.CompleteProfileResponse{Message: "Profile completed successfully"}, nil
+}
+
 // --- GPRC: SetAccountPrivacy ---
 func (s *server) SetAccountPrivacy(ctx context.Context, req *pb.SetAccountPrivacyRequest) (*pb.SetAccountPrivacyResponse, error) {
 	// We can use a simple 'Update' for this one field
@@ -1379,9 +1448,18 @@ func (s *server) HandleGoogleAuth(ctx context.Context, req *pb.HandleGoogleAuthR
 	accessToken, _ := createToken(user, 1*time.Hour)
 	refreshToken, _ := createToken(user, 7*24*time.Hour)
 
+	// Check if this is a new user (needs profile completion)
+	needsProfileCompletion := user.Gender == "" || user.DateOfBirth.IsZero()
+
 	return &pb.LoginResponse{
-		Message:      "Google login successful",
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		Message:                "Google login successful",
+		AccessToken:            accessToken,
+		RefreshToken:           refreshToken,
+		UserId:                 int64(user.ID),
+		Username:               user.Username,
+		Email:                  user.Email,
+		Name:                   user.Name,
+		ProfilePictureUrl:      user.ProfilePictureURL,
+		NeedsProfileCompletion: needsProfileCompletion,
 	}, nil
 }

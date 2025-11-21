@@ -25,6 +25,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	// Import the generated proto code for user-service
 	// This path MUST match the 'go_package' option in your user.proto
@@ -51,6 +53,9 @@ var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 // Redis client for distributed rate limiting
 var rdb *redis.Client
 
+// Notification database connection
+var notificationDB *gorm.DB
+
 // Rate limiter for in-memory fallback
 var globalLimiter *rate.Limiter
 
@@ -69,6 +74,16 @@ var (
 	authenticatedLimit = RateLimit{RequestsPerHour: 1000, Burst: 50}
 	sensitiveLimit     = RateLimit{RequestsPerHour: 10, Burst: 3} // For login, registration
 )
+
+// Notification model (matching notification-service)
+type Notification struct {
+	gorm.Model
+	UserID   int64  `gorm:"index" json:"user_id"`
+	ActorID  int64  `json:"actor_id"`
+	Type     string `json:"type"`
+	EntityID int64  `json:"entity_id"`
+	IsRead   bool   `gorm:"default:false" json:"is_read"`
+}
 
 func main() {
 	if os.Getenv("JWT_SECRET") == "" {
@@ -90,6 +105,16 @@ func main() {
 		globalLimiter = rate.NewLimiter(rate.Limit(authenticatedLimit.RequestsPerHour/3600.0), authenticatedLimit.Burst)
 	} else {
 		log.Println("Successfully connected to Redis for rate limiting")
+	}
+
+	// --- Connect to Notification Database ---
+	notificationDSN := "host=notification-db user=admin password=password dbname=notification_service_db port=5432 sslmode=disable"
+	var dbErr error
+	notificationDB, dbErr = gorm.Open(postgres.Open(notificationDSN), &gorm.Config{})
+	if dbErr != nil {
+		log.Printf("Warning: Failed to connect to notification database: %v", dbErr)
+	} else {
+		log.Println("Successfully connected to notification database")
 	}
 
 	// --- Connect to all gRPC Services ---
@@ -140,6 +165,7 @@ func main() {
 		authRoutes.POST("/send-otp", gin.WrapF(handleSendOtp))
 		authRoutes.POST("/verify-otp", gin.WrapF(handleVerifyRegistrationOtp))
 		authRoutes.POST("/google/callback", handleGoogleCallback_Gin)
+		authRoutes.GET("/check-username/:username", handleCheckUsername_Gin)
 		authRoutes.POST("/login", gin.WrapF(handleLogin))
 		authRoutes.POST("/login/verify-2fa", gin.WrapF(handleVerify2FA))
 		authRoutes.POST("/password-reset/request", gin.WrapF(handleSendPasswordReset))
@@ -171,6 +197,7 @@ func main() {
 		protected.POST("/stories/:id/like", handleStoryLike_Gin)
 		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
 		protected.GET("/stories/feed", handleGetStoryFeed_Gin)
+		protected.GET("/stories/archive", handleGetUserArchive_Gin)
 
 		// Comments
 		protected.POST("/comments", handleCreateComment_Gin)
@@ -192,6 +219,7 @@ func main() {
 
 		// Edit Profiel
 		protected.PUT("/profile/edit", handleUpdateProfile_Gin)
+		protected.PUT("/users/complete-profile", handleCompleteProfile_Gin)
 		protected.PUT("/settings/privacy", handleSetPrivacy_Gin)
 
 		protected.POST("/users/:id/block", handleBlockUser_Gin)
@@ -231,6 +259,10 @@ func main() {
 		protected.DELETE("/conversations/:id", handleDeleteConversation_Gin)
 		protected.GET("/conversations/:id/video_token", handleGetVideoToken_Gin)
 
+		// Notifications
+		protected.GET("/notifications", handleGetNotifications_Gin)
+		protected.PUT("/notifications/:id/read", handleMarkNotificationRead_Gin)
+		protected.PUT("/notifications/read-all", handleMarkAllNotificationsRead_Gin)
 	}
 
 	admin := router.Group("/admin")
@@ -1339,6 +1371,42 @@ func handleGetUserReels_Gin(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleCompleteProfile ---
+func handleCompleteProfile_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		Username    string `json:"username"`
+		DateOfBirth string `json:"date_of_birth"`
+		Gender      string `json:"gender"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	grpcReq := &pb.CompleteProfileRequest{
+		UserId:      userID,
+		Username:    req.Username,
+		DateOfBirth: req.DateOfBirth,
+		Gender:      req.Gender,
+	}
+
+	grpcRes, err := client.CompleteProfile(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": grpcRes.Message})
 }
 
 // --- GIN-NATIVE HANDLER: handleUpdateProfile ---
@@ -2476,6 +2544,36 @@ func handleGoogleCallback_Gin(c *gin.Context) {
 	})
 }
 
+// --- GIN-NATIVE HANDLER: handleCheckUsername ---
+func handleCheckUsername_Gin(c *gin.Context) {
+	username := c.Param("username")
+
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username is required"})
+		return
+	}
+
+	// Try to get user by username
+	_, err := client.GetUserProfile(c.Request.Context(), &pb.GetUserProfileRequest{
+		Username: username,
+	})
+
+	if err != nil {
+		// User not found, username is available
+		grpcErr, _ := status.FromError(err)
+		if grpcErr.Code() == codes.NotFound {
+			c.JSON(http.StatusOK, gin.H{"exists": false, "available": true})
+			return
+		}
+		// Other error
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	// User found, username is taken
+	c.JSON(http.StatusOK, gin.H{"exists": true, "available": false})
+}
+
 // --- HANDLER: GetUserTaggedPosts ---
 func handleGetUserTaggedPosts_Gin(c *gin.Context) {
 	requesterID, _ := c.Request.Context().Value(userIDKey).(int64)
@@ -2531,4 +2629,183 @@ func handleGetStoryFeed_Gin(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, res.StoryGroups)
+}
+
+// --- HANDLER: GetUserArchive ---
+func handleGetUserArchive_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	res, err := storyClient.GetUserArchive(c.Request.Context(), &storyPb.GetUserArchiveRequest{
+		UserId: userID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch archive"})
+		return
+	}
+
+	c.JSON(http.StatusOK, res.Stories)
+}
+
+// --- NOTIFICATION HANDLERS ---
+
+// NotificationResponse includes actor details
+type NotificationResponse struct {
+	ID                     uint   `json:"id"`
+	UserID                 int64  `json:"user_id"`
+	ActorID                int64  `json:"actor_id"`
+	ActorUsername          string `json:"actor_username"`
+	ActorProfilePictureURL string `json:"actor_profile_picture_url"`
+	ActorIsVerified        bool   `json:"actor_is_verified"`
+	Type                   string `json:"type"`
+	EntityID               int64  `json:"entity_id"`
+	IsRead                 bool   `json:"is_read"`
+	CreatedAt              string `json:"created_at"`
+}
+
+// handleGetNotifications returns notifications for the current user
+func handleGetNotifications_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if notificationDB == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Notification service unavailable"})
+		return
+	}
+
+	// Get limit from query params (default 50)
+	limit := 50
+	if limitParam := c.Query("limit"); limitParam != "" {
+		if parsedLimit, err := strconv.Atoi(limitParam); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	// Query notifications
+	var notifications []Notification
+	result := notificationDB.Where("user_id = ?", userID).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&notifications)
+
+	if result.Error != nil {
+		log.Printf("Failed to query notifications: %v", result.Error)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notifications"})
+		return
+	}
+
+	// Enrich notifications with actor data
+	enrichedNotifications := make([]NotificationResponse, 0, len(notifications))
+	for _, notif := range notifications {
+		// Get actor user data
+		actorRes, err := client.GetUserData(c.Request.Context(), &pb.GetUserDataRequest{
+			UserId: notif.ActorID,
+		})
+
+		actorUsername := "User"
+		actorProfileURL := ""
+		actorIsVerified := false
+		if err == nil {
+			actorUsername = actorRes.Username
+			actorProfileURL = actorRes.ProfilePictureUrl
+			actorIsVerified = actorRes.IsVerified
+		}
+
+		enrichedNotifications = append(enrichedNotifications, NotificationResponse{
+			ID:                     notif.Model.ID,
+			UserID:                 notif.UserID,
+			ActorID:                notif.ActorID,
+			ActorUsername:          actorUsername,
+			ActorProfilePictureURL: actorProfileURL,
+			ActorIsVerified:        actorIsVerified,
+			Type:                   notif.Type,
+			EntityID:               notif.EntityID,
+			IsRead:                 notif.IsRead,
+			CreatedAt:              notif.Model.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"notifications": enrichedNotifications,
+		"unread_count":  countUnread(notifications),
+	})
+}
+
+// handleMarkNotificationRead marks a single notification as read
+func handleMarkNotificationRead_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if notificationDB == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Notification service unavailable"})
+		return
+	}
+
+	notifID := c.Param("id")
+
+	// Update notification - ensure it belongs to the user
+	result := notificationDB.Model(&Notification{}).
+		Where("id = ? AND user_id = ?", notifID, userID).
+		Update("is_read", true)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update notification"})
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Notification not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Notification marked as read"})
+}
+
+// handleMarkAllNotificationsRead marks all notifications as read for the current user
+func handleMarkAllNotificationsRead_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	if notificationDB == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Notification service unavailable"})
+		return
+	}
+
+	// Update all unread notifications for this user
+	result := notificationDB.Model(&Notification{}).
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Update("is_read", true)
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update notifications"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "All notifications marked as read",
+		"count":   result.RowsAffected,
+	})
+}
+
+// Helper function to count unread notifications
+func countUnread(notifications []Notification) int {
+	count := 0
+	for _, n := range notifications {
+		if !n.IsRead {
+			count++
+		}
+	}
+	return count
 }

@@ -32,6 +32,7 @@ service UserService {
   rpc GetUserProfile (GetUserProfileRequest) returns (GetUserProfileResponse);
 
   rpc UpdateUserProfile (UpdateUserProfileRequest) returns (GetUserProfileResponse);
+  rpc CompleteProfile (CompleteProfileRequest) returns (CompleteProfileResponse);
   rpc SetAccountPrivacy (SetAccountPrivacyRequest) returns (SetAccountPrivacyResponse);
 
   rpc BlockUser (BlockUserRequest) returns (BlockUserResponse);
@@ -115,6 +116,12 @@ message LoginResponse {
   string access_token = 2;
   string refresh_token = 3;
   bool is_2fa_required = 4;
+  int64 user_id = 5;
+  string username = 6;
+  string email = 7;
+  string name = 8;
+  string profile_picture_url = 9;
+  bool needs_profile_completion = 10; // For Google OAuth users who need to complete profile
 }
 
 // --- 2FA Verification ---
@@ -234,6 +241,18 @@ message UpdateUserProfileRequest {
   string gender = 4;
   string profile_picture_url = 5;
   // We'll add ProfilePictureURL later
+}
+
+// --- Complete Profile (for Google OAuth users) ---
+message CompleteProfileRequest {
+  int64 user_id = 1; // From JWT
+  string username = 2;
+  string date_of_birth = 3; // YYYY-MM-DD format
+  string gender = 4;
+}
+
+message CompleteProfileResponse {
+  string message = 1;
 }
 
 // --- Set Account Privacy ---

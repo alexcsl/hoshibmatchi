@@ -19,11 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StoryService_CreateStory_FullMethodName  = "/story.StoryService/CreateStory"
-	StoryService_LikeStory_FullMethodName    = "/story.StoryService/LikeStory"
-	StoryService_UnlikeStory_FullMethodName  = "/story.StoryService/UnlikeStory"
-	StoryService_GetStoryFeed_FullMethodName = "/story.StoryService/GetStoryFeed"
-	StoryService_DeleteStory_FullMethodName  = "/story.StoryService/DeleteStory"
+	StoryService_CreateStory_FullMethodName    = "/story.StoryService/CreateStory"
+	StoryService_LikeStory_FullMethodName      = "/story.StoryService/LikeStory"
+	StoryService_UnlikeStory_FullMethodName    = "/story.StoryService/UnlikeStory"
+	StoryService_GetStoryFeed_FullMethodName   = "/story.StoryService/GetStoryFeed"
+	StoryService_DeleteStory_FullMethodName    = "/story.StoryService/DeleteStory"
+	StoryService_GetUserArchive_FullMethodName = "/story.StoryService/GetUserArchive"
 )
 
 // StoryServiceClient is the client API for StoryService service.
@@ -37,6 +38,8 @@ type StoryServiceClient interface {
 	GetStoryFeed(ctx context.Context, in *GetStoryFeedRequest, opts ...grpc.CallOption) (*GetStoryFeedResponse, error)
 	// NEW: Delete story (for worker or user)
 	DeleteStory(ctx context.Context, in *DeleteStoryRequest, opts ...grpc.CallOption) (*DeleteStoryResponse, error)
+	// NEW: Get user's archive (all their stories)
+	GetUserArchive(ctx context.Context, in *GetUserArchiveRequest, opts ...grpc.CallOption) (*GetUserArchiveResponse, error)
 }
 
 type storyServiceClient struct {
@@ -97,6 +100,16 @@ func (c *storyServiceClient) DeleteStory(ctx context.Context, in *DeleteStoryReq
 	return out, nil
 }
 
+func (c *storyServiceClient) GetUserArchive(ctx context.Context, in *GetUserArchiveRequest, opts ...grpc.CallOption) (*GetUserArchiveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserArchiveResponse)
+	err := c.cc.Invoke(ctx, StoryService_GetUserArchive_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StoryServiceServer is the server API for StoryService service.
 // All implementations must embed UnimplementedStoryServiceServer
 // for forward compatibility.
@@ -108,6 +121,8 @@ type StoryServiceServer interface {
 	GetStoryFeed(context.Context, *GetStoryFeedRequest) (*GetStoryFeedResponse, error)
 	// NEW: Delete story (for worker or user)
 	DeleteStory(context.Context, *DeleteStoryRequest) (*DeleteStoryResponse, error)
+	// NEW: Get user's archive (all their stories)
+	GetUserArchive(context.Context, *GetUserArchiveRequest) (*GetUserArchiveResponse, error)
 	mustEmbedUnimplementedStoryServiceServer()
 }
 
@@ -132,6 +147,9 @@ func (UnimplementedStoryServiceServer) GetStoryFeed(context.Context, *GetStoryFe
 }
 func (UnimplementedStoryServiceServer) DeleteStory(context.Context, *DeleteStoryRequest) (*DeleteStoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteStory not implemented")
+}
+func (UnimplementedStoryServiceServer) GetUserArchive(context.Context, *GetUserArchiveRequest) (*GetUserArchiveResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserArchive not implemented")
 }
 func (UnimplementedStoryServiceServer) mustEmbedUnimplementedStoryServiceServer() {}
 func (UnimplementedStoryServiceServer) testEmbeddedByValue()                      {}
@@ -244,6 +262,24 @@ func _StoryService_DeleteStory_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoryService_GetUserArchive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserArchiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoryServiceServer).GetUserArchive(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoryService_GetUserArchive_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoryServiceServer).GetUserArchive(ctx, req.(*GetUserArchiveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StoryService_ServiceDesc is the grpc.ServiceDesc for StoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -270,6 +306,10 @@ var StoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteStory",
 			Handler:    _StoryService_DeleteStory_Handler,
+		},
+		{
+			MethodName: "GetUserArchive",
+			Handler:    _StoryService_GetUserArchive_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
