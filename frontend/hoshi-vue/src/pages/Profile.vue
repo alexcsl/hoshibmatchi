@@ -40,7 +40,14 @@
         />
         <div class="profile-info">
           <div class="profile-top">
-            <h1>{{ profile.username }}</h1>
+            <h1>
+              {{ profile.username }}
+              <span
+                v-if="profile.is_verified"
+                class="verified-badge"
+                title="Verified Account"
+              >✓</span>
+            </h1>
             
             <button
               v-if="isOwnProfile"
@@ -48,6 +55,14 @@
               @click="$router.push('/edit-profile')"
             >
               Edit profile
+            </button>
+            
+            <button
+              v-if="isOwnProfile && !profile.is_verified"
+              class="verify-btn"
+              @click="showVerificationForm = true"
+            >
+              Request Verification
             </button>
             
             <div
@@ -67,6 +82,20 @@
                 @click="sendMessage"
               >
                 Message
+              </button>
+              <button
+                class="report-btn"
+                @click="reportUser"
+              >
+                Report
+              </button>
+              <button
+                v-if="isAdmin"
+                class="ban-btn"
+                :disabled="banLoading"
+                @click="toggleBanUser"
+              >
+                {{ profile.is_banned ? 'Unban' : 'Ban' }} User
               </button>
             </div>
           </div>
@@ -338,6 +367,81 @@
         </div>
       </div>
     </div>
+
+    <!-- Verification Request Modal -->
+    <div
+      v-if="showVerificationForm"
+      class="modal-overlay"
+      @click.self="showVerificationForm = false"
+    >
+      <div class="modal-content verification-modal">
+        <div class="modal-header">
+          <h2>Request Verification</h2>
+          <button
+            class="close-btn"
+            @click="showVerificationForm = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>ID Card Number</label>
+            <input
+              v-model="verificationForm.id_card_number"
+              type="text"
+              placeholder="Enter your ID card number"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Face Picture URL</label>
+            <input
+              v-model="verificationForm.face_picture_url"
+              type="text"
+              placeholder="Enter URL to your face picture with ID"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Reason for Verification</label>
+            <textarea
+              v-model="verificationForm.reason"
+              placeholder="Why should your account be verified?"
+              rows="4"
+              required
+            ></textarea>
+          </div>
+          <div
+            v-if="verificationError"
+            class="error-message"
+          >
+            {{ verificationError }}
+          </div>
+          <div
+            v-if="verificationSuccess"
+            class="success-message"
+          >
+            {{ verificationSuccess }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            class="cancel-btn"
+            @click="showVerificationForm = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="submit-btn"
+            :disabled="verificationLoading"
+            @click="submitVerificationRequest"
+          >
+            {{ verificationLoading ? 'Submitting...' : 'Submit Request' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -363,6 +467,25 @@ const activeTab = ref("posts");
 const followLoading = ref(false);
 const showPostDetails = ref(false);
 const selectedPost = ref<any>(null);
+
+// Verification
+const showVerificationForm = ref(false);
+const verificationLoading = ref(false);
+const verificationError = ref("");
+const verificationSuccess = ref("");
+const verificationForm = ref({
+  id_card_number: "",
+  face_picture_url: "",
+  reason: ""
+});
+
+// Ban user
+const banLoading = ref(false);
+
+// Admin check
+const isAdmin = computed(() => {
+  return authStore.user?.role === "admin";
+});
 
 const isOwnProfile = computed(() => {
   if (!authStore.user) return false;
@@ -664,6 +787,67 @@ const handleImageError = (e: Event) => {
   (e.target as HTMLImageElement).src = "/placeholder.svg";
 };
 
+const submitVerificationRequest = async () => {
+  if (!verificationForm.value.id_card_number || !verificationForm.value.face_picture_url || !verificationForm.value.reason) {
+    verificationError.value = "All fields are required";
+    return;
+  }
+
+  verificationLoading.value = true;
+  verificationError.value = "";
+  verificationSuccess.value = "";
+
+  try {
+    await userAPI.submitVerification(verificationForm.value);
+    verificationSuccess.value = "Verification request submitted successfully! We'll review it soon.";
+    setTimeout(() => {
+      showVerificationForm.value = false;
+      verificationForm.value = { id_card_number: "", face_picture_url: "", reason: "" };
+      verificationSuccess.value = "";
+    }, 2000);
+  } catch (err: any) {
+    verificationError.value = err.response?.data?.error || "Failed to submit verification request";
+  } finally {
+    verificationLoading.value = false;
+  }
+};
+
+const toggleBanUser = async () => {
+  if (!profile.value?.user_id) return;
+  
+  const action = profile.value.is_banned ? "unban" : "ban";
+  if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+  banLoading.value = true;
+  try {
+    const endpoint = profile.value.is_banned 
+      ? `/admin/users/${profile.value.user_id}/unban`
+      : `/admin/users/${profile.value.user_id}/ban`;
+    
+    await apiClient.post(endpoint);
+    profile.value.is_banned = !profile.value.is_banned;
+    alert(`User ${action}ned successfully`);
+  } catch (err: any) {
+    alert(err.response?.data?.error || `Failed to ${action} user`);
+  } finally {
+    banLoading.value = false;
+  }
+};
+
+const reportUser = async () => {
+  if (!profile.value?.user_id) return;
+
+  const reason = prompt("Why are you reporting this user?");
+  if (!reason || !reason.trim()) return;
+
+  try {
+    await userAPI.reportUser(profile.value.user_id, reason.trim());
+    alert("User reported successfully. Thank you for helping keep our community safe.");
+  } catch (err: any) {
+    alert(err.response?.data?.error || "Failed to report user");
+  }
+};
+
 const retryAuth = () => {
     fetchProfile();
     fetchPosts(activeTab.value);
@@ -730,9 +914,20 @@ watch(() => route.params.username, () => {
       gap: 20px;
       margin-bottom: 20px;
 
-      h1 { font-size: 28px; font-weight: 300; }
+      h1 { 
+        font-size: 28px; 
+        font-weight: 300; 
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       
-      .edit-btn, .follow-btn, .message-btn, .more-btn {
+      .verified-badge {
+        color: #4a9eff;
+        font-size: 20px;
+      }
+      
+      .edit-btn, .follow-btn, .message-btn, .more-btn, .verify-btn, .ban-btn, .report-btn {
         background-color: #363636;
         color: #fff;
         border: none;
@@ -748,6 +943,21 @@ watch(() => route.params.username, () => {
         background-color: #0095f6;
         &:hover { background-color: #1877f2; }
         &.following { background-color: #363636; color: #fff; }
+      }
+      
+      .verify-btn {
+        background-color: #4a9eff;
+        &:hover { background-color: #3a8eef; }
+      }
+      
+      .ban-btn {
+        background-color: #ed4956;
+        &:hover { background-color: #d63447; }
+      }
+      
+      .report-btn {
+        background-color: #f09433;
+        &:hover { background-color: #e0842a; }
       }
       
       .more-btn { padding: 0 10px; font-size: 18px; }
@@ -965,6 +1175,97 @@ watch(() => route.params.username, () => {
           font-size: 12px;
           color: #8e8e8e;
           margin-top: 2px;
+        }
+      }
+    }
+  }
+}
+
+.verification-modal {
+  max-width: 500px;
+  
+  .form-group {
+    margin-bottom: 16px;
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #f1f1f1;
+    }
+    
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      background: #262626;
+      border: 1px solid #363636;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      
+      &:focus {
+        outline: none;
+        border-color: #4a9eff;
+      }
+    }
+    
+    textarea {
+      resize: vertical;
+      font-family: inherit;
+    }
+  }
+  
+  .error-message {
+    background: #ed49561a;
+    color: #ed4956;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+  
+  .success-message {
+    background: #00ba7c1a;
+    color: #00ba7c;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+  
+  .modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      
+      &.cancel-btn {
+        background: #363636;
+        color: #fff;
+        
+        &:hover {
+          background: #262626;
+        }
+      }
+      
+      &.submit-btn {
+        background: #4a9eff;
+        color: #fff;
+        
+        &:hover {
+          background: #3a8eef;
+        }
+        
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
       }
     }

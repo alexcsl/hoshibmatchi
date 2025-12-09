@@ -34,6 +34,7 @@ type RegisterUserRequest struct {
 	// string otp_code = 8; // REMOVED
 	ConfirmPassword string `protobuf:"bytes,9,opt,name=confirm_password,json=confirmPassword,proto3" json:"confirm_password,omitempty"` // ADDED
 	Enable_2Fa      bool   `protobuf:"varint,10,opt,name=enable_2fa,json=enable2fa,proto3" json:"enable_2fa,omitempty"`                 // ADDED for 2FA
+	IsSubscribed    bool   `protobuf:"varint,11,opt,name=is_subscribed,json=isSubscribed,proto3" json:"is_subscribed,omitempty"`        // Newsletter subscription
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -127,6 +128,13 @@ func (x *RegisterUserRequest) GetConfirmPassword() string {
 func (x *RegisterUserRequest) GetEnable_2Fa() bool {
 	if x != nil {
 		return x.Enable_2Fa
+	}
+	return false
+}
+
+func (x *RegisterUserRequest) GetIsSubscribed() bool {
+	if x != nil {
+		return x.IsSubscribed
 	}
 	return false
 }
@@ -2990,7 +2998,7 @@ var File_user_proto protoreflect.FileDescriptor
 const file_user_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"user.proto\x12\x04user\"\xad\x02\n" +
+	"user.proto\x12\x04user\"\xd2\x02\n" +
 	"\x13RegisterUserRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
@@ -3002,7 +3010,8 @@ const file_user_proto_rawDesc = "" +
 	"\x10confirm_password\x18\t \x01(\tR\x0fconfirmPassword\x12\x1d\n" +
 	"\n" +
 	"enable_2fa\x18\n" +
-	" \x01(\bR\tenable2fa\"r\n" +
+	" \x01(\bR\tenable2fa\x12#\n" +
+	"\ris_subscribed\x18\v \x01(\bR\fisSubscribed\"r\n" +
 	"\x14RegisterUserResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +

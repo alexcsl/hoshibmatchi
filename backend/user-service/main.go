@@ -381,9 +381,12 @@ func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) 
 		DateOfBirth:       dob,
 		Gender:            req.Gender,
 		ProfilePictureURL: req.ProfilePictureUrl,
-		IsActive:          false,          // User is inactive until OTP is verified
-		Is2FAEnabled:      req.Enable_2Fa, // Set 2FA status from request
+		IsActive:          false,            // User is inactive until OTP is verified
+		Is2FAEnabled:      req.Enable_2Fa,   // Set 2FA status from request
+		IsSubscribed:      req.IsSubscribed, // Newsletter subscription
 	}
+
+	log.Printf("Creating user with IsSubscribed: %v", req.IsSubscribed)
 
 	result := s.db.Create(&newUser)
 	if result.Error != nil {
@@ -1203,8 +1206,28 @@ func (s *server) VerifyRegistrationOtp(ctx context.Context, req *pb.VerifyRegist
 func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*pb.SearchUsersResponse, error) {
 	log.Printf("SearchUsers request received for query: '%s'", req.Query)
 
-	if req.Query == "" {
-		return &pb.SearchUsersResponse{Users: []*pb.GetUserProfileResponse{}}, nil
+	// Handle empty query or space (for admin get all users)
+	if req.Query == "" || strings.TrimSpace(req.Query) == "" {
+		// Return all users except self
+		var users []User
+		if err := s.db.Where("id != ?", req.SelfUserId).Limit(100).Find(&users).Error; err != nil {
+			log.Printf("Failed to get all users: %v", err)
+			return nil, status.Error(codes.Internal, "Failed to retrieve users")
+		}
+
+		var grpcUsers []*pb.GetUserProfileResponse
+		for _, user := range users {
+			grpcUser, err := s.GetUserProfile(ctx, &pb.GetUserProfileRequest{
+				Username:   user.Username,
+				SelfUserId: req.SelfUserId,
+			})
+			if err != nil {
+				log.Printf("Failed to convert user %s: %v", user.Username, err)
+				continue
+			}
+			grpcUsers = append(grpcUsers, grpcUser)
+		}
+		return &pb.SearchUsersResponse{Users: grpcUsers}, nil
 	}
 
 	// --- Step 1: Broad database query ---

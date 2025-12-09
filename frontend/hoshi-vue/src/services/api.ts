@@ -133,6 +133,7 @@ export interface UserProfile {
   bio: string
   is_verified: boolean
   is_private: boolean
+  is_banned: boolean
   followers_count: number
   following_count: number
   posts_count: number
@@ -318,6 +319,14 @@ export const userAPI = {
   getTopUsers: async (limit: number = 5) => {
     const response = await apiClient.get(`/users/top?limit=${limit}`);
     return response.data;
+  },
+
+  reportUser: async (userId: number, reason: string) => {
+    const response = await apiClient.post("/reports/user", { 
+      reported_user_id: userId, 
+      reason 
+    });
+    return response.data;
   }
 };
 
@@ -408,6 +417,14 @@ export const postAPI = {
 
   deletePost: async (postId: string) => {
     const response = await apiClient.delete(`/posts/${postId}`);
+    return response.data;
+  },
+
+  reportPost: async (postId: number, reason: string) => {
+    const response = await apiClient.post("/reports/post", { 
+      post_id: postId, 
+      reason 
+    });
     return response.data;
   }
 };
@@ -703,7 +720,7 @@ export const adminAPI = {
 
   // Newsletter
   sendNewsletter: async (subject: string, content: string) => {
-    const response = await apiClient.post("/admin/newsletters", { subject, content });
+    const response = await apiClient.post("/admin/newsletters", { subject, body: content });
     return response.data;
   }
 };

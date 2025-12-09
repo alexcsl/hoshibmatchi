@@ -62,6 +62,19 @@
           </select>
         </div>
 
+        <div class="form-group newsletter-checkbox">
+          <label class="checkbox-label">
+            <input
+              v-model="form.subscribe_to_newsletter"
+              type="checkbox"
+            />
+            <span>Subscribe to Newsletter</span>
+          </label>
+          <p class="checkbox-description">
+            Get the latest updates, features, and news delivered to your inbox
+          </p>
+        </div>
+
         <button
           type="submit"
           :disabled="isLoading"
@@ -97,7 +110,8 @@ const form = ref({
   email: "",
   password: "",
   date_of_birth: "", // Will be in "YYYY-MM-DD" format from the input
-  gender: ""
+  gender: "",
+  subscribe_to_newsletter: false // Newsletter subscription
 });
 
 // State for loading and messages
@@ -188,6 +202,35 @@ button:disabled {
   font-size: 0.9em;
   color: #8e8e8e;
   margin-bottom: 5px;
+}
+.newsletter-checkbox {
+  text-align: left;
+  padding: 15px;
+  background-color: #fafafa;
+  border-radius: 5px;
+  margin-bottom: 15px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.95em;
+  color: #262626;
+}
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin-right: 10px;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+.checkbox-label span {
+  font-weight: 500;
+}
+.checkbox-description {
+  font-size: 0.85em;
+  color: #8e8e8e;
+  margin: 8px 0 0 30px;
+  line-height: 1.4;
 }
 .error-message {
   color: red;

@@ -579,9 +579,27 @@ const handleOptions = () => {
   if (isPostOwner.value) {
     handleDeletePost();
   } else {
-    // TODO: Implement report/share options
-    console.log("Open options for post:", props.postId);
+    handleReportPost();
   }
+};
+
+const handleReportPost = () => {
+  const reason = prompt("Why are you reporting this post?");
+  if (!reason || !reason.trim()) return;
+
+  const numericPostId = parseInt(props.postId);
+  if (isNaN(numericPostId)) {
+    alert("Invalid post ID");
+    return;
+  }
+
+  postAPI.reportPost(numericPostId, reason.trim())
+    .then(() => {
+      alert("Post reported successfully. Thank you for helping keep our community safe.");
+    })
+    .catch((err: any) => {
+      alert(err.response?.data?.error || "Failed to report post");
+    });
 };
 
 const handleAddComment = async () => {

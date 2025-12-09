@@ -529,15 +529,16 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Decode the JSON body from the client
 	var req struct {
-		Name              string `json:"name"`
-		Username          string `json:"username"`
-		Email             string `json:"email"`
-		Password          string `json:"password"`
-		ConfirmPassword   string `json:"confirm_password"` // ADDED
-		DateOfBirth       string `json:"date_of_birth"`
-		Gender            string `json:"gender"`
-		Enable2FA         bool   `json:"enable_2fa"` // ADDED for 2FA
-		ProfilePictureURL string `json:"profile_picture_url"`
+		Name                  string `json:"name"`
+		Username              string `json:"username"`
+		Email                 string `json:"email"`
+		Password              string `json:"password"`
+		ConfirmPassword       string `json:"confirm_password"` // ADDED
+		DateOfBirth           string `json:"date_of_birth"`
+		Gender                string `json:"gender"`
+		Enable2FA             bool   `json:"enable_2fa"` // ADDED for 2FA
+		ProfilePictureURL     string `json:"profile_picture_url"`
+		SubscribeToNewsletter bool   `json:"subscribe_to_newsletter"` // Newsletter subscription
 		// OtpCode           string `json:"otp_code"` // REMOVED
 	}
 
@@ -545,6 +546,8 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("Register request - username: %s, subscribe_to_newsletter: %v", req.Username, req.SubscribeToNewsletter)
 
 	// 3. Call the gRPC service
 	grpcReq := &pb.RegisterUserRequest{
@@ -557,6 +560,7 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		Gender:            req.Gender,
 		Enable_2Fa:        req.Enable2FA, // ADDED for 2FA
 		ProfilePictureUrl: req.ProfilePictureURL,
+		IsSubscribed:      req.SubscribeToNewsletter, // Newsletter subscription
 		// OtpCode:           req.OtpCode, // REMOVED
 	}
 

@@ -69,6 +69,7 @@ message RegisterUserRequest {
   // string otp_code = 8; // REMOVED
   string confirm_password = 9; // ADDED
   bool enable_2fa = 10; // ADDED for 2FA
+  bool is_subscribed = 11; // Newsletter subscription
 }
 
 message RegisterUserResponse {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -1343,6 +1344,25 @@ func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 			}
 		}
 	}
+
+	// --- Clear Redis cache for this post ---
+	cacheKey := fmt.Sprintf("post:%d", req.PostId)
+	if err := s.rdb.Del(ctx, cacheKey).Err(); err != nil {
+		log.Printf("Failed to delete cache key %s: %v", cacheKey, err)
+	}
+
+	// Also clear feed caches that might contain this post
+	feedPattern := "feed:*"
+	iter := s.rdb.Scan(ctx, 0, feedPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
+	}
+
 	log.Printf("Successfully deleted post %d and its associations", req.PostId)
 
 	return &pb.DeletePostResponse{Message: "Post deleted successfully"}, nil
