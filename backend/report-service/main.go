@@ -129,8 +129,8 @@ func main() {
 func (s *server) ReportPost(ctx context.Context, req *pb.ReportPostRequest) (*pb.ReportResponse, error) {
 	log.Printf("ReportPost request from user %d for post %d", req.ReporterId, req.PostId)
 
-	// 1. Validate that the post exists
-	_, err := s.postClient.GetPost(ctx, &postPb.GetPostRequest{PostId: req.PostId})
+	// 1. Validate that the post exists and get post details
+	postRes, err := s.postClient.GetPost(ctx, &postPb.GetPostRequest{PostId: req.PostId})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
 			return nil, status.Error(codes.NotFound, "The post you are trying to report does not exist")
@@ -138,7 +138,12 @@ func (s *server) ReportPost(ctx context.Context, req *pb.ReportPostRequest) (*pb
 		return nil, status.Error(codes.Internal, "Failed to verify post")
 	}
 
-	// 2. Create the report
+	// 2. Check if the user is trying to report their own post
+	if postRes.Post.AuthorId == req.ReporterId {
+		return nil, status.Error(codes.InvalidArgument, "You cannot report your own post")
+	}
+
+	// 3. Create the report
 	newReport := PostReport{
 		ReporterID: req.ReporterId,
 		PostID:     req.PostId,

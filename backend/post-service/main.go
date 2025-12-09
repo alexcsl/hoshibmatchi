@@ -1366,11 +1366,22 @@ func (s *server) GetPosts(ctx context.Context, req *pb.GetPostsRequest) (*pb.Get
 
 // --- GPRC: DeletePost (Admin) ---
 func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb.DeletePostResponse, error) {
-	log.Printf("Admin action: DeletePost request from admin %d for post %d", req.AdminUserId, req.PostId)
+	log.Printf("DeletePost request from user %d for post %d", req.AdminUserId, req.PostId)
 
 	var post Post
 	if err := s.db.First(&post, req.PostId).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "Post not found")
+	}
+
+	// Check if the user is the post owner or an admin
+	var user User
+	if err := s.db.First(&user, req.AdminUserId).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to verify user")
+	}
+
+	// Only allow deletion if user is the post owner or an admin
+	if post.UserID != req.AdminUserId && !user.IsAdmin {
+		return nil, status.Error(codes.PermissionDenied, "You can only delete your own posts")
 	}
 
 	// We can't delete a composite primary key (like PostLike) with just GORM,

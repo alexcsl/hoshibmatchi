@@ -87,6 +87,7 @@
             @share="handleShare"
             @open-details="handleOpenPostDetails"
             @open-options="handleOpenOptions"
+            @deleted="handleDeleted"
           />
 
           <div
@@ -319,6 +320,11 @@ const openStoryViewer = (group: any) => {
 
 const handleOpenOptions = (postId: string) => {
   console.log("Open options:", postId);
+};
+
+const handleDeleted = (postId: string) => {
+  // Remove the post from the feed
+  feedStore.homeFeed = feedStore.homeFeed.filter(p => p.id !== postId);
 };
 
 // Helper function for media URLs

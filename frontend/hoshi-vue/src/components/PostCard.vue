@@ -235,7 +235,7 @@
         <button
           v-if="!isOwnPost"
           class="option-btn"
-          @click="showOptionsModal = false"
+          @click="showOptionsModal = false; showReportModal = true;"
         >
           <span>🚫</span>
           <span>Report</span>
@@ -308,6 +308,113 @@
                 {{ liker.full_name }}
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div
+      v-if="showReportModal"
+      class="share-modal-overlay"
+      @click.stop="showReportModal = false"
+    >
+      <div
+        class="report-modal"
+        @click.stop
+      >
+        <div class="report-header">
+          <h3>Report Post</h3>
+          <button
+            class="close-report-btn"
+            @click="showReportModal = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="report-content">
+          <p class="report-description">
+            Why are you reporting this post?
+          </p>
+          <div class="report-reasons">
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Spam or misleading"
+              />
+              <span>Spam or misleading</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Harassment or hate speech"
+              />
+              <span>Harassment or hate speech</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Violence or dangerous content"
+              />
+              <span>Violence or dangerous content</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Nudity or sexual content"
+              />
+              <span>Nudity or sexual content</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Intellectual property violation"
+              />
+              <span>Intellectual property violation</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="False information"
+              />
+              <span>False information</span>
+            </label>
+            <label class="report-reason-option">
+              <input 
+                v-model="reportReason" 
+                type="radio" 
+                name="reportReason" 
+                value="Other"
+              />
+              <span>Other</span>
+            </label>
+          </div>
+          <div class="report-actions">
+            <button
+              class="cancel-report-btn"
+              @click="showReportModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="submit-report-btn"
+              :disabled="!reportReason"
+              @click="handleReportPost"
+            >
+              Submit Report
+            </button>
           </div>
         </div>
       </div>
@@ -500,6 +607,8 @@ const handleComment = () => {
 const showShareModal = ref(false);
 const showOptionsModal = ref(false);
 const showLikesModal = ref(false);
+const showReportModal = ref(false);
+const reportReason = ref("");
 const likers = ref<any[]>([]);
 const loadingLikers = ref(false);
 
@@ -582,6 +691,23 @@ const handleDeletePost = async () => {
   } catch (error) {
     console.error("Failed to delete post:", error);
     alert("Failed to delete post. Please try again.");
+  }
+};
+
+const handleReportPost = async () => {
+  if (!reportReason.value.trim()) {
+    alert("Please select or enter a reason for reporting");
+    return;
+  }
+  
+  try {
+    await postAPI.reportPost(parseInt(props.post.id), reportReason.value);
+    showReportModal.value = false;
+    reportReason.value = "";
+    alert("Post reported successfully. Thank you for helping keep our community safe.");
+  } catch (error) {
+    console.error("Failed to report post:", error);
+    alert("Failed to report post. Please try again.");
   }
 };
 
@@ -1108,5 +1234,142 @@ const toggleSummary = async () => {
     }
   }
 }
+
+.report-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  max-height: 600px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: #fff;
+    }
+
+    .close-report-btn {
+      background: none;
+      border: none;
+      color: #8e8e8e;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #fff;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+      }
+    }
+  }
+
+  .report-content {
+    padding: 20px;
+    overflow-y: auto;
+
+    .report-description {
+      font-size: 14px;
+      color: #a8a8a8;
+      margin-bottom: 16px;
+    }
+
+    .report-reasons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 20px;
+
+      .report-reason-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background-color: #1a1a1a;
+        border: 1px solid #404040;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          border-color: #0095f6;
+          background-color: rgba(0, 149, 246, 0.1);
+        }
+
+        input[type="radio"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+          accent-color: #0095f6;
+        }
+
+        span {
+          font-size: 14px;
+          color: #e4e6eb;
+          flex: 1;
+        }
+      }
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+
+      button {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .cancel-report-btn {
+        background-color: #404040;
+        color: #fff;
+
+        &:hover {
+          background-color: #4a4a4a;
+        }
+      }
+
+      .submit-report-btn {
+        background-color: #0095f6;
+        color: #fff;
+
+        &:hover:not(:disabled) {
+          background-color: #1877f2;
+        }
+
+        &:disabled {
+          background-color: #404040;
+          color: #8e8e8e;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}
 </style>
+
 
