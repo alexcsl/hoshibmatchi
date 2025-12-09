@@ -493,6 +493,18 @@ func (s *server) CreatePost(ctx context.Context, req *pb.CreatePostRequest) (*pb
 		}
 	}
 
+	// --- Clear feed caches since new post should appear in feeds ---
+	feedPattern := "feed:*"
+	iter := s.rdb.Scan(ctx, 0, feedPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
+	}
+
 	// --- Step 3: Return the created post ---
 	return &pb.CreatePostResponse{
 		Post: s.enrichPostProto(ctx, &newPost, req.AuthorId), // Requesting user is author
@@ -542,6 +554,23 @@ func (s *server) LikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.Lik
 	}
 	// --- END ADD ---
 
+	// --- Clear cache for this post and feed caches ---
+	postCacheKey := fmt.Sprintf("post:%d", req.PostId)
+	if err := s.rdb.Del(ctx, postCacheKey).Err(); err != nil {
+		log.Printf("Failed to delete post cache key %s: %v", postCacheKey, err)
+	}
+
+	feedPattern := "feed:*"
+	iter := s.rdb.Scan(ctx, 0, feedPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
+	}
+
 	return &pb.LikePostResponse{Message: "Post liked"}, nil
 }
 
@@ -570,6 +599,23 @@ func (s *server) UnlikePost(ctx context.Context, req *pb.LikePostRequest) (*pb.U
 
 	if err != nil {
 		return nil, err
+	}
+
+	// --- Clear cache for this post and feed caches ---
+	postCacheKey := fmt.Sprintf("post:%d", req.PostId)
+	if err := s.rdb.Del(ctx, postCacheKey).Err(); err != nil {
+		log.Printf("Failed to delete post cache key %s: %v", postCacheKey, err)
+	}
+
+	feedPattern := "feed:*"
+	iter := s.rdb.Scan(ctx, 0, feedPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
 	}
 
 	return &pb.UnlikePostResponse{Message: "Post unliked"}, nil
@@ -634,6 +680,23 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 			"entity_id": req.PostId,
 		})
 		s.publishToQueue(ctx, "notification_queue", msgBody)
+	}
+
+	// --- Clear cache for this post and feed caches ---
+	postCacheKey := fmt.Sprintf("post:%d", req.PostId)
+	if err := s.rdb.Del(ctx, postCacheKey).Err(); err != nil {
+		log.Printf("Failed to delete post cache key %s: %v", postCacheKey, err)
+	}
+
+	feedPattern := "feed:*"
+	iter := s.rdb.Scan(ctx, 0, feedPattern, 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
 	}
 
 	// --- Step 3: Return the created comment ---
@@ -1250,6 +1313,19 @@ func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 
 // --- GPRC: GetPost ---
 func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
+	// Try cache first
+	cacheKey := fmt.Sprintf("post:%d", req.PostId)
+	cachedData, err := s.rdb.Get(ctx, cacheKey).Result()
+	if err == nil {
+		// Cache hit
+		var cachedPost pb.Post
+		if json.Unmarshal([]byte(cachedData), &cachedPost) == nil {
+			log.Printf("Cache hit for post %d", req.PostId)
+			return &cachedPost, nil
+		}
+	}
+
+	// Cache miss - query database
 	var post Post
 	if err := s.db.First(&post, req.PostId).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "Post not found")
@@ -1258,7 +1334,14 @@ func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post,
 	}
 
 	// Use our existing helper
-	return s.gormToGrpcPost(&post), nil
+	grpcPost := s.gormToGrpcPost(&post)
+
+	// Cache with 5 minute TTL
+	if responseJSON, err := json.Marshal(grpcPost); err == nil {
+		s.rdb.Set(ctx, cacheKey, responseJSON, 5*time.Minute)
+	}
+
+	return grpcPost, nil
 }
 
 // --- GPRC: GetPosts (Batched) ---
