@@ -2,21 +2,37 @@
   <div class="complete-profile-container">
     <div class="complete-profile-card">
       <div class="logo">
-        <img src="../../public/instagram-logo.png" alt="Hoshi Logo" />
+        <img
+          src="../../public/instagram-logo.png"
+          alt="Hoshi Logo"
+        />
       </div>
       
       <h2>Complete Your Profile</h2>
-      <p class="subtitle">Welcome! Let's finish setting up your account</p>
+      <p class="subtitle">
+        Welcome! Let's finish setting up your account
+      </p>
 
       <div class="google-info">
-        <img :src="googleData.picture" alt="Profile" class="google-avatar" />
+        <img
+          :src="googleData.picture"
+          alt="Profile"
+          class="google-avatar"
+        />
         <div class="google-details">
-          <p class="google-name">{{ googleData.name }}</p>
-          <p class="google-email">{{ googleData.email }}</p>
+          <p class="google-name">
+            {{ googleData.name }}
+          </p>
+          <p class="google-email">
+            {{ googleData.email }}
+          </p>
         </div>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="form">
+      <form
+        class="form"
+        @submit.prevent="handleSubmit"
+      >
         <div class="form-group">
           <label for="username">Username</label>
           <input
@@ -28,7 +44,10 @@
             :class="{ 'error': errors.username }"
             @input="validateUsername"
           />
-          <span v-if="errors.username" class="error-message">{{ errors.username }}</span>
+          <span
+            v-if="errors.username"
+            class="error-message"
+          >{{ errors.username }}</span>
         </div>
 
         <div class="form-group">
@@ -41,7 +60,10 @@
             :max="maxDate"
             :class="{ 'error': errors.dateOfBirth }"
           />
-          <span v-if="errors.dateOfBirth" class="error-message">{{ errors.dateOfBirth }}</span>
+          <span
+            v-if="errors.dateOfBirth"
+            class="error-message"
+          >{{ errors.dateOfBirth }}</span>
         </div>
 
         <div class="form-group">
@@ -85,129 +107,134 @@
           {{ loading ? 'Completing...' : 'Complete Profile' }}
         </button>
 
-        <p v-if="errorMessage" class="error-banner">{{ errorMessage }}</p>
+        <p
+          v-if="errorMessage"
+          class="error-banner"
+        >
+          {{ errorMessage }}
+        </p>
       </form>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import apiClient, { handleApiError } from '../services/api'
+import { ref, computed, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import apiClient, { handleApiError } from "../services/api";
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
 const googleData = ref({
-  name: '',
-  email: '',
-  picture: ''
-})
+  name: "",
+  email: "",
+  picture: ""
+});
 
 const formData = ref({
-  username: '',
-  dateOfBirth: '',
-  gender: ''
-})
+  username: "",
+  dateOfBirth: "",
+  gender: ""
+});
 
 const errors = ref({
-  username: '',
-  dateOfBirth: ''
-})
+  username: "",
+  dateOfBirth: ""
+});
 
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(false);
+const errorMessage = ref("");
 
 // Calculate max date (must be at least 13 years old)
 const maxDate = computed(() => {
-  const date = new Date()
-  date.setFullYear(date.getFullYear() - 13)
-  return date.toISOString().split('T')[0]
-})
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 13);
+  return date.toISOString().split("T")[0];
+});
 
 const isFormValid = computed(() => {
   return formData.value.username.length >= 3 &&
          formData.value.dateOfBirth &&
          formData.value.gender &&
-         !errors.value.username
-})
+         !errors.value.username;
+});
 
 onMounted(() => {
   // Get Google data from query params
-  googleData.value.name = route.query.name as string || ''
-  googleData.value.email = route.query.email as string || ''
-  googleData.value.picture = route.query.picture as string || ''
+  googleData.value.name = route.query.name as string || "";
+  googleData.value.email = route.query.email as string || "";
+  googleData.value.picture = route.query.picture as string || "";
 
   // Pre-fill username from email (user can change it)
   if (googleData.value.email) {
-    formData.value.username = googleData.value.email.split('@')[0]
-    validateUsername()
+    formData.value.username = googleData.value.email.split("@")[0];
+    validateUsername();
   }
 
   // If no Google data, redirect back to login
   if (!googleData.value.email) {
-    router.push('/login')
+    router.push("/login");
   }
-})
+});
 
 const validateUsername = async () => {
-  const username = formData.value.username.trim()
+  const username = formData.value.username.trim();
   
   if (username.length < 3) {
-    errors.value.username = 'Username must be at least 3 characters'
-    return
+    errors.value.username = "Username must be at least 3 characters";
+    return;
   }
   
   if (!/^[a-zA-Z0-9._]+$/.test(username)) {
-    errors.value.username = 'Username can only contain letters, numbers, dots, and underscores'
-    return
+    errors.value.username = "Username can only contain letters, numbers, dots, and underscores";
+    return;
   }
 
   // Check username availability (debounced check)
   try {
-    const response = await apiClient.get(`/auth/check-username/${username}`)
+    const response = await apiClient.get(`/auth/check-username/${username}`);
     if (response.data.exists) {
-      errors.value.username = 'Username is already taken'
+      errors.value.username = "Username is already taken";
     } else {
-      errors.value.username = ''
+      errors.value.username = "";
     }
-  } catch (err) {
+  } catch {
     // If endpoint doesn't exist, skip validation
-    errors.value.username = ''
+    errors.value.username = "";
   }
-}
+};
 
 const handleSubmit = async () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value) return;
 
-  loading.value = true
-  errorMessage.value = ''
+  loading.value = true;
+  errorMessage.value = "";
 
   try {
     // Update user profile with the additional information
-    await apiClient.put('/users/complete-profile', {
+    await apiClient.put("/users/complete-profile", {
       username: formData.value.username,
       date_of_birth: formData.value.dateOfBirth,
       gender: formData.value.gender
-    })
+    });
 
     // Update stored user data
-    const storedUser = localStorage.getItem('user')
+    const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      const userData = JSON.parse(storedUser)
-      userData.username = formData.value.username
-      localStorage.setItem('user', JSON.stringify(userData))
+      const userData = JSON.parse(storedUser);
+      userData.username = formData.value.username;
+      localStorage.setItem("user", JSON.stringify(userData));
     }
 
     // Redirect to feed
-    router.push('/feed')
+    router.push("/feed");
   } catch (err) {
-    errorMessage.value = handleApiError(err)
+    errorMessage.value = handleApiError(err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>

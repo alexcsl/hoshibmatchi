@@ -9,17 +9,29 @@
           <h2>Account</h2>
           <div class="setting-item">
             <div class="setting-info">
-              <div class="label">Email</div>
-              <div class="value">user@example.com</div>
+              <div class="label">
+                Email
+              </div>
+              <div class="value">
+                user@example.com
+              </div>
             </div>
-            <button class="edit-btn">Edit</button>
+            <button class="edit-btn">
+              Edit
+            </button>
           </div>
           <div class="setting-item">
             <div class="setting-info">
-              <div class="label">Password</div>
-              <div class="value">••••••••</div>
+              <div class="label">
+                Password
+              </div>
+              <div class="value">
+                ••••••••
+              </div>
             </div>
-            <button class="edit-btn">Change</button>
+            <button class="edit-btn">
+              Change
+            </button>
           </div>
         </div>
 
@@ -28,8 +40,12 @@
           <h2>Privacy and safety</h2>
           <div class="setting-item toggle">
             <div class="setting-info">
-              <div class="label">Private account</div>
-              <div class="value">Make your profile private</div>
+              <div class="label">
+                Private account
+              </div>
+              <div class="value">
+                Make your profile private
+              </div>
             </div>
             <input 
               type="checkbox" 
@@ -40,10 +56,18 @@
           </div>
           <div class="setting-item toggle">
             <div class="setting-info">
-              <div class="label">Allow comments</div>
-              <div class="value">Anyone can comment on your posts</div>
+              <div class="label">
+                Allow comments
+              </div>
+              <div class="value">
+                Anyone can comment on your posts
+              </div>
             </div>
-            <input type="checkbox" class="toggle-switch" checked />
+            <input
+              type="checkbox"
+              class="toggle-switch"
+              checked
+            />
           </div>
         </div>
 
@@ -52,17 +76,32 @@
           <h2>Notifications</h2>
           <div class="setting-item toggle">
             <div class="setting-info">
-              <div class="label">Push notifications</div>
-              <div class="value">Get updates about your account</div>
+              <div class="label">
+                Push notifications
+              </div>
+              <div class="value">
+                Get updates about your account
+              </div>
             </div>
-            <input type="checkbox" class="toggle-switch" checked />
+            <input
+              type="checkbox"
+              class="toggle-switch"
+              checked
+            />
           </div>
           <div class="setting-item toggle">
             <div class="setting-info">
-              <div class="label">Email notifications</div>
-              <div class="value">Receive emails about activity</div>
+              <div class="label">
+                Email notifications
+              </div>
+              <div class="value">
+                Receive emails about activity
+              </div>
             </div>
-            <input type="checkbox" class="toggle-switch" />
+            <input
+              type="checkbox"
+              class="toggle-switch"
+            />
           </div>
         </div>
 
@@ -70,13 +109,19 @@
         <div class="settings-section">
           <h2>Help</h2>
           <div class="setting-item">
-            <button class="text-btn">Help Center</button>
+            <button class="text-btn">
+              Help Center
+            </button>
           </div>
           <div class="setting-item">
-            <button class="text-btn">Report a problem</button>
+            <button class="text-btn">
+              Report a problem
+            </button>
           </div>
           <div class="setting-item">
-            <button class="text-btn">Terms of Service</button>
+            <button class="text-btn">
+              Terms of Service
+            </button>
           </div>
         </div>
       </div>
@@ -85,38 +130,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import apiClient from '@/services/api'
+import { ref, onMounted } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import apiClient from "@/services/api";
 
-const isPrivate = ref(false)
-const authStore = useAuthStore()
+const isPrivate = ref(false);
+const authStore = useAuthStore();
 
 // Load initial state
 onMounted(async () => {
   // We might need to fetch the user profile to get the current privacy setting
   if (authStore.user?.username) {
-    const res = await apiClient.get(`/users/${authStore.user.username}`)
+    const res = await apiClient.get(`/users/${authStore.user.username}`);
     // The proto mapping usually results in 'isPrivate' or 'is_private'
-    const userData = res.data.user || res.data
-    isPrivate.value = userData.is_private || false
+    const userData = res.data.user || res.data;
+    isPrivate.value = userData.is_private || false;
   }
-})
+});
 
 const togglePrivacy = async () => {
   try {
-    const newState = !isPrivate.value
+    const newState = !isPrivate.value;
     // Call the backend
-    await apiClient.put('/settings/privacy', { is_private: newState })
-    isPrivate.value = newState
+    await apiClient.put("/settings/privacy", { is_private: newState });
+    isPrivate.value = newState;
   } catch (err) {
-    console.error("Failed to update privacy", err)
+    console.error("Failed to update privacy", err);
     // Revert toggle if failed
     // (Visual revert handled by v-model not updating if we don't change value, 
     // but checkbox input works differently. Better to alert.)
-    alert("Failed to update privacy settings")
+    alert("Failed to update privacy settings");
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

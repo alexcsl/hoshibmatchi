@@ -21,27 +21,46 @@
         </main>
 
         <!-- Mini Message Component (not on Messages page) -->
-        <MiniMessage v-if="!isMessagesPage" :messages="recentMessages" @click="navigateToMessages" />
+        <MiniMessage
+          v-if="!isMessagesPage"
+          :messages="recentMessages"
+          @click="navigateToMessages"
+        />
       </div>
 
       <!-- Overlays -->
-      <SearchPanel v-if="isSearchOpen" @close="isSearchOpen = false" />
-      <NotificationOverlay v-if="isNotificationsOpen" @close="isNotificationsOpen = false" />
-      <CreatePostOverlay v-if="isCreatePostOpen" @close="isCreatePostOpen = false" @posted="handlePostCreated" />
+      <SearchPanel
+        v-if="isSearchOpen"
+        @close="isSearchOpen = false"
+      />
+      <NotificationOverlay
+        v-if="isNotificationsOpen"
+        @close="isNotificationsOpen = false"
+      />
+      <CreatePostOverlay
+        v-if="isCreatePostOpen"
+        @close="isCreatePostOpen = false"
+        @posted="handlePostCreated"
+      />
       <PostDetailsOverlay 
         v-if="isPostDetailsOpen && selectedPostId" 
-        @close="isPostDetailsOpen = false" 
-        :post-id="selectedPostId"
+        :post-id="selectedPostId" 
         :context="postContext"
+        @close="isPostDetailsOpen = false"
         @like="handlePostDetailsLike"
         @save="handlePostDetailsSave"
       />
       <ReelsViewer 
         v-if="isReelsViewerOpen" 
-        @close="isReelsViewerOpen = false" 
-        :initial-index="currentReelIndex"
+        :initial-index="currentReelIndex" 
+        @close="isReelsViewerOpen = false"
       />
-      <StoryViewer v-if="isStoryViewerOpen" @close="isStoryViewerOpen = false" :stories="stories" :initial-index="currentStoryIndex" />
+      <StoryViewer
+        v-if="isStoryViewerOpen"
+        :stories="stories"
+        :initial-index="currentStoryIndex"
+        @close="isStoryViewerOpen = false"
+      />
     </template>
 
     <!-- Auth pages without sidebar -->
@@ -52,19 +71,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useFeedStore } from '@/stores/feed'
-import Sidebar from './components/Sidebar.vue'
-import MiniMessage from './components/MiniMessage.vue'
-import SearchOverlay from './components/SearchOverlay.vue'
-import SearchPanel from './components/SearchPanel.vue'
-import NotificationOverlay from './components/NotificationOverlay.vue'
-import CreatePostOverlay from './components/CreatePostOverlay.vue'
-import PostDetailsOverlay from './components/PostDetailsOverlay.vue'
-import StoryViewer from './components/StoryViewer.vue'
-import ReelsViewer from './components/ReelsViewer.vue'
+import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { useFeedStore } from "@/stores/feed";
+import Sidebar from "./components/Sidebar.vue";
+import MiniMessage from "./components/MiniMessage.vue";
+import SearchPanel from "./components/SearchPanel.vue";
+import NotificationOverlay from "./components/NotificationOverlay.vue";
+import CreatePostOverlay from "./components/CreatePostOverlay.vue";
+import PostDetailsOverlay from "./components/PostDetailsOverlay.vue";
+import StoryViewer from "./components/StoryViewer.vue";
+import ReelsViewer from "./components/ReelsViewer.vue";
 
 // Extend Window interface for global functions
 declare global {
@@ -75,107 +93,107 @@ declare global {
   }
 }
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
-const feedStore = useFeedStore()
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+const feedStore = useFeedStore();
 
-const isSearchOpen = ref(false)
-const isNotificationsOpen = ref(false)
-const isCreatePostOpen = ref(false)
-const isPostDetailsOpen = ref(false)
-const isStoryViewerOpen = ref(false)
-const isReelsViewerOpen = ref(false)
-const currentStoryIndex = ref(0)
-const currentReelIndex = ref(0)
-const selectedPostId = ref<string | null>(null)
-const postContext = ref<string>('feed')
+const isSearchOpen = ref(false);
+const isNotificationsOpen = ref(false);
+const isCreatePostOpen = ref(false);
+const isPostDetailsOpen = ref(false);
+const isStoryViewerOpen = ref(false);
+const isReelsViewerOpen = ref(false);
+const currentStoryIndex = ref(0);
+const currentReelIndex = ref(0);
+const selectedPostId = ref<string | null>(null);
+const postContext = ref<string>("feed");
 
-const authPages = ['Login', 'SignUp', 'LoginOTP', 'VerifyOTP', 'ResetPassword', 'ForgotPassword', 'GoogleCallback', 'Register']
-const isAuthPage = computed(() => !authPages.includes(route.name as string) && route.path !== '/')
+const authPages = ["Login", "SignUp", "LoginOTP", "VerifyOTP", "ResetPassword", "ForgotPassword", "GoogleCallback", "Register"];
+const isAuthPage = computed(() => !authPages.includes(route.name as string) && route.path !== "/");
 
 const currentRoute = computed(() => {
-  const name = route.path.split('/')[1] || 'feed'
-  return name
-})
+  const name = route.path.split("/")[1] || "feed";
+  return name;
+});
 
-const isMessagesPage = computed(() => currentRoute.value === 'messages')
+const isMessagesPage = computed(() => currentRoute.value === "messages");
 
 // Mock data - replace with real data from backend
 const recentMessages = ref([
-  { id: 1, username: 'user_1', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 2 },
-  { id: 2, username: 'user_2', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 0 },
-  { id: 3, username: 'user_3', avatar: '/placeholder.svg?height=40&width=40', unreadCount: 1 }
-])
+  { id: 1, username: "user_1", avatar: "/placeholder.svg?height=40&width=40", unreadCount: 2 },
+  { id: 2, username: "user_2", avatar: "/placeholder.svg?height=40&width=40", unreadCount: 0 },
+  { id: 3, username: "user_3", avatar: "/placeholder.svg?height=40&width=40", unreadCount: 1 }
+]);
 
 const stories = ref([
   { 
-    id: '1', 
-    author_username: 'user_1', 
-    author_profile_url: '/placeholder.svg?height=48&width=48', 
-    media_url: '/placeholder.svg?height=800&width=500', 
+    id: "1", 
+    author_username: "user_1", 
+    author_profile_url: "/placeholder.svg?height=48&width=48", 
+    media_url: "/placeholder.svg?height=800&width=500", 
     created_at: new Date().toISOString() 
   },
   { 
-    id: '2', 
-    author_username: 'user_2', 
-    author_profile_url: '/placeholder.svg?height=48&width=48', 
-    media_url: '/placeholder.svg?height=800&width=500', 
+    id: "2", 
+    author_username: "user_2", 
+    author_profile_url: "/placeholder.svg?height=48&width=48", 
+    media_url: "/placeholder.svg?height=800&width=500", 
     created_at: new Date().toISOString() 
   }
-])
+]);
 
 const handlePostCreated = () => {
   // Refresh feed after post is created
-  feedStore.loadHomeFeed(1)
-}
+  feedStore.loadHomeFeed(1);
+};
 
 const handlePostDetailsLike = async (postId: string) => {
-  await feedStore.toggleLike(postId, 'home')
-}
+  await feedStore.toggleLike(postId, "home");
+};
 
 const handlePostDetailsSave = async (postId: string) => {
-  await feedStore.toggleSave(postId, '1', 'home')
-}
+  await feedStore.toggleSave(postId, "home");
+};
 
 const handleNavigation = (path: string) => {
-  router.push(`/${path}`)
-}
+  router.push(`/${path}`);
+};
 
 const navigateToMessages = () => {
-  router.push('/messages')
-}
+  router.push("/messages");
+};
 
 const handleSettingsClick = () => {
-  router.push('/settings')
-}
+  router.push("/settings");
+};
 
 const handleSavedClick = () => {
-  router.push('/archive')
-}
+  router.push("/archive");
+};
 
 const handleLogout = () => {
   // Clear auth state using store
-  authStore.logout()
+  authStore.logout();
   // Redirect to login page
-  router.push('/login')
-}
+  router.push("/login");
+};
 
-window.openPostDetails = (postId: string, context: string = 'feed') => {
-  selectedPostId.value = postId
-  postContext.value = context
-  isPostDetailsOpen.value = true
-}
+window.openPostDetails = (postId: string, context: string = "feed") => {
+  selectedPostId.value = postId;
+  postContext.value = context;
+  isPostDetailsOpen.value = true;
+};
 
 window.openReelsViewer = (index: number) => {
-  currentReelIndex.value = index
-  isReelsViewerOpen.value = true
-}
+  currentReelIndex.value = index;
+  isReelsViewerOpen.value = true;
+};
 
 window.openStoryViewer = (index: number = 0) => {
-  currentStoryIndex.value = index
-  isStoryViewerOpen.value = true
-}
+  currentStoryIndex.value = index;
+  isStoryViewerOpen.value = true;
+};
 </script>
 
 <style scoped lang="scss">

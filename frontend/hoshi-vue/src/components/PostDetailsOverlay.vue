@@ -1,5 +1,8 @@
 <template>
-  <div class="post-details-overlay" @click="$emit('close')">
+  <div
+    class="post-details-overlay"
+    @click="$emit('close')"
+  >
     <!-- Navigation buttons (only for Explore context) -->
     <button 
       v-if="props.context === 'explore' && canNavigatePrevious" 
@@ -9,22 +12,54 @@
       ‹
     </button>
     
-    <div class="post-details-modal" @click.stop>
-      <button class="close-btn" @click="$emit('close')">✕</button>
+    <div
+      class="post-details-modal"
+      @click.stop
+    >
+      <button
+        class="close-btn"
+        @click="$emit('close')"
+      >
+        ✕
+      </button>
 
-      <div v-if="loading" class="loading-state">
-        <div class="spinner">Loading...</div>
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
+        <div class="spinner">
+          Loading...
+        </div>
       </div>
 
-      <div v-else-if="postData" class="post-details-content">
+      <div
+        v-else-if="postData"
+        class="post-details-content"
+      >
         <!-- Post Image -->
         <div class="post-image-container">
-          <div v-if="postData.media_urls?.length > 0" class="media-carousel">
-            <img 
-              :src="postData.media_urls[currentMediaIndex]" 
-              :alt="'Post by ' + postData.author_username" 
-              class="post-image" 
-            />
+          <div
+            v-if="postData.media_urls?.length > 0"
+            class="media-carousel"
+          >
+            <div v-if="loadingMedia" class="media-loading">
+              <div class="loading-spinner">Loading media...</div>
+            </div>
+            <template v-else-if="secureMediaUrls.length > 0">
+              <video 
+                v-if="isVideoUrl(secureMediaUrls[currentMediaIndex])"
+                :src="secureMediaUrls[currentMediaIndex]" 
+                class="post-image"
+                controls
+                playsinline
+              ></video>
+              <img 
+                v-else
+                :src="secureMediaUrls[currentMediaIndex]" 
+                :alt="'Post by ' + postData.author_username" 
+                class="post-image" 
+              />
+            </template>
             
             <button 
               v-if="postData.media_urls.length > 1 && currentMediaIndex > 0" 
@@ -48,54 +83,84 @@
           <!-- Header -->
           <div class="info-header">
             <div class="user-info">
-              <img 
-                :src="postData.author_profile_url || '/placeholder.svg?height=32&width=32'" 
-                :alt="postData.author_username" 
-                class="avatar" 
+              <SecureImage
+                :src="postData.author_profile_url"
+                :alt="postData.author_username"
+                class-name="avatar"
+                loading-placeholder="/placeholder.svg?height=32&width=32"
+                error-placeholder="/default-avatar.svg"
               />
               <div>
                 <div class="username">
                   {{ postData.author_username }}
-                  <span v-if="postData.author_is_verified" class="verified">✓</span>
+                  <span
+                    v-if="postData.author_is_verified"
+                    class="verified"
+                  >✓</span>
                 </div>
               </div>
             </div>
-            <button class="options-btn" @click="handleOptions">⋯</button>
+            <button
+              class="options-btn"
+              @click="handleOptions"
+            >
+              ⋯
+            </button>
           </div>
 
           <!-- Caption & Comments -->
           <div class="comments-section">
             <!-- Original Caption -->
-            <div v-if="postData.caption" class="comment original-caption">
+            <div
+              v-if="postData.caption"
+              class="comment original-caption"
+            >
               <div class="comment-header">
-                <img 
-                  :src="postData.author_profile_url || '/placeholder.svg?height=32&width=32'" 
-                  :alt="postData.author_username" 
-                  class="comment-avatar" 
+                <SecureImage
+                  :src="postData.author_profile_url"
+                  :alt="postData.author_username"
+                  class-name="comment-avatar"
+                  loading-placeholder="/placeholder.svg?height=32&width=32"
+                  error-placeholder="/default-avatar.svg"
                 />
                 <div class="comment-content">
                   <div class="comment-text">
                     <strong>{{ postData.author_username }}</strong>
-                    <span v-html="formattedCaption" @click="handleRichTextClick"></span>
+                    <span
+                      @click="handleRichTextClick"
+                      v-html="formattedCaption"
+                    ></span>
                   </div>
-                  <div class="comment-time">{{ formatTimestamp(postData.created_at) }}</div>
+                  <div class="comment-time">
+                    {{ formatTimestamp(postData.created_at) }}
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- Comments -->
-            <div v-for="comment in comments" :key="comment.id" class="comment">
+            <div
+              v-for="comment in comments"
+              :key="comment.id"
+              class="comment"
+            >
               <div class="comment-header">
-                <img 
-                  :src="comment.author_profile_url || '/placeholder.svg?height=32&width=32'" 
-                  :alt="comment.author_username" 
-                  class="comment-avatar" 
+                <SecureImage
+                  :src="comment.author_profile_url"
+                  :alt="comment.author_username"
+                  class-name="comment-avatar"
+                  loading-placeholder="/placeholder.svg?height=32&width=32"
+                  error-placeholder="/default-avatar.svg"
                 />
                 <div class="comment-content">
                   <div class="comment-text">
                     <strong>{{ comment.author_username }}</strong>
                     <span v-if="isGifUrl(comment.content)">
-                      <img :src="comment.content" alt="GIF" class="comment-gif" />
+                      <img
+                        :src="comment.content"
+                        alt="GIF"
+                        class="comment-gif"
+                      />
                     </span>
                     <span v-else>{{ comment.content }}</span>
                   </div>
@@ -108,7 +173,10 @@
                     >
                       {{ comment.is_liked ? '❤️' : '🤍' }} {{ comment.like_count || 0 }}
                     </button>
-                    <button class="reply-btn" @click="startReply(comment)">
+                    <button
+                      class="reply-btn"
+                      @click="startReply(comment)"
+                    >
                       Reply
                     </button>
                     <button 
@@ -130,19 +198,32 @@
               </div>
               
               <!-- Replies -->
-              <div v-if="expandedReplies[comment.id]" class="replies">
-                <div v-for="reply in commentReplies[comment.id]" :key="reply.id" class="comment reply">
+              <div
+                v-if="expandedReplies[comment.id]"
+                class="replies"
+              >
+                <div
+                  v-for="reply in commentReplies[comment.id]"
+                  :key="reply.id"
+                  class="comment reply"
+                >
                   <div class="comment-header">
-                    <img 
-                      :src="reply.author_profile_url || '/placeholder.svg?height=32&width=32'" 
-                      :alt="reply.author_username" 
-                      class="comment-avatar" 
+                    <SecureImage
+                      :src="reply.author_profile_url"
+                      :alt="reply.author_username"
+                      class-name="comment-avatar"
+                      loading-placeholder="/placeholder.svg?height=32&width=32"
+                      error-placeholder="/default-avatar.svg"
                     />
                     <div class="comment-content">
                       <div class="comment-text">
                         <strong>{{ reply.author_username }}</strong>
                         <span v-if="isGifUrl(reply.content)">
-                          <img :src="reply.content" alt="GIF" class="comment-gif" />
+                          <img
+                            :src="reply.content"
+                            alt="GIF"
+                            class="comment-gif"
+                          />
                         </span>
                         <span v-else>{{ reply.content }}</span>
                       </div>
@@ -151,7 +232,7 @@
                         <button 
                           class="reply-btn"
                           :class="{ liked: reply.is_liked }"
-                          @click="toggleCommentLike(reply, true, comment.id)"
+                          @click="toggleCommentLike(reply)"
                         >
                           {{ reply.is_liked ? '❤️' : '🤍' }} {{ reply.like_count || 0 }}
                         </button>
@@ -169,7 +250,10 @@
               </div>
             </div>
 
-            <div v-if="loadingComments" class="loading-comments">
+            <div
+              v-if="loadingComments"
+              class="loading-comments"
+            >
               Loading comments...
             </div>
           </div>
@@ -183,13 +267,20 @@
             >
               {{ postData.is_liked ? '❤️' : '🤍' }}
             </button>
-            <button class="action-btn">💬</button>
-            <button class="action-btn" @click="handleShare">📤</button>
+            <button class="action-btn">
+              💬
+            </button>
+            <button
+              class="action-btn"
+              @click="handleShare"
+            >
+              📤
+            </button>
             <button 
               class="action-btn" 
               :class="{ saved: postData.is_saved }"
-              @click="handleSave"
               style="margin-left: auto;"
+              @click="handleSave"
             >
               {{ postData.is_saved ? '🔖' : '🏷️' }}
             </button>
@@ -206,33 +297,46 @@
 
           <!-- Comment Input -->
           <div class="comment-input">
-            <div v-if="replyingTo" class="replying-indicator">
+            <div
+              v-if="replyingTo"
+              class="replying-indicator"
+            >
               <span>Replying to @{{ replyingTo.author_username }}</span>
-              <button @click="cancelReply">✕</button>
+              <button @click="cancelReply">
+                ✕
+              </button>
             </div>
             <div class="input-row">
-              <button class="emoji-btn" @click="showGifPicker = !showGifPicker">🎬</button>
+              <button
+                class="emoji-btn"
+                @click="showGifPicker = !showGifPicker"
+              >
+                🎬
+              </button>
               <input 
-                type="text" 
-                v-model="newComment"
+                v-model="newComment" 
+                type="text"
                 :placeholder="replyingTo ? `Reply to ${replyingTo.author_username}...` : 'Add a comment...'" 
                 @keyup.enter="handleAddComment"
               />
               <button 
                 v-if="newComment.trim()"
-                @click="handleAddComment"
                 :disabled="isSubmitting"
+                @click="handleAddComment"
               >
                 Post
               </button>
             </div>
             
             <!-- GIF Picker -->
-            <div v-if="showGifPicker" class="gif-picker">
+            <div
+              v-if="showGifPicker"
+              class="gif-picker"
+            >
               <div class="gif-search">
                 <input 
-                  type="text" 
                   v-model="gifSearchQuery" 
+                  type="text" 
                   placeholder="Search GIFs..."
                   @input="searchGifs"
                 />
@@ -242,8 +346,8 @@
                   v-for="gif in gifs" 
                   :key="gif.id" 
                   :src="gif.images.fixed_height_small.url" 
-                  @click="selectGif(gif)"
                   class="gif-item"
+                  @click="selectGif(gif)"
                 />
               </div>
             </div>
@@ -263,11 +367,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
-import { useFeedStore } from '@/stores/feed'
-import { useAuthStore } from '@/stores/auth'
-import { commentAPI, postAPI } from '@/services/api'
-import { useRichText } from '@/composables/useRichText'
+import { ref, onMounted, computed, watch } from "vue";
+import { useFeedStore } from "@/stores/feed";
+import { useAuthStore } from "@/stores/auth";
+import { commentAPI, postAPI } from "@/services/api";
+import { useRichText } from "@/composables/useRichText";
+import { getSecureMediaURL } from "@/services/media";
+import SecureImage from "@/components/SecureImage.vue";
 
 interface Comment {
   id: string
@@ -287,204 +393,232 @@ const props = defineProps<{
   postId: string
   postObject?: any
   context?: string
-}>()
+}>();
 
 const emit = defineEmits<{
   close: []
   like: [postId: string]
   save: [postId: string]
-}>()
+}>();
 
-const feedStore = useFeedStore()
-const authStore = useAuthStore()
-const { formatRichText, handleRichTextClick } = useRichText()
+const feedStore = useFeedStore();
+const authStore = useAuthStore();
+const { formatRichText, handleRichTextClick } = useRichText();
 
-const loading = ref(false)
-const loadingComments = ref(false)
-const isSubmitting = ref(false)
-const currentMediaIndex = ref(0)
-const newComment = ref('')
-const comments = ref<Comment[]>([])
-const replyingTo = ref<Comment | null>(null)
-const expandedReplies = ref<Record<string, boolean>>({})
-const commentReplies = ref<Record<string, Comment[]>>({})
-const showGifPicker = ref(false)
-const gifSearchQuery = ref('')
-const gifs = ref<any[]>([])
-let gifSearchTimeout: any = null
+const loading = ref(false);
+const loadingComments = ref(false);
+const isSubmitting = ref(false);
+const currentMediaIndex = ref(0);
+const newComment = ref("");
+const comments = ref<Comment[]>([]);
+const replyingTo = ref<Comment | null>(null);
+const expandedReplies = ref<Record<string, boolean>>({});
+
+// Secure media URLs
+const secureMediaUrls = ref<string[]>([]);
+const loadingMedia = ref(true);
+const commentReplies = ref<Record<string, Comment[]>>({});
+const showGifPicker = ref(false);
+const gifSearchQuery = ref("");
+const gifs = ref<any[]>([]);
+let gifSearchTimeout: any = null;
 
 const postData = computed(() => {
   // If passed directly (from Profile page), use it
-  if (props.postObject) return props.postObject
+  if (props.postObject) return props.postObject;
 
   // Otherwise look in stores (from Feed page)
   return feedStore.homeFeed.find(p => p.id === props.postId) ||
          feedStore.exploreFeed.find(p => p.id === props.postId) ||
-         feedStore.reelsFeed.find(p => p.id === props.postId)
-})
+         feedStore.reelsFeed.find(p => p.id === props.postId);
+});
 
 const formattedCaption = computed(() => {
-  if (!postData.value?.caption) return ''
-  return formatRichText(postData.value.caption)
-})
+  if (!postData.value?.caption) return "";
+  return formatRichText(postData.value.caption);
+});
 
 const currentPostIndex = computed(() => {
-  if (props.context === 'explore') {
-    return feedStore.exploreFeed.findIndex(p => p.id === props.postId)
+  if (props.context === "explore") {
+    return feedStore.exploreFeed.findIndex(p => p.id === props.postId);
   }
-  return -1
-})
+  return -1;
+});
 
 const canNavigatePrevious = computed(() => {
-  return props.context === 'explore' && currentPostIndex.value > 0
-})
+  return props.context === "explore" && currentPostIndex.value > 0;
+});
 
 const canNavigateNext = computed(() => {
-  return props.context === 'explore' && 
+  return props.context === "explore" && 
          currentPostIndex.value >= 0 && 
-         currentPostIndex.value < feedStore.exploreFeed.length - 1
-})
+         currentPostIndex.value < feedStore.exploreFeed.length - 1;
+});
 
 const navigateToPrevious = () => {
   if (canNavigatePrevious.value) {
-    const previousPost = feedStore.exploreFeed[currentPostIndex.value - 1]
+    const previousPost = feedStore.exploreFeed[currentPostIndex.value - 1];
     if (previousPost && window.openPostDetails) {
-      emit('close')
+      emit("close");
       setTimeout(() => {
-        window.openPostDetails(previousPost.id, 'explore')
-      }, 100)
+        window.openPostDetails(previousPost.id, "explore");
+      }, 100);
     }
   }
-}
+};
 
 const navigateToNext = () => {
   if (canNavigateNext.value) {
-    const nextPost = feedStore.exploreFeed[currentPostIndex.value + 1]
+    const nextPost = feedStore.exploreFeed[currentPostIndex.value + 1];
     if (nextPost && window.openPostDetails) {
-      emit('close')
+      emit("close");
       setTimeout(() => {
-        window.openPostDetails(nextPost.id, 'explore')
-      }, 100)
+        window.openPostDetails(nextPost.id, "explore");
+      }, 100);
     }
   }
-}
+};
 
 onMounted(async () => {
-  loadingComments.value = true
+  loadingComments.value = true;
   try {
-    const postIdNum = parseInt(props.postId)
+    const postIdNum = parseInt(props.postId);
     if (isNaN(postIdNum)) {
-      console.error('Invalid post ID:', props.postId)
-      return
+      console.error("Invalid post ID:", props.postId);
+      return;
+    }
+
+    // Load secure URLs for media
+    if (postData.value?.media_urls && postData.value.media_urls.length > 0) {
+      loadingMedia.value = true;
+      try {
+        secureMediaUrls.value = await Promise.all(
+          postData.value.media_urls.map(url => getSecureMediaURL(url))
+        );
+      } catch (error) {
+        console.error('Failed to load secure media URLs:', error);
+        secureMediaUrls.value = postData.value.media_urls; // Fallback
+      } finally {
+        loadingMedia.value = false;
+      }
+    } else {
+      loadingMedia.value = false;
     }
     
-    const response = await commentAPI.getCommentsByPost(postIdNum)
-    comments.value = response || []
-    console.log('Loaded comments:', comments.value.length)
+    const response = await commentAPI.getCommentsByPost(postIdNum);
+    comments.value = response || [];
+    console.log("Loaded comments:", comments.value.length);
   } catch (error) {
-    console.error('Failed to load comments:', error)
+    console.error("Failed to load comments:", error);
   } finally {
-    loadingComments.value = false
+    loadingComments.value = false;
   }
-})
+});
 
 // Load trending GIFs when picker opens
 watch(showGifPicker, (isOpen) => {
   if (isOpen && gifs.value.length === 0) {
-    searchGifs()
+    searchGifs();
   }
-})
+});
 
 const formatTimestamp = (timestamp: string) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInMs = now.getTime() - date.getTime()
-  const diffInSecs = Math.floor(diffInMs / 1000)
-  const diffInMins = Math.floor(diffInSecs / 60)
-  const diffInHours = Math.floor(diffInMins / 60)
-  const diffInDays = Math.floor(diffInHours / 24)
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInSecs = Math.floor(diffInMs / 1000);
+  const diffInMins = Math.floor(diffInSecs / 60);
+  const diffInHours = Math.floor(diffInMins / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
 
   if (diffInDays > 7) {
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   } else if (diffInDays > 0) {
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
   } else if (diffInHours > 0) {
-    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
   } else if (diffInMins > 0) {
-    return `${diffInMins} minute${diffInMins > 1 ? 's' : ''} ago`
+    return `${diffInMins} minute${diffInMins > 1 ? "s" : ""} ago`;
   } else {
-    return 'Just now'
+    return "Just now";
   }
-}
+};
 
 const formatLikes = (count: number | undefined) => {
-  const likeCount = count || 0
+  const likeCount = count || 0;
   if (likeCount >= 1000000) {
-    return `${(likeCount / 1000000).toFixed(1)}M likes`
+    return `${(likeCount / 1000000).toFixed(1)}M likes`;
   } else if (likeCount >= 1000) {
-    return `${(likeCount / 1000).toFixed(1)}K likes`
+    return `${(likeCount / 1000).toFixed(1)}K likes`;
   } else {
-    return `${likeCount} like${likeCount !== 1 ? 's' : ''}`
+    return `${likeCount} like${likeCount !== 1 ? "s" : ""}`;
   }
-}
+};
+
+const isVideoUrl = (url: string) => {
+  if (!url) return false;
+  const videoExtensions = [".mp4", ".webm", ".ogg", ".mov"];
+  const lowerUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+};
 
 const handleLike = () => {
-  emit('like', props.postId)
-}
+  emit("like", props.postId);
+};
 
 const handleSave = () => {
-  emit('save', props.postId)
-}
+  emit("save", props.postId);
+};
 
 const handleShare = () => {
   // TODO: Implement share functionality
-  console.log('Share post:', props.postId)
-}
+  console.log("Share post:", props.postId);
+};
 
 const handleOptions = () => {
   if (isPostOwner.value) {
-    handleDeletePost()
+    handleDeletePost();
   } else {
     // TODO: Implement report/share options
-    console.log('Open options for post:', props.postId)
+    console.log("Open options for post:", props.postId);
   }
-}
+};
 
 const handleAddComment = async () => {
-  if (!newComment.value.trim() || isSubmitting.value) return
+  if (!newComment.value.trim() || isSubmitting.value) return;
   
-  isSubmitting.value = true
+  isSubmitting.value = true;
   try {
-    const numericPostId = parseInt(props.postId)
+    const numericPostId = parseInt(props.postId);
     if (isNaN(numericPostId)) {
-      console.error('Invalid post ID:', props.postId)
-      alert('Invalid post ID')
-      return
+      console.error("Invalid post ID:", props.postId);
+      alert("Invalid post ID");
+      return;
     }
     
     const response = await commentAPI.createComment({
       post_id: numericPostId,
       content: newComment.value.trim(),
       parent_comment_id: replyingTo.value ? parseInt(replyingTo.value.id) : undefined
-    })
+    });
 
     // Add comment to local list
     if (response) {
       if (replyingTo.value) {
         // Add to replies
         if (!commentReplies.value[replyingTo.value.id]) {
-          commentReplies.value[replyingTo.value.id] = []
+          commentReplies.value[replyingTo.value.id] = [];
         }
-        commentReplies.value[replyingTo.value.id].unshift(response)
+        commentReplies.value[replyingTo.value.id].unshift(response);
         
         // Update reply count
-        const parentComment = comments.value.find(c => c.id === replyingTo.value!.id)
+        const parentComment = comments.value.find(c => c.id === replyingTo.value!.id);
         if (parentComment) {
-          parentComment.reply_count = (parentComment.reply_count || 0) + 1
+          parentComment.reply_count = (parentComment.reply_count || 0) + 1;
         }
       } else {
         // Add to main comments
-        comments.value.unshift(response)
+        comments.value.unshift(response);
       }
     }
 
@@ -492,169 +626,169 @@ const handleAddComment = async () => {
     if (postData.value) {
       feedStore.updatePost(props.postId, {
         comment_count: (postData.value.comment_count || 0) + 1
-      } as any)
+      } as any);
     }
 
-    newComment.value = ''
-    replyingTo.value = null
+    newComment.value = "";
+    replyingTo.value = null;
   } catch (error: any) {
-    console.error('Failed to add comment:', error)
-    console.error('Error details:', error.response?.data || error.message)
+    console.error("Failed to add comment:", error);
+    console.error("Error details:", error.response?.data || error.message);
     
     // Show user-friendly error
     if (error.response?.status === 500) {
-      alert('Failed to post comment. The server encountered an error. Please try again later.')
+      alert("Failed to post comment. The server encountered an error. Please try again later.");
     } else {
-      alert('Failed to post comment. Please try again.')
+      alert("Failed to post comment. Please try again.");
     }
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 const isGifUrl = (url: string) => {
-  return url && (url.includes('giphy.com') || url.endsWith('.gif'))
-}
+  return url && (url.includes("giphy.com") || url.endsWith(".gif"));
+};
 
-const toggleCommentLike = async (comment: Comment, isReply: boolean = false, parentCommentId?: string) => {
+const toggleCommentLike = async (comment: Comment) => {
   try {
     if (comment.is_liked) {
-      await commentAPI.unlikeComment(comment.id)
-      comment.is_liked = false
-      comment.like_count = Math.max(0, (comment.like_count || 0) - 1)
+      await commentAPI.unlikeComment(comment.id);
+      comment.is_liked = false;
+      comment.like_count = Math.max(0, (comment.like_count || 0) - 1);
     } else {
-      await commentAPI.likeComment(comment.id)
-      comment.is_liked = true
-      comment.like_count = (comment.like_count || 0) + 1
+      await commentAPI.likeComment(comment.id);
+      comment.is_liked = true;
+      comment.like_count = (comment.like_count || 0) + 1;
     }
   } catch (error) {
-    console.error('Failed to toggle comment like:', error)
+    console.error("Failed to toggle comment like:", error);
   }
-}
+};
 
 const handleDeleteComment = async (commentId: string, isReply: boolean = false, parentCommentId?: string) => {
-  if (!confirm('Delete this comment?')) return
+  if (!confirm("Delete this comment?")) return;
   
   try {
-    await commentAPI.deleteComment(commentId)
+    await commentAPI.deleteComment(commentId);
     
     if (isReply && parentCommentId) {
       // Remove from replies
       commentReplies.value[parentCommentId] = commentReplies.value[parentCommentId].filter(
         (c: Comment) => c.id !== commentId
-      )
+      );
       // Update reply count
-      const parentComment = comments.value.find(c => c.id === parentCommentId)
+      const parentComment = comments.value.find(c => c.id === parentCommentId);
       if (parentComment && parentComment.reply_count) {
-        parentComment.reply_count -= 1
+        parentComment.reply_count -= 1;
       }
     } else {
       // Remove from main comments
-      comments.value = comments.value.filter(c => c.id !== commentId)
+      comments.value = comments.value.filter(c => c.id !== commentId);
     }
     
     // Update comment count in feed
     if (postData.value) {
       feedStore.updatePost(props.postId, {
         comment_count: Math.max(0, (postData.value.comment_count || 0) - 1)
-      } as any)
+      } as any);
     }
   } catch (error) {
-    console.error('Failed to delete comment:', error)
-    alert('Failed to delete comment')
+    console.error("Failed to delete comment:", error);
+    alert("Failed to delete comment");
   }
-}
+};
 
 const isOwnComment = (comment: Comment) => {
-  return comment.user_id === authStore.user?.user_id
-}
+  return comment.user_id === authStore.user?.user_id;
+};
 
 const isPostOwner = computed(() => {
-  return postData.value?.author_id === authStore.user?.user_id
-})
+  return postData.value?.author_id === authStore.user?.user_id;
+});
 
 const handleDeletePost = async () => {
-  if (!confirm('Delete this post?')) return
+  if (!confirm("Delete this post?")) return;
   
   try {
-    await postAPI.deletePost(props.postId)
-    emit('close')
+    await postAPI.deletePost(props.postId);
+    emit("close");
     // Optionally refresh feed
-    feedStore.removePost(props.postId)
+    feedStore.removePost(props.postId);
   } catch (error) {
-    console.error('Failed to delete post:', error)
-    alert('Failed to delete post')
+    console.error("Failed to delete post:", error);
+    alert("Failed to delete post");
   }
-}
+};
 
 const toggleReplies = async (commentId: string) => {
   if (expandedReplies.value[commentId]) {
-    expandedReplies.value[commentId] = false
-    return
+    expandedReplies.value[commentId] = false;
+    return;
   }
   
   try {
     // Always reload replies to get latest data including newly added replies
-    const numericPostId = parseInt(props.postId)
-    const response = await commentAPI.getCommentsByPost(numericPostId)
+    const numericPostId = parseInt(props.postId);
+    const response = await commentAPI.getCommentsByPost(numericPostId);
     
     // Filter replies for this comment
     const replies = response.filter((c: Comment) => 
       c.parent_comment_id === parseInt(commentId)
-    )
-    commentReplies.value[commentId] = replies
+    );
+    commentReplies.value[commentId] = replies;
     
-    expandedReplies.value[commentId] = true
+    expandedReplies.value[commentId] = true;
   } catch (error) {
-    console.error('Failed to load replies:', error)
+    console.error("Failed to load replies:", error);
   }
-}
+};
 
 const startReply = (comment: Comment) => {
-  replyingTo.value = comment
-  newComment.value = ''
-}
+  replyingTo.value = comment;
+  newComment.value = "";
+};
 
 const cancelReply = () => {
-  replyingTo.value = null
-  newComment.value = ''
-}
+  replyingTo.value = null;
+  newComment.value = "";
+};
 
 // GIF search using Giphy API
 const searchGifs = () => {
-  clearTimeout(gifSearchTimeout)
+  clearTimeout(gifSearchTimeout);
   gifSearchTimeout = setTimeout(async () => {
     if (!gifSearchQuery.value.trim()) {
       // Load trending GIFs
       try {
         const response = await fetch(
-          `https://api.giphy.com/v1/gifs/trending?api_key=sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh&limit=20`
-        )
-        const data = await response.json()
-        gifs.value = data.data || []
+          "https://api.giphy.com/v1/gifs/trending?api_key=sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh&limit=20"
+        );
+        const data = await response.json();
+        gifs.value = data.data || [];
       } catch (error) {
-        console.error('Failed to load trending GIFs:', error)
+        console.error("Failed to load trending GIFs:", error);
       }
-      return
+      return;
     }
     
     try {
       const response = await fetch(
         `https://api.giphy.com/v1/gifs/search?api_key=sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh&q=${encodeURIComponent(gifSearchQuery.value)}&limit=20`
-      )
-      const data = await response.json()
-      gifs.value = data.data || []
+      );
+      const data = await response.json();
+      gifs.value = data.data || [];
     } catch (error) {
-      console.error('Failed to search GIFs:', error)
+      console.error("Failed to search GIFs:", error);
     }
-  }, 500)
-}
+  }, 500);
+};
 
 const selectGif = (gif: any) => {
-  newComment.value = gif.images.fixed_height.url
-  showGifPicker.value = false
-  gifSearchQuery.value = ''
-}
+  newComment.value = gif.images.fixed_height.url;
+  showGifPicker.value = false;
+  gifSearchQuery.value = "";
+};
 </script>
 
 <style scoped lang="scss">

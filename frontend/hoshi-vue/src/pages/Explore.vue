@@ -4,23 +4,35 @@
       <h1>Explore</h1>
     </div>
 
-    <div v-if="feedStore.loading && feedStore.exploreFeed.length === 0" class="loading-state">
+    <div
+      v-if="feedStore.loading && feedStore.exploreFeed.length === 0"
+      class="loading-state"
+    >
       <div class="loading-grid">
-        <div v-for="i in 12" :key="`skeleton-${i}`" class="skeleton-item"></div>
+        <div
+          v-for="i in 12"
+          :key="`skeleton-${i}`"
+          class="skeleton-item"
+        ></div>
       </div>
     </div>
 
-    <div v-else-if="feedStore.exploreFeed.length > 0" class="explore-grid">
+    <div
+      v-else-if="feedStore.exploreFeed.length > 0"
+      class="explore-grid"
+    >
       <div 
         v-for="post in feedStore.exploreFeed" 
         :key="post.id" 
         class="explore-item" 
         @click="handleOpenPost(post.id)"
       >
-        <img 
-          :src="post.media_urls[0] || '/placeholder.svg?height=280&width=280'" 
-          :alt="post.caption" 
-          class="post-image" 
+        <MediaThumbnail
+          :thumbnail-url="post.thumbnail_url"
+          :media-urls="post.media_urls"
+          :is-video="post.is_reel"
+          :alt="post.caption"
+          class-name="post-image"
         />
         <div class="post-overlay">
           <div class="post-stats">
@@ -31,39 +43,46 @@
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <p>No posts to explore yet</p>
-      <p class="empty-subtitle">Check back later for new content</p>
+      <p class="empty-subtitle">
+        Check back later for new content
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useFeedStore } from '@/stores/feed'
+import { onMounted } from "vue";
+import { useFeedStore } from "@/stores/feed";
+import SecureImage from "@/components/SecureImage.vue";
+import MediaThumbnail from "@/components/MediaThumbnail.vue";
 
-const feedStore = useFeedStore()
+const feedStore = useFeedStore();
 
 onMounted(async () => {
   if (feedStore.exploreFeed.length === 0) {
-    await feedStore.loadExploreFeed(1, 30)
+    await feedStore.loadExploreFeed(1, 30);
   }
-})
+});
 
 const handleOpenPost = (postId: string) => {
   if (window.openPostDetails) {
-    window.openPostDetails(postId, 'explore')
+    window.openPostDetails(postId, "explore");
   }
-}
+};
 
 const formatCount = (count: number) => {
   if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`
+    return `${(count / 1000000).toFixed(1)}M`;
   } else if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`
+    return `${(count / 1000).toFixed(1)}K`;
   }
-  return count.toString()
-}
+  return count.toString();
+};
 </script>
 
 <style scoped lang="scss">

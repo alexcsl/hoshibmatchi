@@ -180,6 +180,7 @@ func main() {
 	})
 
 	router.GET("/media/upload-url", handleGetUploadURL_Gin)
+	router.GET("/media/secure-url", handleGetMediaURL_Gin) // New endpoint for pre-signed GET URLs
 
 	// Serve static files from /uploads (media files)
 	router.Static("/uploads", "./uploads")
@@ -207,6 +208,9 @@ func main() {
 	{
 		// --- THIS IS THE FIX ---
 		// We are now calling the Gin-native handlers directly
+
+		// Media (protected)
+		protected.POST("/media/generate-thumbnail", handleGenerateThumbnail_Gin) // Generate thumbnail for uploaded video
 
 		// Feeds
 		protected.GET("/feed/home", handleGetHomeFeed_Gin)
@@ -1203,6 +1207,83 @@ func handleGetUploadURL_Gin(c *gin.Context) {
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetMediaURL ---
+func handleGetMediaURL_Gin(c *gin.Context) {
+	// Get query param, e.g., /media/secure-url?object_name=user-123/posts/abc.jpg
+	objectName := c.Query("object_name")
+
+	if objectName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'object_name' query parameter"})
+		return
+	}
+
+	// Optional expiry parameter (default handled by media-service)
+	expirySeconds, _ := strconv.Atoi(c.DefaultQuery("expiry_seconds", "3600"))
+
+	grpcReq := &mediaPb.GetMediaURLRequest{
+		ObjectName:    objectName,
+		ExpirySeconds: int32(expirySeconds),
+	}
+
+	grpcRes, err := mediaClient.GetMediaURL(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// --- GIN-NATIVE HANDLER: handleGenerateThumbnail ---
+func handleGenerateThumbnail_Gin(c *gin.Context) {
+	log.Println("=== THUMBNAIL GENERATION REQUEST ===")
+
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		log.Println("❌ Failed to get user ID from token")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	log.Printf("✅ User ID: %d", userID)
+
+	var req struct {
+		ObjectName       string  `json:"object_name"`
+		TimestampSeconds float64 `json:"timestamp_seconds"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ Invalid request body: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ObjectName == "" {
+		log.Println("❌ Missing object_name field")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing 'object_name' field"})
+		return
+	}
+
+	log.Printf("Request data: object_name=%s, timestamp=%.2f", req.ObjectName, req.TimestampSeconds)
+
+	grpcReq := &mediaPb.GenerateThumbnailRequest{
+		ObjectName:       req.ObjectName,
+		UserId:           userID,
+		TimestampSeconds: req.TimestampSeconds,
+	}
+
+	log.Println("Calling media-service GenerateThumbnail RPC...")
+	grpcRes, err := mediaClient.GenerateThumbnail(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("❌ gRPC error: %v", grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	log.Printf("✅ Thumbnail generated: %s", grpcRes.ThumbnailUrl)
+	log.Println("=== THUMBNAIL GENERATION COMPLETE ===")
 	c.JSON(http.StatusOK, grpcRes)
 }
 

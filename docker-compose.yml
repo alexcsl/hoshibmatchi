@@ -388,17 +388,20 @@ services:
   # ==================================================================
   # 5. FRONTEND SERVICE
   # ==================================================================
-  hoshi-vue:
-    build:
-      context: ./frontend/hoshi-vue
-      dockerfile: Dockerfile
-    container_name: hoshi-vue
-    networks: [hoshi-net]
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.hoshi-vue.rule=Host(`hoshi.local`)"
-      - "traefik.http.routers.hoshi-vue.entrypoints=web"
-      - "traefik.http.services.hoshi-vue.loadbalancer.server.port=80"
+  # Frontend service is defined in docker-compose.dev.yml for development
+  # For production-only deployment, uncomment the section below:
+  #
+  # hoshi-vue:
+  #   build:
+  #     context: ./frontend/hoshi-vue
+  #     dockerfile: Dockerfile
+  #   container_name: hoshi-vue
+  #   networks: [hoshi-net]
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.hoshi-vue.rule=Host(`hoshi.local`)"
+  #     - "traefik.http.routers.hoshi-vue.entrypoints=web"
+  #     - "traefik.http.services.hoshi-vue.loadbalancer.server.port=80"
 
 # ==================================================================
 # VOLUMES & NETWORKS

@@ -1,28 +1,53 @@
 <template>
-  <div class="search-panel-overlay" @click="$emit('close')">
-    <div class="search-panel" @click.stop>
+  <div
+    class="search-panel-overlay"
+    @click="$emit('close')"
+  >
+    <div
+      class="search-panel"
+      @click.stop
+    >
       <div class="search-header">
         <h2>Search</h2>
-        <button class="close-btn" @click="$emit('close')">✕</button>
+        <button
+          class="close-btn"
+          @click="$emit('close')"
+        >
+          ✕
+        </button>
       </div>
 
       <div class="search-input-wrapper">
         <input 
-          v-model="searchQuery"
+          ref="searchInput"
+          v-model="searchQuery" 
           type="text" 
-          placeholder="Search users, hashtags..." 
+          placeholder="Search users, hashtags..."
           class="search-input"
           @input="handleSearch"
-          ref="searchInput"
         />
-        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">✕</button>
+        <button
+          v-if="searchQuery"
+          class="clear-btn"
+          @click="clearSearch"
+        >
+          ✕
+        </button>
       </div>
 
       <!-- Recent Searches -->
-      <div v-if="!searchQuery && recentSearches.length > 0" class="recent-section">
+      <div
+        v-if="!searchQuery && recentSearches.length > 0"
+        class="recent-section"
+      >
         <div class="section-header">
           <h3>Recent</h3>
-          <button class="clear-all-btn" @click="clearAllRecent">Clear all</button>
+          <button
+            class="clear-all-btn"
+            @click="clearAllRecent"
+          >
+            Clear all
+          </button>
         </div>
         <div class="recent-list">
           <div 
@@ -36,31 +61,57 @@
               :src="getMediaUrl(item.profile_picture_url) || '/default-avatar.svg'" 
               class="recent-avatar" 
             />
-            <div v-else class="hashtag-icon">#</div>
-            <div class="recent-info">
-              <div class="recent-name">{{ item.name }}</div>
-              <div class="recent-username">{{ item.username }}</div>
+            <div
+              v-else
+              class="hashtag-icon"
+            >
+              #
             </div>
-            <button class="remove-btn" @click.stop="removeRecent(index)">✕</button>
+            <div class="recent-info">
+              <div class="recent-name">
+                {{ item.name }}
+              </div>
+              <div class="recent-username">
+                {{ item.username }}
+              </div>
+            </div>
+            <button
+              class="remove-btn"
+              @click.stop="removeRecent(index)"
+            >
+              ✕
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Search Results -->
-      <div v-if="searchQuery" class="results-section">
+      <div
+        v-if="searchQuery"
+        class="results-section"
+      >
         <!-- Loading State -->
-        <div v-if="isSearching" class="loading-results">
+        <div
+          v-if="isSearching"
+          class="loading-results"
+        >
           <div class="spinner"></div>
           <p>Searching...</p>
         </div>
 
         <!-- No Results -->
-        <div v-else-if="searchResults.length === 0 && !isSearching" class="no-results">
+        <div
+          v-else-if="searchResults.length === 0 && !isSearching"
+          class="no-results"
+        >
           <p>No results found for "{{ searchQuery }}"</p>
         </div>
 
         <!-- User Results -->
-        <div v-else class="results-list">
+        <div
+          v-else
+          class="results-list"
+        >
           <div 
             v-for="result in searchResults" 
             :key="result.id" 
@@ -72,14 +123,29 @@
               :src="getMediaUrl(result.profile_picture_url) || '/default-avatar.svg'" 
               class="result-avatar" 
             />
-            <div v-else class="hashtag-icon large">#</div>
+            <div
+              v-else
+              class="hashtag-icon large"
+            >
+              #
+            </div>
             <div class="result-info">
-              <div class="result-name">{{ result.name }}</div>
-              <div class="result-username">{{ result.username }}</div>
-              <div v-if="result.followers_count !== undefined" class="result-meta">
+              <div class="result-name">
+                {{ result.name }}
+              </div>
+              <div class="result-username">
+                {{ result.username }}
+              </div>
+              <div
+                v-if="result.followers_count !== undefined"
+                class="result-meta"
+              >
                 {{ formatNumber(result.followers_count) }} followers
               </div>
-              <div v-else-if="result.post_count !== undefined" class="result-meta">
+              <div
+                v-else-if="result.post_count !== undefined"
+                class="result-meta"
+              >
                 {{ formatNumber(result.post_count) }} posts
               </div>
             </div>
@@ -91,168 +157,168 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import apiClient from '@/services/api'
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import apiClient from "@/services/api";
 
 const emit = defineEmits<{
   close: []
-}>()
+}>();
 
-const router = useRouter()
-const searchInput = ref<HTMLInputElement>()
-const searchQuery = ref('')
-const isSearching = ref(false)
-const searchResults = ref<any[]>([])
-const recentSearches = ref<any[]>([])
-let searchTimeout: number | null = null
+const router = useRouter();
+const searchInput = ref<HTMLInputElement>();
+const searchQuery = ref("");
+const isSearching = ref(false);
+const searchResults = ref<any[]>([]);
+const recentSearches = ref<any[]>([]);
+let searchTimeout: number | null = null;
 
 onMounted(() => {
-  searchInput.value?.focus()
-  loadRecentSearches()
-})
+  searchInput.value?.focus();
+  loadRecentSearches();
+});
 
 const loadRecentSearches = () => {
-  const stored = localStorage.getItem('recentSearches')
+  const stored = localStorage.getItem("recentSearches");
   if (stored) {
     try {
-      recentSearches.value = JSON.parse(stored)
-    } catch (e) {
-      recentSearches.value = []
+      recentSearches.value = JSON.parse(stored);
+    } catch {
+      recentSearches.value = [];
     }
   }
-}
+};
 
 const saveRecentSearches = () => {
-  localStorage.setItem('recentSearches', JSON.stringify(recentSearches.value))
-}
+  localStorage.setItem("recentSearches", JSON.stringify(recentSearches.value));
+};
 
 const handleSearch = () => {
   if (searchTimeout) {
-    clearTimeout(searchTimeout)
+    clearTimeout(searchTimeout);
   }
 
   if (!searchQuery.value.trim()) {
-    searchResults.value = []
-    return
+    searchResults.value = [];
+    return;
   }
 
   searchTimeout = window.setTimeout(async () => {
-    isSearching.value = true
+    isSearching.value = true;
     try {
-      const query = searchQuery.value.trim()
-      const isHashtagSearch = query.startsWith('#')
+      const query = searchQuery.value.trim();
+      const isHashtagSearch = query.startsWith("#");
       
       if (isHashtagSearch) {
         // Search for hashtags
-        const hashtagName = query.substring(1) // Remove the # prefix
+        const hashtagName = query.substring(1); // Remove the # prefix
         if (!hashtagName) {
-          searchResults.value = []
-          isSearching.value = false
-          return
+          searchResults.value = [];
+          isSearching.value = false;
+          return;
         }
         
-        const response = await apiClient.get(`/search/hashtags/${hashtagName}`)
+        const response = await apiClient.get(`/search/hashtags/${hashtagName}`);
         
         // Create a hashtag result item
         searchResults.value = [{
           id: `hashtag-${hashtagName}`,
-          type: 'hashtag',
+          type: "hashtag",
           name: `#${hashtagName}`,
           username: `${response.data.total_post_count || 0} posts`,
           post_count: response.data.total_post_count || 0,
           hashtag_name: hashtagName
-        }]
+        }];
       } else {
         // Search for users
-        const response = await apiClient.get('/search/users', {
+        const response = await apiClient.get("/search/users", {
           params: { q: query }
-        })
+        });
         
         // The backend returns an array directly, not wrapped in a users property
-        const users = Array.isArray(response.data) ? response.data : (response.data.users || [])
+        const users = Array.isArray(response.data) ? response.data : (response.data.users || []);
         
         searchResults.value = users.map((user: any) => ({
           id: user.user_id || user.id,
-          type: 'user',
+          type: "user",
           name: user.name || user.username,
           username: user.username,
           profile_picture_url: user.profile_picture_url,
           followers_count: user.followers_count
-        }))
+        }));
       }
     } catch (error: any) {
-      console.error('Search failed:', error)
-      console.error('Error response:', error.response?.data)
-      searchResults.value = []
+      console.error("Search failed:", error);
+      console.error("Error response:", error.response?.data);
+      searchResults.value = [];
     } finally {
-      isSearching.value = false
+      isSearching.value = false;
     }
-  }, 300)
-}
+  }, 300);
+};
 
 const handleResultClick = (result: any) => {
   // Add to recent searches
-  const existingIndex = recentSearches.value.findIndex(r => r.id === result.id)
+  const existingIndex = recentSearches.value.findIndex(r => r.id === result.id);
   if (existingIndex !== -1) {
-    recentSearches.value.splice(existingIndex, 1)
+    recentSearches.value.splice(existingIndex, 1);
   }
-  recentSearches.value.unshift(result)
+  recentSearches.value.unshift(result);
   if (recentSearches.value.length > 10) {
-    recentSearches.value = recentSearches.value.slice(0, 10)
+    recentSearches.value = recentSearches.value.slice(0, 10);
   }
-  saveRecentSearches()
+  saveRecentSearches();
 
   // Navigate based on type
-  if (result.type === 'user') {
-    router.push(`/profile/${result.username}`)
-    emit('close')
-  } else if (result.type === 'hashtag') {
-    router.push(`/explore/tags/${result.hashtag_name}`)
-    emit('close')
+  if (result.type === "user") {
+    router.push(`/profile/${result.username}`);
+    emit("close");
+  } else if (result.type === "hashtag") {
+    router.push(`/explore/tags/${result.hashtag_name}`);
+    emit("close");
   }
-}
+};
 
 const handleRecentClick = (item: any) => {
-  if (item.type === 'user') {
-    router.push(`/profile/${item.username}`)
-    emit('close')
-  } else if (item.type === 'hashtag') {
-    router.push(`/explore/tags/${item.hashtag_name}`)
-    emit('close')
+  if (item.type === "user") {
+    router.push(`/profile/${item.username}`);
+    emit("close");
+  } else if (item.type === "hashtag") {
+    router.push(`/explore/tags/${item.hashtag_name}`);
+    emit("close");
   }
-}
+};
 
 const removeRecent = (index: number) => {
-  recentSearches.value.splice(index, 1)
-  saveRecentSearches()
-}
+  recentSearches.value.splice(index, 1);
+  saveRecentSearches();
+};
 
 const clearAllRecent = () => {
-  recentSearches.value = []
-  saveRecentSearches()
-}
+  recentSearches.value = [];
+  saveRecentSearches();
+};
 
 const clearSearch = () => {
-  searchQuery.value = ''
-  searchResults.value = []
-}
+  searchQuery.value = "";
+  searchResults.value = [];
+};
 
 const getMediaUrl = (url: string | undefined) => {
-  if (!url) return '/default-avatar.svg'
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (!url) return "/default-avatar.svg";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
-  return url
-}
+  return url;
+};
 
 const formatNumber = (num: number) => {
-  if (!num) return '0'
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-  return num.toString()
-}
+  if (!num) return "0";
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+};
 </script>
 
 <style scoped lang="scss">

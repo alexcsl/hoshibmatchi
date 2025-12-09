@@ -1,18 +1,33 @@
 <template>
-  <div class="story-viewer" @click="handleClick">
-    <button class="close-btn" @click.stop="$emit('close')">✕</button>
+  <div
+    class="story-viewer"
+    @click="handleClick"
+  >
+    <button
+      class="close-btn"
+      @click.stop="$emit('close')"
+    >
+      ✕
+    </button>
 
     <div class="story-container">
       <div class="story-image-wrapper">
+        <div v-if="loadingMedia" class="media-loading">
+          <div class="loading-spinner">Loading story...</div>
+        </div>
         <img 
-          :src="getMediaUrl(story.media_url)" 
+          v-else-if="secureMediaUrl"
+          :src="secureMediaUrl" 
           :alt="story.author_username" 
           class="story-image" 
           :style="{ filter: getFilterStyle(story.filter_name) }"
         />
         
         <!-- Text Overlay -->
-        <div v-if="story.caption" class="text-overlay">
+        <div
+          v-if="story.caption"
+          class="text-overlay"
+        >
           {{ story.caption }}
         </div>
         
@@ -27,24 +42,49 @@
         </div>
         
         <div class="story-progress">
-          <div class="progress-bar" :style="{ width: progressPercentage + '%' }"></div>
+          <div
+            class="progress-bar"
+            :style="{ width: progressPercentage + '%' }"
+          ></div>
         </div>
       </div>
 
       <div class="story-header">
         <div class="user-info">
-          <img :src="story.author_profile_url || '/default-avatar.svg'" :alt="story.author_username" class="avatar" />
+          <img
+            :src="story.author_profile_url || '/default-avatar.svg'"
+            :alt="story.author_username"
+            class="avatar"
+          />
           <div>
-            <div class="username">{{ story.author_username }}</div>
+            <div class="username">
+              {{ story.author_username }}
+            </div>
             <!-- Show full date for archive instead of relative time -->
-            <div class="timestamp">{{ formatFullDate(story.created_at) }}</div>
+            <div class="timestamp">
+              {{ formatFullDate(story.created_at) }}
+            </div>
           </div>
         </div>
-        <button class="more-btn">⋯</button>
+        <button class="more-btn">
+          ⋯
+        </button>
       </div>
 
-      <button v-if="canGoPrev" class="nav-btn prev" @click.stop="goToPrev">◀</button>
-      <button v-if="canGoNext" class="nav-btn next" @click.stop="goToNext">▶</button>
+      <button
+        v-if="canGoPrev"
+        class="nav-btn prev"
+        @click.stop="goToPrev"
+      >
+        ◀
+      </button>
+      <button
+        v-if="canGoNext"
+        class="nav-btn next"
+        @click.stop="goToNext"
+      >
+        ▶
+      </button>
 
       <!-- Archive-specific info banner -->
       <div class="archive-banner">
@@ -56,7 +96,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+import { getSecureMediaURL } from "@/services/media";
 
 // Interface matching Backend Protobuf/JSON
 export interface Story {
@@ -73,140 +114,166 @@ export interface Story {
 const props = defineProps<{
   stories: Story[]
   initialIndex?: number
-}>()
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'prev'): void
-  (e: 'next'): void
-}>()
+  (e: "close"): void
+  (e: "prev"): void
+  (e: "next"): void
+}>();
 
-const currentIndex = ref(props.initialIndex || 0)
-const progress = ref(0)
-const storyDuration = 5000 
+const currentIndex = ref(props.initialIndex || 0);
+const progress = ref(0);
+const storyDuration = 5000; 
 
-const story = computed(() => props.stories[currentIndex.value])
-const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100))
-const canGoPrev = computed(() => currentIndex.value > 0)
-const canGoNext = computed(() => currentIndex.value < props.stories.length - 1)
+// Secure media URL
+const secureMediaUrl = ref<string>("");
+const loadingMedia = ref(true);
+
+const story = computed(() => props.stories[currentIndex.value]);
+const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100));
+const canGoPrev = computed(() => currentIndex.value > 0);
+const canGoNext = computed(() => currentIndex.value < props.stories.length - 1);
 
 // Parse stickers from JSON
 const parsedStickers = computed(() => {
   try {
     if (story.value.stickers_json) {
-      return JSON.parse(story.value.stickers_json)
+      return JSON.parse(story.value.stickers_json);
     }
   } catch (e) {
-    console.error('Failed to parse stickers:', e)
+    console.error("Failed to parse stickers:", e);
   }
-  return []
-})
+  return [];
+});
 
 // Get filter CSS
 const getFilterStyle = (filterName?: string) => {
-  if (!filterName || filterName === 'None') return 'none'
+  if (!filterName || filterName === "None") return "none";
   const filters: Record<string, string> = {
-    'Grayscale': 'grayscale(100%)',
-    'Sepia': 'sepia(100%)',
-    'Bright': 'brightness(1.3)',
-    'Contrast': 'contrast(1.5)',
-    'Blur': 'blur(5px)'
-  }
-  return filters[filterName] || 'none'
-}
+    "Grayscale": "grayscale(100%)",
+    "Sepia": "sepia(100%)",
+    "Bright": "brightness(1.3)",
+    "Contrast": "contrast(1.5)",
+    "Blur": "blur(5px)"
+  };
+  return filters[filterName] || "none";
+};
 
 // Helper for media URLs
 const getMediaUrl = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
-  return url
-}
+  return url;
+};
 
 // Format full date for archive (e.g., "Jan 15, 2024 at 3:45 PM")
 const formatFullDate = (dateStr: string) => {
-  const date = new Date(dateStr)
+  const date = new Date(dateStr);
   const dateOptions: Intl.DateTimeFormatOptions = { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
-  }
+    month: "short", 
+    day: "numeric", 
+    year: "numeric" 
+  };
   const timeOptions: Intl.DateTimeFormatOptions = { 
-    hour: 'numeric', 
-    minute: '2-digit',
+    hour: "numeric", 
+    minute: "2-digit",
     hour12: true
-  }
-  const datePart = date.toLocaleDateString('en-US', dateOptions)
-  const timePart = date.toLocaleTimeString('en-US', timeOptions)
-  return `${datePart} at ${timePart}`
-}
+  };
+  const datePart = date.toLocaleDateString("en-US", dateOptions);
+  const timePart = date.toLocaleTimeString("en-US", timeOptions);
+  return `${datePart} at ${timePart}`;
+};
 
-let interval: number | null = null
+let interval: number | null = null;
 
 const startProgress = () => {
-  stopProgress() // Ensure no duplicate intervals
-  progress.value = 0
+  stopProgress(); // Ensure no duplicate intervals
+  progress.value = 0;
   interval = setInterval(() => {
-    progress.value += 100
+    progress.value += 100;
     if (progress.value >= storyDuration) {
       if (canGoNext.value) {
-        goToNext()
+        goToNext();
       } else {
-        emit('close')
+        emit("close");
       }
     }
-  }, 100)
-}
+  }, 100);
+};
 
 const stopProgress = () => {
   if (interval) {
-    clearInterval(interval)
-    interval = null
+    clearInterval(interval);
+    interval = null;
   }
-}
+};
 
 const goToNext = () => {
   if (canGoNext.value) {
-    currentIndex.value++
-    emit('next')
-    startProgress()
+    currentIndex.value++;
+    emit("next");
+    startProgress();
   } else {
-    emit('close')
+    emit("close");
   }
-}
+};
 
 const goToPrev = () => {
   if (canGoPrev.value) {
-    currentIndex.value--
-    emit('prev')
-    startProgress()
+    currentIndex.value--;
+    emit("prev");
+    startProgress();
   } else {
       // Restart current story if at beginning
-      startProgress()
+      startProgress();
   }
-}
+};
 
 const handleClick = (event: MouseEvent) => {
-  const element = event.currentTarget as HTMLElement
-  const rect = element.getBoundingClientRect()
-  const x = event.clientX - rect.left
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+  const x = event.clientX - rect.left;
 
   if (x > rect.width / 2) {
-    goToNext()
+    goToNext();
   } else {
-    goToPrev()
+    goToPrev();
   }
-}
+};
+
+// Load secure media URL when story changes
+const loadSecureMedia = async () => {
+  loadingMedia.value = true;
+  secureMediaUrl.value = "";
+  
+  try {
+    if (story.value.media_url) {
+      secureMediaUrl.value = await getSecureMediaURL(story.value.media_url);
+    }
+  } catch (error) {
+    console.error("Failed to load story media:", error);
+  } finally {
+    loadingMedia.value = false;
+  }
+};
+
+// Watch for story changes
+watch(story, () => {
+  loadSecureMedia();
+  startProgress();
+}, { immediate: true });
 
 onMounted(() => {
-  startProgress()
-})
+  startProgress();
+});
 
 onUnmounted(() => {
-  stopProgress()
-})
+  stopProgress();
+});
 </script>
 
 <style scoped lang="scss">
@@ -249,6 +316,20 @@ onUnmounted(() => {
   position: relative;
   flex: 1;
   overflow: hidden;
+
+  .media-loading {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+
+    .loading-spinner {
+      color: #fff;
+      font-size: 16px;
+    }
+  }
 
   .story-image {
     width: 100%;

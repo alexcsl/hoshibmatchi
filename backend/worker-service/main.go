@@ -38,7 +38,8 @@ type Story struct {
 // Post is a minimal struct for post-db updates
 type Post struct {
 	gorm.Model
-	MediaURLs pq.StringArray `gorm:"type:text[]"`
+	MediaURLs    pq.StringArray `gorm:"type:text[]"`
+	ThumbnailURL string         `gorm:"type:text"`
 }
 
 // server struct holds all our connections
@@ -347,6 +348,43 @@ func (s *server) processVideoTranscoding(body []byte) {
 			log.Printf("Uploaded %s to MinIO: %s", res.name, minioPath)
 			transcodedURLs = append(transcodedURLs, minioPath)
 			successfulTranscode = true
+
+			// Generate thumbnail from the first resolution (720p)
+			if res.name == "720p" && post.ThumbnailURL == "" {
+				thumbnailFilename := fmt.Sprintf("%s_thumb.jpg", filenameNoExt)
+				thumbnailPath := filepath.Join(tempDir, thumbnailFilename)
+
+				// Extract thumbnail at 1 second mark
+				thumbCmd := exec.Command("ffmpeg",
+					"-ss", "00:00:01",
+					"-i", outputPath,
+					"-vframes", "1",
+					"-q:v", "2",
+					"-y",
+					thumbnailPath,
+				)
+
+				thumbOutput, thumbErr := thumbCmd.CombinedOutput()
+				if thumbErr != nil {
+					log.Printf("Failed to generate thumbnail: %v\nOutput: %s", thumbErr, string(thumbOutput))
+				} else {
+					// Upload thumbnail to MinIO
+					thumbnailMinioPath := fmt.Sprintf("thumbnails/%s", thumbnailFilename)
+					if err := s.uploadToMinio("media", thumbnailMinioPath, thumbnailPath); err != nil {
+						log.Printf("Failed to upload thumbnail to MinIO: %v", err)
+					} else {
+						thumbnailURL := fmt.Sprintf("http://localhost:9000/media/%s", thumbnailMinioPath)
+						log.Printf("Uploaded thumbnail to MinIO: %s", thumbnailURL)
+
+						// Update post with thumbnail URL
+						if err := s.postDB.Model(&Post{}).Where("id = ?", postID).Update("thumbnail_url", thumbnailURL).Error; err != nil {
+							log.Printf("Failed to update post thumbnail URL: %v", err)
+						} else {
+							log.Printf("Updated post %d with thumbnail URL", postID)
+						}
+					}
+				}
+			}
 		}
 
 		// If transcoding failed, keep the original

@@ -1,23 +1,44 @@
 <template>
   <div class="verify-otp-container">
     <div class="verify-otp-box">
-      <div class="logo">Hoshibmatchi</div>
+      <div class="logo">
+        Hoshibmatchi
+      </div>
       
-      <ErrorAlert v-if="error" :message="error" @close="error = ''" />
+      <ErrorAlert
+        v-if="error"
+        :message="error"
+        @close="error = ''"
+      />
       
-      <div v-if="success" class="success-message">
+      <div
+        v-if="success"
+        class="success-message"
+      >
         <p>✓ Account verified successfully!</p>
         <p>Redirecting to login...</p>
       </div>
       
-      <div v-else class="verify-content">
+      <div
+        v-else
+        class="verify-content"
+      >
         <h2>Verify Your Email</h2>
-        <p class="instruction">Enter the 6-digit code sent to<br><strong>{{ email }}</strong></p>
+        <p class="instruction">
+          Enter the 6-digit code sent to<br /><strong>{{ email }}</strong>
+        </p>
         
         <form @submit.prevent="handleSubmit">
-          <OTPInput v-model="otp" :length="6" />
+          <OTPInput
+            v-model="otp"
+            :length="6"
+          />
           
-          <button type="submit" class="verify-btn" :disabled="authStore.loading || otp.length !== 6">
+          <button
+            type="submit"
+            class="verify-btn"
+            :disabled="authStore.loading || otp.length !== 6"
+          >
             {{ authStore.loading ? 'Verifying...' : 'Verify Account' }}
           </button>
         </form>
@@ -25,19 +46,24 @@
         <div class="resend-section">
           <button 
             v-if="canResend" 
-            @click="handleResend" 
-            :disabled="resending"
+            :disabled="resending" 
             class="resend-btn"
+            @click="handleResend"
           >
             {{ resending ? 'Sending...' : 'Resend Code' }}
           </button>
-          <p v-else class="resend-timer">
+          <p
+            v-else
+            class="resend-timer"
+          >
             Resend code in {{ resendTimer }}s
           </p>
         </div>
         
         <p class="back-link">
-          <router-link to="/login">Back to Login</router-link>
+          <router-link to="/login">
+            Back to Login
+          </router-link>
         </p>
       </div>
     </div>
@@ -45,93 +71,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import OTPInput from '../components/OTPInput.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import OTPInput from "../components/OTPInput.vue";
+import ErrorAlert from "../components/ErrorAlert.vue";
+import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 
-const email = ref('')
-const otp = ref('')
-const resending = ref(false)
-const error = ref('')
-const success = ref(false)
-const canResend = ref(false)
-const resendTimer = ref(60)
+const email = ref("");
+const otp = ref("");
+const resending = ref(false);
+const error = ref("");
+const success = ref(false);
+const canResend = ref(false);
+const resendTimer = ref(60);
 
 onMounted(() => {
   // Get email from query params
-  email.value = (route.query.email as string) || ''
+  email.value = (route.query.email as string) || "";
   
   if (!email.value) {
-    error.value = 'Email not provided. Please register again.'
-    setTimeout(() => router.push('/signup'), 3000)
-    return
+    error.value = "Email not provided. Please register again.";
+    setTimeout(() => router.push("/signup"), 3000);
+    return;
   }
   
   // Start resend timer
-  startResendTimer()
-})
+  startResendTimer();
+});
 
 const startResendTimer = () => {
-  canResend.value = false
-  resendTimer.value = 60
+  canResend.value = false;
+  resendTimer.value = 60;
   
   const interval = setInterval(() => {
-    resendTimer.value--
+    resendTimer.value--;
     if (resendTimer.value === 0) {
-      canResend.value = true
-      clearInterval(interval)
+      canResend.value = true;
+      clearInterval(interval);
     }
-  }, 1000)
-}
+  }, 1000);
+};
 
 const handleSubmit = async () => {
   if (otp.value.length !== 6) {
-    error.value = 'Please enter a valid 6-digit code'
-    return
+    error.value = "Please enter a valid 6-digit code";
+    return;
   }
   
-  error.value = ''
+  error.value = "";
   
   try {
     // Call verify-otp endpoint
     await authStore.verifyRegistrationOTP({
       email: email.value,
       otp_code: otp.value
-    })
+    });
     
-    success.value = true
+    success.value = true;
     
     // Redirect to login after 2 seconds
     setTimeout(() => {
       router.push({
-        path: '/login',
-        query: { verified: 'true', email: email.value }
-      })
-    }, 2000)
+        path: "/login",
+        query: { verified: "true", email: email.value }
+      });
+    }, 2000);
   } catch (err: any) {
-    error.value = err?.message || 'Verification failed. Please try again.'
+    error.value = err?.message || "Verification failed. Please try again.";
   }
-}
+};
 
 const handleResend = async () => {
-  resending.value = true
-  error.value = ''
+  resending.value = true;
+  error.value = "";
   
   try {
-    await authStore.requestOTP({ email: email.value })
-    startResendTimer()
+    await authStore.requestOTP({ email: email.value });
+    startResendTimer();
   } catch (err: any) {
-    error.value = err?.message || 'Failed to resend code.'
+    error.value = err?.message || "Failed to resend code.";
   } finally {
-    resending.value = false
+    resending.value = false;
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

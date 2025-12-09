@@ -1,20 +1,37 @@
 <template>
   <div class="hashtag-explore-page">
     <div class="hashtag-header">
-      <button class="back-btn" @click="$router.back()">←</button>
+      <button
+        class="back-btn"
+        @click="$router.back()"
+      >
+        ←
+      </button>
       <div class="hashtag-info">
         <h1>#{{ hashtagName }}</h1>
-        <p class="post-count">{{ totalPosts }} posts</p>
+        <p class="post-count">
+          {{ totalPosts }} posts
+        </p>
       </div>
     </div>
 
-    <div v-if="loading && posts.length === 0" class="loading-state">
+    <div
+      v-if="loading && posts.length === 0"
+      class="loading-state"
+    >
       <div class="loading-grid">
-        <div v-for="i in 12" :key="`skeleton-${i}`" class="skeleton-item"></div>
+        <div
+          v-for="i in 12"
+          :key="`skeleton-${i}`"
+          class="skeleton-item"
+        ></div>
       </div>
     </div>
 
-    <div v-else-if="posts.length > 0" class="posts-grid">
+    <div
+      v-else-if="posts.length > 0"
+      class="posts-grid"
+    >
       <div 
         v-for="post in posts" 
         :key="post.id" 
@@ -35,75 +52,80 @@
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <p>No posts found with #{{ hashtagName }}</p>
-      <p class="empty-subtitle">Be the first to post with this hashtag</p>
+      <p class="empty-subtitle">
+        Be the first to post with this hashtag
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import apiClient from '@/services/api'
+import { ref, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
+import apiClient from "@/services/api";
 
-const route = useRoute()
-const hashtagName = ref('')
-const posts = ref<any[]>([])
-const totalPosts = ref(0)
-const loading = ref(false)
+const route = useRoute();
+const hashtagName = ref("");
+const posts = ref<any[]>([]);
+const totalPosts = ref(0);
+const loading = ref(false);
 
 const fetchHashtagPosts = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const hashtag = route.params.hashtag as string
-    hashtagName.value = hashtag
+    const hashtag = route.params.hashtag as string;
+    hashtagName.value = hashtag;
     
-    const response = await apiClient.get(`/search/hashtags/${hashtag}`)
-    posts.value = response.data.posts || []
-    totalPosts.value = response.data.total_post_count || 0
+    const response = await apiClient.get(`/search/hashtags/${hashtag}`);
+    posts.value = response.data.posts || [];
+    totalPosts.value = response.data.total_post_count || 0;
   } catch (error) {
-    console.error('Failed to fetch hashtag posts:', error)
-    posts.value = []
-    totalPosts.value = 0
+    console.error("Failed to fetch hashtag posts:", error);
+    posts.value = [];
+    totalPosts.value = 0;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 onMounted(() => {
-  fetchHashtagPosts()
-})
+  fetchHashtagPosts();
+});
 
 watch(() => route.params.hashtag, () => {
   if (route.params.hashtag) {
-    fetchHashtagPosts()
+    fetchHashtagPosts();
   }
-})
+});
 
 const handleOpenPost = (postId: string) => {
   if (window.openPostDetails) {
-    window.openPostDetails(postId)
+    window.openPostDetails(postId);
   }
-}
+};
 
 const getMediaUrl = (url: string | undefined) => {
-  if (!url) return '/placeholder.svg?height=280&width=280'
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (!url) return "/placeholder.svg?height=280&width=280";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
-  return url
-}
+  return url;
+};
 
 const formatCount = (count: number) => {
   if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`
+    return `${(count / 1000000).toFixed(1)}M`;
   } else if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`
+    return `${(count / 1000).toFixed(1)}K`;
   }
-  return count.toString()
-}
+  return count.toString();
+};
 </script>
 
 <style scoped lang="scss">

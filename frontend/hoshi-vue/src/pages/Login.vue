@@ -3,25 +3,40 @@
     <div class="login-wrapper">
       <!-- Left side: Carousel -->
       <div class="carousel-section">
-        <img src="/instagram-phones.png" alt="Instagram phones" />
+        <img
+          src="/instagram-phones.png"
+          alt="Instagram phones"
+        />
       </div>
 
       <!-- Right side: Form -->
       <div class="form-section">
         <div class="form-content">
           <!-- Logo -->
-          <h1 class="logo">hoshiBmaTchi</h1>
+          <h1 class="logo">
+            hoshiBmaTchi
+          </h1>
 
           <!-- Success Message -->
-          <div v-if="successMessage" class="success-alert">
+          <div
+            v-if="successMessage"
+            class="success-alert"
+          >
             {{ successMessage }}
           </div>
 
           <!-- Error Alert -->
-          <ErrorAlert v-if="error" :message="error" @close="error = ''" />
+          <ErrorAlert
+            v-if="error"
+            :message="error"
+            @close="error = ''"
+          />
           
           <!-- Verification Link -->
-          <div v-if="showVerificationLink" class="verification-prompt">
+          <div
+            v-if="showVerificationLink"
+            class="verification-prompt"
+          >
             <router-link 
               :to="{ path: '/verify-otp', query: { email: userEmailForVerification }}" 
               class="verify-link"
@@ -31,22 +46,29 @@
           </div>
 
           <!-- Form -->
-          <form @submit.prevent="handleSubmit" class="form">
+          <form
+            class="form"
+            @submit.prevent="handleSubmit"
+          >
             <FormInput
               v-model="form.username"
               type="text"
               placeholder="Phone number, username, or email"
-              :errorMessage="errors.username"
+              :error-message="errors.username"
             />
 
             <FormInput
               v-model="form.password"
               type="password"
               placeholder="Password"
-              :errorMessage="errors.password"
+              :error-message="errors.password"
             />
 
-            <button type="submit" class="login-btn" :disabled="authStore.loading">
+            <button
+              type="submit"
+              class="login-btn"
+              :disabled="authStore.loading"
+            >
               {{ authStore.loading ? 'Logging in...' : 'Log in' }}
             </button>
           </form>
@@ -57,20 +79,34 @@
           </div>
 
           <!-- Google OAuth Button -->
-          <button @click="handleGoogleLogin" class="google-btn">
-            <img src="/google-icon.svg" alt="Google" class="google-icon" />
+          <button
+            class="google-btn"
+            @click="handleGoogleLogin"
+          >
+            <img
+              src="/google-icon.svg"
+              alt="Google"
+              class="google-icon"
+            />
             Log in with Google
           </button>
 
           <!-- Forgot Password Link -->
-          <router-link to="/forgot-password" class="forgot-password">Forgot password?</router-link>
+          <router-link
+            to="/forgot-password"
+            class="forgot-password"
+          >
+            Forgot password?
+          </router-link>
 
           <!-- Divider -->
           <div class="signup-divider"></div>
 
           <!-- Sign Up Link -->
           <p class="signup-text">
-            Don't have an account? <router-link to="/signup">Sign up</router-link>
+            Don't have an account? <router-link to="/signup">
+              Sign up
+            </router-link>
           </p>
         </div>
       </div>
@@ -92,131 +128,133 @@
         <a href="#">Meta AI</a>
         <a href="#">Threads</a>
       </div>
-      <p class="copyright">© 2025 Instagram from Meta</p>
+      <p class="copyright">
+        © 2025 Instagram from Meta
+      </p>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import FormInput from '../components/FormInput.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import { useAuthStore } from '@/stores/auth'
+import { ref, reactive, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import FormInput from "../components/FormInput.vue";
+import ErrorAlert from "../components/ErrorAlert.vue";
+import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter()
-const route = useRoute()
-const authStore = useAuthStore()
+const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 
-const error = ref('')
-const successMessage = ref('')
-const showVerificationLink = ref(false)
-const userEmailForVerification = ref('')
+const error = ref("");
+const successMessage = ref("");
+const showVerificationLink = ref(false);
+const userEmailForVerification = ref("");
 
 const form = reactive({
-  username: '',
-  password: ''
-})
+  username: "",
+  password: ""
+});
 
 const errors = reactive({
-  username: '',
-  password: ''
-})
+  username: "",
+  password: ""
+});
 
 onMounted(() => {
   // Check if user just registered
-  if (route.query.registered === 'true') {
-    successMessage.value = 'Registration successful! Please log in with your credentials.'
+  if (route.query.registered === "true") {
+    successMessage.value = "Registration successful! Please log in with your credentials.";
     if (route.query.email) {
-      form.username = route.query.email as string
+      form.username = route.query.email as string;
     }
   }
   
   // Check if user just verified email
-  if (route.query.verified === 'true') {
-    successMessage.value = 'Email verified successfully! Please log in with your credentials.'
+  if (route.query.verified === "true") {
+    successMessage.value = "Email verified successfully! Please log in with your credentials.";
     if (route.query.email) {
-      form.username = route.query.email as string
+      form.username = route.query.email as string;
     }
   }
   
   // Check if password was reset
-  if (route.query.reset === 'success') {
-    successMessage.value = 'Password reset successful! Please log in with your new password.'
+  if (route.query.reset === "success") {
+    successMessage.value = "Password reset successful! Please log in with your new password.";
   }
-})
+});
 
 const handleGoogleLogin = () => {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   
   if (!googleClientId) {
-    error.value = 'Google OAuth is not configured'
-    return
+    error.value = "Google OAuth is not configured";
+    return;
   }
   
-  const redirectUri = `${window.location.origin}/auth/google/callback`
-  const scope = 'openid profile email'
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`
+  const redirectUri = `${window.location.origin}/auth/google/callback`;
+  const scope = "openid profile email";
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
   
-  window.location.href = googleAuthUrl
-}
+  window.location.href = googleAuthUrl;
+};
 
 const handleSubmit = async () => {
   // Clear previous errors
-  errors.username = ''
-  errors.password = ''
-  error.value = ''
-  successMessage.value = ''
+  errors.username = "";
+  errors.password = "";
+  error.value = "";
+  successMessage.value = "";
 
   // Frontend validations
   if (!form.username.trim()) {
-    errors.username = 'Username, email, or phone number is required'
-    return
+    errors.username = "Username, email, or phone number is required";
+    return;
   }
 
   if (!form.password.trim()) {
-    errors.password = 'Password is required'
-    return
+    errors.password = "Password is required";
+    return;
   }
 
   try {
     const response = await authStore.login({
       email_or_username: form.username,
       password: form.password
-    })
+    });
     
     // Check if 2FA is required
     if (response.requires_2fa) {
       // Store temporary session data for 2FA
-      const userEmail: string = (response as any).email || (response as any).username || form.username
-      const userName: string = (response as any).username || form.username
+      const userEmail: string = (response as any).email || (response as any).username || form.username;
+      const userName: string = (response as any).username || form.username;
       
-      sessionStorage.setItem('temp_email', userEmail)
-      sessionStorage.setItem('temp_username', userName)
+      sessionStorage.setItem("temp_email", userEmail);
+      sessionStorage.setItem("temp_username", userName);
       
       // Redirect to OTP verification
-      router.push('/login-otp')
+      router.push("/login-otp");
     } else {
       // Login successful, redirect to feed
-      router.push('/feed')
+      router.push("/feed");
     }
   } catch (err: any) {
     // Check if error is due to inactive account
-    const errorMessage = err?.message || String(err)
+    const errorMessage = err?.message || String(err);
     
-    if (errorMessage.toLowerCase().includes('deactivated') || 
-        errorMessage.toLowerCase().includes('not verified') || 
-        errorMessage.toLowerCase().includes('inactive') ||
-        errorMessage.toLowerCase().includes('not active')) {
-      error.value = 'Your account is not verified. Please check your email for the verification code.'
-      showVerificationLink.value = true
-      userEmailForVerification.value = form.username
+    if (errorMessage.toLowerCase().includes("deactivated") || 
+        errorMessage.toLowerCase().includes("not verified") || 
+        errorMessage.toLowerCase().includes("inactive") ||
+        errorMessage.toLowerCase().includes("not active")) {
+      error.value = "Your account is not verified. Please check your email for the verification code.";
+      showVerificationLink.value = true;
+      userEmailForVerification.value = form.username;
     } else {
-      error.value = errorMessage
-      showVerificationLink.value = false
+      error.value = errorMessage;
+      showVerificationLink.value = false;
     }
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

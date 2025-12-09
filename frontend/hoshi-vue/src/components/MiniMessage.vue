@@ -9,16 +9,27 @@
       <span class="icon">💬</span>
       <span class="title">Messages</span>
       <div class="message-avatars">
-        <img v-for="msg in messages.slice(0, 3)" :key="msg.id" :src="msg.avatar" :alt="msg.username" class="avatar" />
+        <img
+          v-for="msg in messages.slice(0, 3)"
+          :key="msg.id"
+          :src="msg.avatar"
+          :alt="msg.username"
+          class="avatar"
+        />
       </div>
     </div>
     
-    <div v-if="hasUnread" class="unread-badge">{{ totalUnread }}</div>
+    <div
+      v-if="hasUnread"
+      class="unread-badge"
+    >
+      {{ totalUnread }}
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from "vue";
 
 interface Message {
   id: number
@@ -29,107 +40,107 @@ interface Message {
 
 const props = defineProps<{
   messages: Message[]
-}>()
+}>();
 
 const emit = defineEmits<{
   click: []
-}>()
+}>();
 
-const isDragging = ref(false)
-const dragStartTime = ref(0)
-const offsetX = ref(0)
-const offsetY = ref(0)
-const posX = ref(0)
-const posY = ref(0)
+const isDragging = ref(false);
+const dragStartTime = ref(0);
+const offsetX = ref(0);
+const offsetY = ref(0);
+const posX = ref(0);
+const posY = ref(0);
 
 const messageStyle = computed(() => ({
   left: `${posX.value}px`,
   top: `${posY.value}px`
-}))
+}));
 
-const hasUnread = computed(() => props.messages.some(m => m.unreadCount > 0))
-const totalUnread = computed(() => props.messages.reduce((sum, m) => sum + m.unreadCount, 0))
+const hasUnread = computed(() => props.messages.some(m => m.unreadCount > 0));
+const totalUnread = computed(() => props.messages.reduce((sum, m) => sum + m.unreadCount, 0));
 
 // Initialize position from localStorage or default to bottom-right
 onMounted(() => {
-  const savedPos = localStorage.getItem('miniMessagePosition')
+  const savedPos = localStorage.getItem("miniMessagePosition");
   if (savedPos) {
     try {
-      const { x, y } = JSON.parse(savedPos)
-      posX.value = x
-      posY.value = y
-    } catch (e) {
+      const { x, y } = JSON.parse(savedPos);
+      posX.value = x;
+      posY.value = y;
+    } catch {
       // Use default position
-      setDefaultPosition()
+      setDefaultPosition();
     }
   } else {
-    setDefaultPosition()
+    setDefaultPosition();
   }
-})
+});
 
 const setDefaultPosition = () => {
-  posX.value = window.innerWidth - 320
-  posY.value = window.innerHeight - 120
-}
+  posX.value = window.innerWidth - 320;
+  posY.value = window.innerHeight - 120;
+};
 
 const startDrag = (e: MouseEvent) => {
-  isDragging.value = false
-  dragStartTime.value = Date.now()
-  offsetX.value = e.clientX - posX.value
-  offsetY.value = e.clientY - posY.value
+  isDragging.value = false;
+  dragStartTime.value = Date.now();
+  offsetX.value = e.clientX - posX.value;
+  offsetY.value = e.clientY - posY.value;
 
   const handleMouseMove = (moveEvent: MouseEvent) => {
     // If mouse moved more than 5 pixels, it's a drag
-    const dx = moveEvent.clientX - (offsetX.value + posX.value)
-    const dy = moveEvent.clientY - (offsetY.value + posY.value)
+    const dx = moveEvent.clientX - (offsetX.value + posX.value);
+    const dy = moveEvent.clientY - (offsetY.value + posY.value);
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-      isDragging.value = true
+      isDragging.value = true;
     }
 
     if (isDragging.value) {
-      let newX = moveEvent.clientX - offsetX.value
-      let newY = moveEvent.clientY - offsetY.value
+      let newX = moveEvent.clientX - offsetX.value;
+      let newY = moveEvent.clientY - offsetY.value;
 
       // Constrain to window bounds
-      const maxX = window.innerWidth - 280  // component width
-      const maxY = window.innerHeight - 80  // component height
+      const maxX = window.innerWidth - 280;  // component width
+      const maxY = window.innerHeight - 80;  // component height
       
-      newX = Math.max(0, Math.min(newX, maxX))
-      newY = Math.max(0, Math.min(newY, maxY))
+      newX = Math.max(0, Math.min(newX, maxX));
+      newY = Math.max(0, Math.min(newY, maxY));
 
-      posX.value = newX
-      posY.value = newY
+      posX.value = newX;
+      posY.value = newY;
     }
-  }
+  };
 
   const handleMouseUp = () => {
     // Save position to localStorage
     if (isDragging.value) {
-      localStorage.setItem('miniMessagePosition', JSON.stringify({
+      localStorage.setItem("miniMessagePosition", JSON.stringify({
         x: posX.value,
         y: posY.value
-      }))
+      }));
     }
 
     // Reset after a short delay to allow click detection
     setTimeout(() => {
-      isDragging.value = false
-    }, 10)
+      isDragging.value = false;
+    }, 10);
 
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-  }
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
 
-  document.addEventListener('mousemove', handleMouseMove)
-  document.addEventListener('mouseup', handleMouseUp)
-}
+  document.addEventListener("mousemove", handleMouseMove);
+  document.addEventListener("mouseup", handleMouseUp);
+};
 
 const handleClick = () => {
   // Only emit click if it wasn't a drag
   if (!isDragging.value && Date.now() - dragStartTime.value < 300) {
-    emit('click')
+    emit("click");
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

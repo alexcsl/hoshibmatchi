@@ -2,8 +2,15 @@
   <aside class="sidebar">
     <div class="sidebar-content">
       <!-- Logo -->
-      <router-link to="/feed" class="logo">
-        <img class="logo-image" src="../../public/instagram-logo.png" alt="Hoshi Logo" />
+      <router-link
+        to="/feed"
+        class="logo"
+      >
+        <img
+          class="logo-image"
+          src="../../public/instagram-logo.png"
+          alt="Hoshi Logo"
+        />
         <span class="logo-text">hoshiBmaTchi</span>
       </router-link>
 
@@ -64,21 +71,37 @@
 
       <!-- More Menu -->
       <div class="more-menu">
-        <button class="more-btn" @click="showMoreMenu = !showMoreMenu">
+        <button
+          class="more-btn"
+          @click="showMoreMenu = !showMoreMenu"
+        >
           <span class="icon">☰</span>
           <span class="label">More</span>
         </button>
         
-        <div v-if="showMoreMenu" class="more-dropdown">
-          <button class="dropdown-item" @click="handleSettings">
+        <div
+          v-if="showMoreMenu"
+          class="more-dropdown"
+        >
+          <button
+            class="dropdown-item"
+            @click="handleSettings"
+          >
             <span class="icon">⚙</span>
             <span>Settings</span>
           </button>
-          <button class="dropdown-item" @click="handleSaved">
+          <button
+            class="dropdown-item"
+            @click="handleSaved"
+          >
             <span class="icon">🔖</span>
             <span>Saved</span>
           </button>
-          <button v-if="isAdmin" class="dropdown-item" @click="handleAdmin">
+          <button
+            v-if="isAdmin"
+            class="dropdown-item"
+            @click="handleAdmin"
+          >
             <span class="icon">👑</span>
             <span>Admin Dashboard</span>
           </button>
@@ -88,7 +111,10 @@
             <span>{{ currentTheme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
           <div class="dropdown-divider"></div>
-          <button class="dropdown-item logout" @click="handleLogout">
+          <button
+            class="dropdown-item logout"
+            @click="handleLogout"
+          >
             <span class="icon">🚪</span>
             <span>Logout</span>
           </button>
@@ -99,92 +125,92 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import NavItem from './NavItem.vue'
-import { notificationAPI } from '../services/api'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted, onUnmounted, computed } from "vue";
+import NavItem from "./NavItem.vue";
+import { notificationAPI } from "../services/api";
+import { useAuthStore } from "@/stores/auth";
 
-const authStore = useAuthStore()
+const authStore = useAuthStore();
 
-const props = defineProps<{
+defineProps<{
   currentRoute: string
-}>()
+}>();
 
 const emit = defineEmits<{
   navigate: [path: string]
-  'open-search': []
-  'open-notifications': []
-  'open-create': []
-  'open-settings': []
-  'open-saved': []
+  "open-search": []
+  "open-notifications": []
+  "open-create": []
+  "open-settings": []
+  "open-saved": []
   logout: []
-}>()
+}>();
 
-const showMoreMenu = ref(false)
-const currentTheme = ref('dark')
-const unreadNotificationCount = ref(0)
-let pollInterval: ReturnType<typeof setInterval> | null = null
+const showMoreMenu = ref(false);
+const currentTheme = ref("dark");
+const unreadNotificationCount = ref(0);
+let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 // Check if user is admin
 const isAdmin = computed(() => {
-  const token = authStore.token
-  if (!token) return false
+  const token = authStore.token;
+  if (!token) return false;
   
   try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    }).join(''))
-    const decoded = JSON.parse(jsonPayload)
-    return decoded.role === 'admin'
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(window.atob(base64).split("").map(function(c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(""));
+    const decoded = JSON.parse(jsonPayload);
+    return decoded.role === "admin";
   } catch {
-    return false
+    return false;
   }
-})
+});
 
 const fetchUnreadCount = async () => {
   try {
-    const data = await notificationAPI.getNotifications(1) // Only fetch 1 to get count
-    unreadNotificationCount.value = data.unread_count
-  } catch (error) {
+    const data = await notificationAPI.getNotifications(1); // Only fetch 1 to get count
+    unreadNotificationCount.value = data.unread_count;
+  } catch {
     // Silently fail - don't spam console if backend is unavailable
     // Just keep the badge at 0
-    unreadNotificationCount.value = 0
+    unreadNotificationCount.value = 0;
   }
-}
+};
 
 const handleSettings = () => {
-  showMoreMenu.value = false
-  emit('open-settings')
-}
+  showMoreMenu.value = false;
+  emit("open-settings");
+};
 
 const handleSaved = () => {
-  showMoreMenu.value = false
-  emit('open-saved')
-}
+  showMoreMenu.value = false;
+  emit("open-saved");
+};
 
 const handleAdmin = () => {
-  showMoreMenu.value = false
-  emit('navigate', 'admin')
-}
+  showMoreMenu.value = false;
+  emit("navigate", "admin");
+};
 
 const handleLogout = () => {
-  showMoreMenu.value = false
-  emit('logout')
-}
+  showMoreMenu.value = false;
+  emit("logout");
+};
 
 onMounted(() => {
-  fetchUnreadCount()
+  fetchUnreadCount();
   // Poll for unread count every 10 seconds
-  pollInterval = setInterval(fetchUnreadCount, 10000)
-})
+  pollInterval = setInterval(fetchUnreadCount, 10000);
+});
 
 onUnmounted(() => {
   if (pollInterval) {
-    clearInterval(pollInterval)
+    clearInterval(pollInterval);
   }
-})
+});
 </script>
 
 <style scoped lang="scss">

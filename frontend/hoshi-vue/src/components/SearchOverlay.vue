@@ -1,6 +1,12 @@
 <template>
-  <div class="search-overlay" @click="$emit('close')">
-    <div class="search-panel" @click.stop>
+  <div
+    class="search-overlay"
+    @click="$emit('close')"
+  >
+    <div
+      class="search-panel"
+      @click.stop
+    >
       <div class="search-header">
         <input 
           v-model="searchQuery"
@@ -9,35 +15,81 @@
           class="search-input"
           @input="handleSearch"
         />
-        <button class="close-btn" @click="$emit('close')">✕</button>
+        <button
+          class="close-btn"
+          @click="$emit('close')"
+        >
+          ✕
+        </button>
       </div>
 
       <!-- Recent Searches -->
-      <div v-if="!searchQuery" class="search-content">
+      <div
+        v-if="!searchQuery"
+        class="search-content"
+      >
         <div class="section">
           <div class="section-header">
             <h3>Recent</h3>
-            <button class="clear-btn" @click="clearRecent">Clear all</button>
+            <button
+              class="clear-btn"
+              @click="clearRecent"
+            >
+              Clear all
+            </button>
           </div>
-          <div v-if="recentSearches.length" class="search-list">
-            <div v-for="search in recentSearches" :key="search.id" class="search-item">
+          <div
+            v-if="recentSearches.length"
+            class="search-list"
+          >
+            <div
+              v-for="search in recentSearches"
+              :key="search.id"
+              class="search-item"
+            >
               <span class="icon">🕐</span>
               <span class="text">{{ search.query }}</span>
-              <button class="remove-btn" @click.stop="removeRecent(search.id)">✕</button>
+              <button
+                class="remove-btn"
+                @click.stop="removeRecent(search.id)"
+              >
+                ✕
+              </button>
             </div>
           </div>
-          <div v-else class="empty">No recent searches</div>
+          <div
+            v-else
+            class="empty"
+          >
+            No recent searches
+          </div>
         </div>
       </div>
 
       <!-- Search Results -->
-      <div v-else class="search-results">
+      <div
+        v-else
+        class="search-results"
+      >
         <div class="results-list">
-          <div v-for="user in filteredUsers" :key="user.id" class="result-item user-result" @click="selectUser(user)">
-            <img :src="user.avatar" :alt="user.username" class="avatar" />
+          <div
+            v-for="user in filteredUsers"
+            :key="user.id"
+            class="result-item user-result"
+            @click="selectUser(user)"
+          >
+            <img
+              :src="user.avatar"
+              :alt="user.username"
+              class="avatar"
+            />
             <div class="result-info">
-              <div class="username">{{ user.username }}</div>
-              <div class="fullname">{{ user.fullname }}</div>
+              <div class="username">
+                {{ user.username }}
+              </div>
+              <div class="fullname">
+                {{ user.fullname }}
+              </div>
             </div>
           </div>
         </div>
@@ -47,50 +99,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
 
-const emit = defineEmits<{
+defineEmits<{
   close: []
-}>()
+}>();
 
-const searchQuery = ref('')
+const searchQuery = ref("");
 const recentSearches = ref([
-  { id: 1, query: '#genshin' },
-  { id: 2, query: '@selyucormer' },
-  { id: 3, query: '#anime' }
-])
+  { id: 1, query: "#genshin" },
+  { id: 2, query: "@selyucormer" },
+  { id: 3, query: "#anime" }
+]);
 
 const allUsers = [
-  { id: 1, username: 'user_1', fullname: 'User One', avatar: '/placeholder.svg?height=40&width=40' },
-  { id: 2, username: 'user_2', fullname: 'User Two', avatar: '/placeholder.svg?height=40&width=40' },
-  { id: 3, username: 'user_3', fullname: 'User Three', avatar: '/placeholder.svg?height=40&width=40' },
-  { id: 4, username: 'user_4', fullname: 'User Four', avatar: '/placeholder.svg?height=40&width=40' },
-  { id: 5, username: 'user_5', fullname: 'User Five', avatar: '/placeholder.svg?height=40&width=40' }
-]
+  { id: 1, username: "user_1", fullname: "User One", avatar: "/placeholder.svg?height=40&width=40" },
+  { id: 2, username: "user_2", fullname: "User Two", avatar: "/placeholder.svg?height=40&width=40" },
+  { id: 3, username: "user_3", fullname: "User Three", avatar: "/placeholder.svg?height=40&width=40" },
+  { id: 4, username: "user_4", fullname: "User Four", avatar: "/placeholder.svg?height=40&width=40" },
+  { id: 5, username: "user_5", fullname: "User Five", avatar: "/placeholder.svg?height=40&width=40" }
+];
 
 const filteredUsers = computed(() => {
-  if (!searchQuery.value) return []
+  if (!searchQuery.value) return [];
   return allUsers.filter(user => 
     user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     user.fullname.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-})
+  );
+});
 
 const handleSearch = () => {
   // Implement debounce for real API calls
-}
+};
 
 const clearRecent = () => {
-  recentSearches.value = []
-}
+  recentSearches.value = [];
+};
 
 const removeRecent = (id: number) => {
-  recentSearches.value = recentSearches.value.filter(s => s.id !== id)
-}
+  recentSearches.value = recentSearches.value.filter(s => s.id !== id);
+};
 
 const selectUser = (user: any) => {
-  console.log('Selected user:', user)
-}
+  console.log("Selected user:", user);
+};
 </script>
 
 <style scoped lang="scss">

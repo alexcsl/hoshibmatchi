@@ -1,27 +1,48 @@
 <template>
-  <div class="notification-overlay" @click="$emit('close')">
-    <div class="notification-panel" @click.stop>
+  <div
+    class="notification-overlay"
+    @click="$emit('close')"
+  >
+    <div
+      class="notification-panel"
+      @click.stop
+    >
       <div class="notification-header">
         <h2>Notifications</h2>
         <div class="header-actions">
           <button 
             v-if="unreadCount > 0" 
             class="mark-all-btn" 
-            @click="markAllAsRead"
             :disabled="markingAll"
+            @click="markAllAsRead"
           >
             Mark all as read
           </button>
-          <button class="close-btn" @click="$emit('close')">✕</button>
+          <button
+            class="close-btn"
+            @click="$emit('close')"
+          >
+            ✕
+          </button>
         </div>
       </div>
 
       <div class="notifications-list">
-        <div v-if="loading" class="loading">Loading notifications...</div>
-        <div v-else-if="notifications.length === 0" class="empty">No notifications</div>
+        <div
+          v-if="loading"
+          class="loading"
+        >
+          Loading notifications...
+        </div>
+        <div
+          v-else-if="notifications.length === 0"
+          class="empty"
+        >
+          No notifications
+        </div>
         <div 
-          v-else
-          v-for="notification in notifications" 
+          v-for="notification in notifications"
+          v-else 
           :key="notification.id" 
           class="notification-item"
           :class="{ unread: !notification.is_read }"
@@ -35,12 +56,20 @@
           <div class="notification-content">
             <div class="notification-text">
               <strong>{{ notification.actor_username }}</strong>
-              <span v-if="notification.actor_is_verified" class="verified-badge">✓</span>
+              <span
+                v-if="notification.actor_is_verified"
+                class="verified-badge"
+              >✓</span>
               {{ getNotificationText(notification.type) }}
             </div>
-            <div class="notification-time">{{ formatTime(notification.created_at) }}</div>
+            <div class="notification-time">
+              {{ formatTime(notification.created_at) }}
+            </div>
           </div>
-          <div v-if="!notification.is_read" class="unread-dot"></div>
+          <div
+            v-if="!notification.is_read"
+            class="unread-dot"
+          ></div>
         </div>
       </div>
     </div>
@@ -48,123 +77,123 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { notificationAPI, type NotificationItem } from '../services/api'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted } from "vue";
+import { notificationAPI, type NotificationItem } from "../services/api";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
+const router = useRouter();
 
 const emit = defineEmits<{
   close: []
-}>()
+}>();
 
-const notifications = ref<NotificationItem[]>([])
-const unreadCount = ref(0)
-const loading = ref(false)
-const markingAll = ref(false)
-let pollInterval: ReturnType<typeof setInterval> | null = null
+const notifications = ref<NotificationItem[]>([]);
+const unreadCount = ref(0);
+const loading = ref(false);
+const markingAll = ref(false);
+let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const loadNotifications = async (showLoading = true) => {
-  if (showLoading) loading.value = true
+  if (showLoading) loading.value = true;
   try {
-    const data = await notificationAPI.getNotifications(50)
-    notifications.value = data.notifications
-    unreadCount.value = data.unread_count
+    const data = await notificationAPI.getNotifications(50);
+    notifications.value = data.notifications;
+    unreadCount.value = data.unread_count;
   } catch (error: any) {
-    console.error('Failed to load notifications:', error)
+    console.error("Failed to load notifications:", error);
     // Show user-friendly error message
-    if (error.code === 'ERR_NETWORK') {
-      notifications.value = []
+    if (error.code === "ERR_NETWORK") {
+      notifications.value = [];
       // Optionally show a toast or error message to user
     }
   } finally {
-    if (showLoading) loading.value = false
+    if (showLoading) loading.value = false;
   }
-}
+};
 
 const markAllAsRead = async () => {
-  if (markingAll.value) return
+  if (markingAll.value) return;
   
-  markingAll.value = true
+  markingAll.value = true;
   try {
-    await notificationAPI.markAllAsRead()
+    await notificationAPI.markAllAsRead();
     // Update local state
-    notifications.value = notifications.value.map(n => ({ ...n, is_read: true }))
-    unreadCount.value = 0
+    notifications.value = notifications.value.map(n => ({ ...n, is_read: true }));
+    unreadCount.value = 0;
   } catch (error) {
-    console.error('Failed to mark all as read:', error)
+    console.error("Failed to mark all as read:", error);
   } finally {
-    markingAll.value = false
+    markingAll.value = false;
   }
-}
+};
 
 const handleNotificationClick = async (notification: NotificationItem) => {
   // Mark as read if unread
   if (!notification.is_read) {
     try {
-      await notificationAPI.markAsRead(notification.id)
-      notification.is_read = true
-      unreadCount.value = Math.max(0, unreadCount.value - 1)
+      await notificationAPI.markAsRead(notification.id);
+      notification.is_read = true;
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
     } catch (error) {
-      console.error('Failed to mark notification as read:', error)
+      console.error("Failed to mark notification as read:", error);
     }
   }
 
   // Navigate based on notification type
-  emit('close')
+  emit("close");
   
-  if (notification.type === 'post.liked' || notification.type === 'post.commented' || notification.type === 'comment.created') {
+  if (notification.type === "post.liked" || notification.type === "post.commented" || notification.type === "comment.created") {
     // Navigate to post (would need to fetch post and navigate to it)
-    console.log('Navigate to post:', notification.entity_id)
-  } else if (notification.type === 'user.followed') {
+    console.log("Navigate to post:", notification.entity_id);
+  } else if (notification.type === "user.followed") {
     // Navigate to user profile
-    router.push(`/${notification.actor_username}`)
+    router.push(`/${notification.actor_username}`);
   }
-}
+};
 
 const getNotificationText = (type: string): string => {
   const texts: Record<string, string> = {
-    'post.liked': 'liked your post',
-    'user.followed': 'started following you',
-    'post.commented': 'commented on your post',
-    'comment.created': 'commented on your post', // Alias
-    'post.shared': 'shared your post',
-    'comment.liked': 'liked your comment',
-    'story.liked': 'liked your story'
-  }
-  return texts[type] || 'interacted with your content'
-}
+    "post.liked": "liked your post",
+    "user.followed": "started following you",
+    "post.commented": "commented on your post",
+    "comment.created": "commented on your post", // Alias
+    "post.shared": "shared your post",
+    "comment.liked": "liked your comment",
+    "story.liked": "liked your story"
+  };
+  return texts[type] || "interacted with your content";
+};
 
 const formatTime = (timestamp: string): string => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
   
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
   
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 onMounted(() => {
-  loadNotifications()
+  loadNotifications();
   // Poll for new notifications every 5 seconds
   pollInterval = setInterval(() => {
-    loadNotifications(false) // Don't show loading spinner on polls
-  }, 5000)
-})
+    loadNotifications(false); // Don't show loading spinner on polls
+  }, 5000);
+});
 
 onUnmounted(() => {
   // Cleanup interval when component is destroyed
   if (pollInterval) {
-    clearInterval(pollInterval)
+    clearInterval(pollInterval);
   }
-})
+});
 
 </script>
 

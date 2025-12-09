@@ -1,7 +1,18 @@
 <template>
-  <div class="reels-viewer-overlay" @click="$emit('close')">
-    <div class="reels-viewer" @click.stop>
-      <button class="close-btn" @click="$emit('close')">✕</button>
+  <div
+    class="reels-viewer-overlay"
+    @click="$emit('close')"
+  >
+    <div
+      class="reels-viewer"
+      @click.stop
+    >
+      <button
+        class="close-btn"
+        @click="$emit('close')"
+      >
+        ✕
+      </button>
 
       <div 
         v-if="currentReel" 
@@ -10,9 +21,21 @@
       >
         <!-- Reel Content -->
         <div class="reel-media">
+          <div v-if="loadingMedia" class="media-loading">
+            <div class="loading-spinner">Loading...</div>
+          </div>
+          <video 
+            v-else-if="currentMediaUrl && isVideoUrl(currentMediaUrl)"
+            :src="currentMediaUrl" 
+            class="reel-video"
+            autoplay
+            loop
+            playsinline
+            muted
+          ></video>
           <img 
-            v-if="currentReel.media_urls?.length > 0"
-            :src="currentReel.media_urls[0]" 
+            v-else-if="currentMediaUrl"
+            :src="currentMediaUrl" 
             :alt="'Reel by ' + currentReel.author_username" 
             class="reel-image" 
           />
@@ -21,13 +44,20 @@
         <!-- Reel Info Sidebar -->
         <div class="reel-sidebar">
           <!-- Author Info -->
-          <div class="author-section" @click="navigateToProfile">
-            <img 
-              :src="currentReel.author_profile_url || '/placeholder.svg?height=48&width=48'" 
-              :alt="currentReel.author_username" 
-              class="author-avatar" 
+          <div
+            class="author-section"
+            @click="navigateToProfile"
+          >
+            <SecureImage
+              :src="currentReel.author_profile_url"
+              :alt="currentReel.author_username"
+              class-name="author-avatar"
+              loading-placeholder="/placeholder.svg?height=48&width=48"
+              error-placeholder="/default-avatar.svg"
             />
-            <div class="author-name">@{{ currentReel.author_username }}</div>
+            <div class="author-name">
+              @{{ currentReel.author_username }}
+            </div>
           </div>
 
           <!-- Actions -->
@@ -41,12 +71,18 @@
               <span class="count">{{ formatCount(currentReel.like_count) }}</span>
             </button>
 
-            <button class="action-btn" @click="showComments = !showComments">
+            <button
+              class="action-btn"
+              @click="showComments = !showComments"
+            >
               <span class="icon">💬</span>
               <span class="count">{{ formatCount(currentReel.comment_count) }}</span>
             </button>
 
-            <button class="action-btn" @click="handleShare">
+            <button
+              class="action-btn"
+              @click="handleShare"
+            >
               <span class="icon">📤</span>
             </button>
 
@@ -61,19 +97,39 @@
         </div>
 
         <!-- Caption - Centered at bottom -->
-        <div v-if="currentReel.caption" class="caption-section">
-          <p class="caption-text" v-html="formattedCaption" @click="handleRichTextClick"></p>
+        <div
+          v-if="currentReel.caption"
+          class="caption-section"
+        >
+          <p
+            class="caption-text"
+            @click="handleRichTextClick"
+            v-html="formattedCaption"
+          ></p>
         </div>
 
         <!-- Comments Overlay -->
-        <div v-if="showComments" class="comments-overlay" @click="showComments = false">
-          <div class="comments-panel" @click.stop>
+        <div
+          v-if="showComments"
+          class="comments-overlay"
+          @click="showComments = false"
+        >
+          <div
+            class="comments-panel"
+            @click.stop
+          >
             <div class="comments-header">
               <h3>Comments</h3>
-              <button @click="showComments = false">✕</button>
+              <button @click="showComments = false">
+                ✕
+              </button>
             </div>
             <div class="comments-list">
-              <div v-for="comment in comments" :key="comment.id" class="comment-item">
+              <div
+                v-for="comment in comments"
+                :key="comment.id"
+                class="comment-item"
+              >
                 <img 
                   :src="comment.author_profile_url || '/placeholder.svg?height=32&width=32'" 
                   :alt="comment.author_username" 
@@ -84,21 +140,23 @@
                     <strong>{{ comment.author_username }}</strong>
                     {{ comment.content }}
                   </div>
-                  <div class="comment-time">{{ formatTimestamp(comment.created_at) }}</div>
+                  <div class="comment-time">
+                    {{ formatTimestamp(comment.created_at) }}
+                  </div>
                 </div>
               </div>
             </div>
             <div class="comment-input">
               <input 
-                type="text" 
-                v-model="newComment"
+                v-model="newComment" 
+                type="text"
                 placeholder="Add a comment..." 
                 @keyup.enter="handleAddComment"
               />
               <button 
                 v-if="newComment.trim()"
-                @click="handleAddComment"
                 :disabled="isSubmitting"
+                @click="handleAddComment"
               >
                 Post
               </button>
@@ -131,10 +189,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useFeedStore } from '@/stores/feed'
-import { commentAPI } from '@/services/api'
-import { useRichText } from '@/composables/useRichText'
+import { ref, computed, watch, onMounted } from "vue";
+import { useFeedStore } from "@/stores/feed";
+import { commentAPI } from "@/services/api";
+import { useRichText } from "@/composables/useRichText";
+import { getSecureMediaURL } from "@/services/media";
 
 interface Comment {
   id: string
@@ -147,173 +206,206 @@ interface Comment {
 
 const props = defineProps<{
   initialIndex: number
-}>()
+}>();
 
 const emit = defineEmits<{
   close: []
-}>()
+}>();
 
-const feedStore = useFeedStore()
-const currentIndex = ref(props.initialIndex)
-const showComments = ref(false)
-const comments = ref<Comment[]>([])
-const newComment = ref('')
+const feedStore = useFeedStore();
+const currentIndex = ref(props.initialIndex);
+const showComments = ref(false);
+const comments = ref<Comment[]>([]);
+const newComment = ref("");
 const isSubmitting = ref(false)
 const { formatRichText, handleRichTextClick } = useRichText()
+
+// Secure media URL state
+const currentMediaUrl = ref<string>("");
+const loadingMedia = ref(true);
 
 const reels = computed(() => feedStore.reelsFeed)
 const currentReel = computed(() => reels.value[currentIndex.value])
 
+const isVideoUrl = (url: string) => {
+  if (!url) return false
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv']
+  return videoExtensions.some(ext => url.toLowerCase().includes(ext))
+}
+
 const formattedCaption = computed(() => {
-  if (!currentReel.value?.caption) return ''
-  return formatRichText(currentReel.value.caption)
-})
+  if (!currentReel.value?.caption) return "";
+  return formatRichText(currentReel.value.caption);
+});
+
+// Load secure URL for current reel
+const loadSecureUrl = async () => {
+  if (!currentReel.value?.media_urls || currentReel.value.media_urls.length === 0) {
+    loadingMedia.value = false;
+    return;
+  }
+
+  loadingMedia.value = true;
+  try {
+    currentMediaUrl.value = await getSecureMediaURL(currentReel.value.media_urls[0]);
+  } catch (error) {
+    console.error('Failed to load secure media URL:', error);
+    currentMediaUrl.value = currentReel.value.media_urls[0]; // Fallback
+  } finally {
+    loadingMedia.value = false;
+  }
+};
 
 // Load comments when reel changes
 watch(currentIndex, async (newIndex) => {
   if (reels.value[newIndex]) {
-    await loadComments()
+    await Promise.all([loadComments(), loadSecureUrl()]);
   }
-}, { immediate: true })
+}, { immediate: true });
+
+// Load on mount
+onMounted(() => {
+  loadSecureUrl();
+});
 
 const loadComments = async () => {
-  if (!currentReel.value) return
+  if (!currentReel.value) return;
   
   try {
-    const postIdNum = parseInt(currentReel.value.id)
-    if (isNaN(postIdNum)) return
+    const postIdNum = parseInt(currentReel.value.id);
+    if (isNaN(postIdNum)) return;
     
-    const response = await commentAPI.getCommentsByPost(postIdNum)
-    comments.value = response || []
+    const response = await commentAPI.getCommentsByPost(postIdNum);
+    comments.value = response || [];
   } catch (error) {
-    console.error('Failed to load comments:', error)
+    console.error("Failed to load comments:", error);
   }
-}
+};
 
 const goToNext = () => {
   if (currentIndex.value < reels.value.length - 1) {
-    currentIndex.value++
-    showComments.value = false
+    currentIndex.value++;
+    showComments.value = false;
   }
-}
+};
 
 const goToPrevious = () => {
   if (currentIndex.value > 0) {
-    currentIndex.value--
-    showComments.value = false
+    currentIndex.value--;
+    showComments.value = false;
   }
-}
+};
 
 const handleScroll = (event: WheelEvent) => {
-  if (showComments.value) return // Don't scroll reels when comments are open
+  if (showComments.value) return; // Don't scroll reels when comments are open
   
   if (event.deltaY > 0) {
     // Scrolling down
-    goToNext()
+    goToNext();
   } else if (event.deltaY < 0) {
     // Scrolling up
-    goToPrevious()
+    goToPrevious();
   }
-}
+};
 
 const handleLike = async () => {
-  if (!currentReel.value) return
-  await feedStore.toggleLike(currentReel.value.id, 'reels')
-}
+  if (!currentReel.value) return;
+  await feedStore.toggleLike(currentReel.value.id, "reels");
+};
 
 const handleSave = async () => {
-  if (!currentReel.value) return
-  await feedStore.toggleSave(currentReel.value.id, '1', 'reels')
-}
+  if (!currentReel.value) return;
+  await feedStore.toggleSave(currentReel.value.id, "reels");
+};
 
 const handleShare = async () => {
-  if (!currentReel.value) return
+  if (!currentReel.value) return;
   
-  const url = `${window.location.origin}/reel/${currentReel.value.id}`
+  const url = `${window.location.origin}/reel/${currentReel.value.id}`;
   try {
     if (navigator.share) {
       await navigator.share({
         title: `Reel by ${currentReel.value.author_username}`,
-        text: currentReel.value.caption || 'Check out this reel!',
+        text: currentReel.value.caption || "Check out this reel!",
         url: url
-      })
+      });
     } else {
-      await navigator.clipboard.writeText(url)
-      alert('Link copied to clipboard!')
+      await navigator.clipboard.writeText(url);
+      alert("Link copied to clipboard!");
     }
   } catch (error) {
-    console.error('Share failed:', error)
+    console.error("Share failed:", error);
   }
-}
+};
 
 const navigateToProfile = () => {
-  if (!currentReel.value) return
-  emit('close')
+  if (!currentReel.value) return;
+  emit("close");
   // Navigate to profile page
-  window.location.href = `/profile/${currentReel.value.author_username}`
-}
+  window.location.href = `/profile/${currentReel.value.author_username}`;
+};
 
 const handleAddComment = async () => {
-  if (!newComment.value.trim() || isSubmitting.value || !currentReel.value) return
+  if (!newComment.value.trim() || isSubmitting.value || !currentReel.value) return;
   
-  isSubmitting.value = true
+  isSubmitting.value = true;
   try {
-    const numericPostId = parseInt(currentReel.value.id)
-    if (isNaN(numericPostId)) return
+    const numericPostId = parseInt(currentReel.value.id);
+    if (isNaN(numericPostId)) return;
     
     const response = await commentAPI.createComment({
       post_id: numericPostId,
       content: newComment.value.trim()
-    })
+    });
 
     if (response) {
-      comments.value.unshift(response)
+      comments.value.unshift(response);
     }
 
     if (currentReel.value) {
       feedStore.updatePost(currentReel.value.id, {
         comment_count: (currentReel.value.comment_count || 0) + 1
-      } as any)
+      } as any);
     }
 
-    newComment.value = ''
+    newComment.value = "";
   } catch (error) {
-    console.error('Failed to add comment:', error)
+    console.error("Failed to add comment:", error);
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 const formatCount = (count: number) => {
   if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`
+    return `${(count / 1000000).toFixed(1)}M`;
   } else if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`
+    return `${(count / 1000).toFixed(1)}K`;
   }
-  return count.toString()
-}
+  return count.toString();
+};
 
 const formatTimestamp = (timestamp: string) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInMs = now.getTime() - date.getTime()
-  const diffInSecs = Math.floor(diffInMs / 1000)
-  const diffInMins = Math.floor(diffInSecs / 60)
-  const diffInHours = Math.floor(diffInMins / 60)
-  const diffInDays = Math.floor(diffInHours / 24)
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInSecs = Math.floor(diffInMs / 1000);
+  const diffInMins = Math.floor(diffInSecs / 60);
+  const diffInHours = Math.floor(diffInMins / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
 
   if (diffInDays > 7) {
-    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
   } else if (diffInDays > 0) {
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
   } else if (diffInHours > 0) {
-    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
   } else if (diffInMins > 0) {
-    return `${diffInMins} minute${diffInMins > 1 ? 's' : ''} ago`
+    return `${diffInMins} minute${diffInMins > 1 ? "s" : ""} ago`;
   } else {
-    return 'Just now'
+    return "Just now";
   }
-}
+};
 </script>
 
 <style scoped lang="scss">
@@ -380,6 +472,12 @@ const formatTimestamp = (timestamp: string) => {
   background-color: #000;
 
   .reel-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .reel-video {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;

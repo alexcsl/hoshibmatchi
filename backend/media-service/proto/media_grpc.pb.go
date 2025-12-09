@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MediaService_GetUploadURL_FullMethodName = "/media.MediaService/GetUploadURL"
-	MediaService_UploadMedia_FullMethodName  = "/media.MediaService/UploadMedia"
+	MediaService_GetUploadURL_FullMethodName      = "/media.MediaService/GetUploadURL"
+	MediaService_UploadMedia_FullMethodName       = "/media.MediaService/UploadMedia"
+	MediaService_GetMediaURL_FullMethodName       = "/media.MediaService/GetMediaURL"
+	MediaService_GenerateThumbnail_FullMethodName = "/media.MediaService/GenerateThumbnail"
 )
 
 // MediaServiceClient is the client API for MediaService service.
@@ -31,6 +33,10 @@ type MediaServiceClient interface {
 	GetUploadURL(ctx context.Context, in *GetUploadURLRequest, opts ...grpc.CallOption) (*GetUploadURLResponse, error)
 	// Upload media with automatic thumbnail generation for videos
 	UploadMedia(ctx context.Context, in *UploadMediaRequest, opts ...grpc.CallOption) (*UploadMediaResponse, error)
+	// Get a secure pre-signed URL to access media (for private buckets)
+	GetMediaURL(ctx context.Context, in *GetMediaURLRequest, opts ...grpc.CallOption) (*GetMediaURLResponse, error)
+	// Generate thumbnail for an uploaded video
+	GenerateThumbnail(ctx context.Context, in *GenerateThumbnailRequest, opts ...grpc.CallOption) (*GenerateThumbnailResponse, error)
 }
 
 type mediaServiceClient struct {
@@ -61,6 +67,26 @@ func (c *mediaServiceClient) UploadMedia(ctx context.Context, in *UploadMediaReq
 	return out, nil
 }
 
+func (c *mediaServiceClient) GetMediaURL(ctx context.Context, in *GetMediaURLRequest, opts ...grpc.CallOption) (*GetMediaURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMediaURLResponse)
+	err := c.cc.Invoke(ctx, MediaService_GetMediaURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) GenerateThumbnail(ctx context.Context, in *GenerateThumbnailRequest, opts ...grpc.CallOption) (*GenerateThumbnailResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GenerateThumbnailResponse)
+	err := c.cc.Invoke(ctx, MediaService_GenerateThumbnail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MediaServiceServer is the server API for MediaService service.
 // All implementations must embed UnimplementedMediaServiceServer
 // for forward compatibility.
@@ -69,6 +95,10 @@ type MediaServiceServer interface {
 	GetUploadURL(context.Context, *GetUploadURLRequest) (*GetUploadURLResponse, error)
 	// Upload media with automatic thumbnail generation for videos
 	UploadMedia(context.Context, *UploadMediaRequest) (*UploadMediaResponse, error)
+	// Get a secure pre-signed URL to access media (for private buckets)
+	GetMediaURL(context.Context, *GetMediaURLRequest) (*GetMediaURLResponse, error)
+	// Generate thumbnail for an uploaded video
+	GenerateThumbnail(context.Context, *GenerateThumbnailRequest) (*GenerateThumbnailResponse, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
 
@@ -84,6 +114,12 @@ func (UnimplementedMediaServiceServer) GetUploadURL(context.Context, *GetUploadU
 }
 func (UnimplementedMediaServiceServer) UploadMedia(context.Context, *UploadMediaRequest) (*UploadMediaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadMedia not implemented")
+}
+func (UnimplementedMediaServiceServer) GetMediaURL(context.Context, *GetMediaURLRequest) (*GetMediaURLResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMediaURL not implemented")
+}
+func (UnimplementedMediaServiceServer) GenerateThumbnail(context.Context, *GenerateThumbnailRequest) (*GenerateThumbnailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateThumbnail not implemented")
 }
 func (UnimplementedMediaServiceServer) mustEmbedUnimplementedMediaServiceServer() {}
 func (UnimplementedMediaServiceServer) testEmbeddedByValue()                      {}
@@ -142,6 +178,42 @@ func _MediaService_UploadMedia_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_GetMediaURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMediaURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GetMediaURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GetMediaURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GetMediaURL(ctx, req.(*GetMediaURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_GenerateThumbnail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateThumbnailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GenerateThumbnail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GenerateThumbnail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GenerateThumbnail(ctx, req.(*GenerateThumbnailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MediaService_ServiceDesc is the grpc.ServiceDesc for MediaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -156,6 +228,14 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UploadMedia",
 			Handler:    _MediaService_UploadMedia_Handler,
+		},
+		{
+			MethodName: "GetMediaURL",
+			Handler:    _MediaService_GetMediaURL_Handler,
+		},
+		{
+			MethodName: "GenerateThumbnail",
+			Handler:    _MediaService_GenerateThumbnail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

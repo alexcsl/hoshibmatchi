@@ -44,6 +44,11 @@ Thumbs.db
 .git
 .gitignore
 .gitattributes
+hoshibmatchi.git/
+
+# Temp build artifacts
+backend/*/tmp/
+*.tsbuildinfo
 
 # Environment files
 *.env

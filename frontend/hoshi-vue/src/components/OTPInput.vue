@@ -7,68 +7,73 @@
         type="text"
         maxlength="1"
         :value="digit"
-        @input="handleInput(index, $event)"
-        @keydown="handleKeydown(index, $event)"
         class="otp-digit"
         inputmode="numeric"
+        @input="handleInput(index, $event)"
+        @keydown="handleKeydown(index, $event)"
       />
     </div>
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+    <p
+      v-if="errorMessage"
+      class="error-message"
+    >
+      {{ errorMessage }}
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from "vue";
 
 const props = defineProps<{
   modelValue?: string
   errorMessage?: string
-}>()
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
+  "update:modelValue": [value: string]
+}>();
 
 const digits = computed(() => {
-  const arr = props.modelValue?.split('') || []
-  while (arr.length < 6) arr.push('')
-  return arr.slice(0, 6)
-})
+  const arr = props.modelValue?.split("") || [];
+  while (arr.length < 6) arr.push("");
+  return arr.slice(0, 6);
+});
 
 const handleInput = (index: number, event: Event) => {
-  const input = event.target as HTMLInputElement
-  const value = input.value.replace(/[^0-9]/g, '')
+  const input = event.target as HTMLInputElement;
+  const value = input.value.replace(/[^0-9]/g, "");
   
   if (value) {
-    const newValue = props.modelValue?.split('') || []
-    newValue[index] = value
-    emit('update:modelValue', newValue.slice(0, 6).join(''))
+    const newValue = props.modelValue?.split("") || [];
+    newValue[index] = value;
+    emit("update:modelValue", newValue.slice(0, 6).join(""));
     
     if (index < 5) {
-      const nextInput = document.querySelectorAll('.otp-digit')[index + 1] as HTMLInputElement
-      nextInput?.focus()
+      const nextInput = document.querySelectorAll(".otp-digit")[index + 1] as HTMLInputElement;
+      nextInput?.focus();
     }
   }
-}
+};
 
 const handleKeydown = (index: number, event: KeyboardEvent) => {
-  if (event.key === 'Backspace') {
-    const newValue = props.modelValue?.split('') || []
-    newValue[index] = ''
-    emit('update:modelValue', newValue.slice(0, 6).join(''))
+  if (event.key === "Backspace") {
+    const newValue = props.modelValue?.split("") || [];
+    newValue[index] = "";
+    emit("update:modelValue", newValue.slice(0, 6).join(""));
     
     if (index > 0) {
-      const prevInput = document.querySelectorAll('.otp-digit')[index - 1] as HTMLInputElement
-      prevInput?.focus()
+      const prevInput = document.querySelectorAll(".otp-digit")[index - 1] as HTMLInputElement;
+      prevInput?.focus();
     }
-  } else if (event.key === 'ArrowLeft' && index > 0) {
-    const prevInput = document.querySelectorAll('.otp-digit')[index - 1] as HTMLInputElement
-    prevInput?.focus()
-  } else if (event.key === 'ArrowRight' && index < 5) {
-    const nextInput = document.querySelectorAll('.otp-digit')[index + 1] as HTMLInputElement
-    nextInput?.focus()
+  } else if (event.key === "ArrowLeft" && index > 0) {
+    const prevInput = document.querySelectorAll(".otp-digit")[index - 1] as HTMLInputElement;
+    prevInput?.focus();
+  } else if (event.key === "ArrowRight" && index < 5) {
+    const nextInput = document.querySelectorAll(".otp-digit")[index + 1] as HTMLInputElement;
+    nextInput?.focus();
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

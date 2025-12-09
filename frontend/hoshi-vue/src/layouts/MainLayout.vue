@@ -5,13 +5,12 @@
     <main class="main-content">
       <router-view />
     </main>
-    
-    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 // Create this component next
-import LeftSidebar from '../components/LeftSidebar.vue';
+import LeftSidebar from "../components/LeftSidebar.vue";
 </script>
 
 <style scoped>

@@ -6,47 +6,59 @@
     :class="{ active }"
     @click.prevent="$emit('click')"
   >
-    <span class="icon" v-html="getIcon(icon)"></span>
+    <span
+      class="icon"
+      v-html="getIcon(icon)"
+    ></span>
     <span class="label">{{ label }}</span>
-    <span v-if="badge && badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
+    <span
+      v-if="badge && badge > 0"
+      class="badge"
+    >{{ badge > 99 ? '99+' : badge }}</span>
   </router-link>
   <button 
     v-else
     class="nav-item"
     @click="$emit('click')"
   >
-    <span class="icon" v-html="getIcon(icon)"></span>
+    <span
+      class="icon"
+      v-html="getIcon(icon)"
+    ></span>
     <span class="label">{{ label }}</span>
-    <span v-if="badge && badge > 0" class="badge">{{ badge > 99 ? '99+' : badge }}</span>
+    <span
+      v-if="badge && badge > 0"
+      class="badge"
+    >{{ badge > 99 ? '99+' : badge }}</span>
   </button>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   icon: string
   label: string
   active?: boolean
   route?: string
   badge?: number
-}>()
+}>();
 
-const emit = defineEmits<{
+defineEmits<{
   click: []
-}>()
+}>();
 
 const getIcon = (icon: string) => {
   const icons: Record<string, string> = {
-    home: '⌂',
-    search: '🔍',
-    compass: '◉',
-    'play-circle': '▶',
-    send: '✉',
-    heart: '❤',
-    'plus-square': '➕',
-    user: '👤'
-  }
-  return icons[icon] || icon
-}
+    home: "⌂",
+    search: "🔍",
+    compass: "◉",
+    "play-circle": "▶",
+    send: "✉",
+    heart: "❤",
+    "plus-square": "➕",
+    user: "👤"
+  };
+  return icons[icon] || icon;
+};
 </script>
 
 <style scoped lang="scss">

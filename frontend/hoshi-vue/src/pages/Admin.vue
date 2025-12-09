@@ -1,7 +1,9 @@
 <template>
   <div class="admin-page">
     <div class="admin-container">
-      <h1 class="page-title">Admin Dashboard</h1>
+      <h1 class="page-title">
+        Admin Dashboard
+      </h1>
       
       <!-- Tab Navigation -->
       <div class="tabs">
@@ -13,14 +15,20 @@
           @click="activeTab = tab.id"
         >
           {{ tab.label }}
-          <span v-if="getTabBadge(tab.id)" class="badge">{{ getTabBadge(tab.id) }}</span>
+          <span
+            v-if="getTabBadge(tab.id)"
+            class="badge"
+          >{{ getTabBadge(tab.id) }}</span>
         </button>
       </div>
 
       <!-- Tab Content -->
       <div class="tab-content">
         <!-- Users Management -->
-        <div v-if="activeTab === 'users'" class="section">
+        <div
+          v-if="activeTab === 'users'"
+          class="section"
+        >
           <div class="section-header">
             <h2>User Management</h2>
             <div class="search-box">
@@ -32,9 +40,17 @@
             </div>
           </div>
           
-          <div v-if="loadingUsers" class="loading">Loading users...</div>
+          <div
+            v-if="loadingUsers"
+            class="loading"
+          >
+            Loading users...
+          </div>
           
-          <div v-else class="users-list">
+          <div
+            v-else
+            class="users-list"
+          >
             <div 
               v-for="user in filteredUsers" 
               :key="user.user_id" 
@@ -48,10 +64,17 @@
               <div class="user-info">
                 <div class="user-name">
                   {{ user.name }}
-                  <span v-if="user.is_verified" class="verified-badge">✓</span>
+                  <span
+                    v-if="user.is_verified"
+                    class="verified-badge"
+                  >✓</span>
                 </div>
-                <div class="user-username">@{{ user.username }}</div>
-                <div class="user-email">{{ user.email }}</div>
+                <div class="user-username">
+                  @{{ user.username }}
+                </div>
+                <div class="user-email">
+                  {{ user.email }}
+                </div>
               </div>
               <div class="user-actions">
                 <span 
@@ -63,30 +86,36 @@
                 <button 
                   v-if="!user.is_banned"
                   class="btn-ban"
-                  @click="banUser(user.user_id, user.username)"
                   :disabled="actionLoading"
+                  @click="banUser(user.user_id, user.username)"
                 >
                   Ban User
                 </button>
                 <button 
                   v-else
                   class="btn-unban"
-                  @click="unbanUser(user.user_id, user.username)"
                   :disabled="actionLoading"
+                  @click="unbanUser(user.user_id, user.username)"
                 >
                   Unban User
                 </button>
               </div>
             </div>
             
-            <div v-if="filteredUsers.length === 0" class="empty-state">
+            <div
+              v-if="filteredUsers.length === 0"
+              class="empty-state"
+            >
               No users found
             </div>
           </div>
         </div>
 
         <!-- Post Reports -->
-        <div v-if="activeTab === 'post-reports'" class="section">
+        <div
+          v-if="activeTab === 'post-reports'"
+          class="section"
+        >
           <div class="section-header">
             <h2>Post Reports</h2>
             <div class="filter-buttons">
@@ -111,9 +140,17 @@
             </div>
           </div>
           
-          <div v-if="loadingPostReports" class="loading">Loading reports...</div>
+          <div
+            v-if="loadingPostReports"
+            class="loading"
+          >
+            Loading reports...
+          </div>
           
-          <div v-else class="reports-list">
+          <div
+            v-else
+            class="reports-list"
+          >
             <div 
               v-for="report in filteredPostReports" 
               :key="report.id" 
@@ -134,32 +171,41 @@
                 <p><strong>Reason:</strong> {{ report.reason }}</p>
                 <p><strong>Date:</strong> {{ formatDate(report.created_at) }}</p>
               </div>
-              <div v-if="!report.is_resolved" class="report-actions">
+              <div
+                v-if="!report.is_resolved"
+                class="report-actions"
+              >
                 <button 
                   class="btn-accept"
-                  @click="resolvePostReport(report.id, 'ACCEPT')"
                   :disabled="actionLoading"
+                  @click="resolvePostReport(report.id, 'ACCEPT')"
                 >
                   Accept & Delete Post
                 </button>
                 <button 
                   class="btn-reject"
-                  @click="resolvePostReport(report.id, 'REJECT')"
                   :disabled="actionLoading"
+                  @click="resolvePostReport(report.id, 'REJECT')"
                 >
                   Reject
                 </button>
               </div>
             </div>
             
-            <div v-if="filteredPostReports.length === 0" class="empty-state">
+            <div
+              v-if="filteredPostReports.length === 0"
+              class="empty-state"
+            >
               No reports found
             </div>
           </div>
         </div>
 
         <!-- User Reports -->
-        <div v-if="activeTab === 'user-reports'" class="section">
+        <div
+          v-if="activeTab === 'user-reports'"
+          class="section"
+        >
           <div class="section-header">
             <h2>User Reports</h2>
             <div class="filter-buttons">
@@ -184,9 +230,17 @@
             </div>
           </div>
           
-          <div v-if="loadingUserReports" class="loading">Loading reports...</div>
+          <div
+            v-if="loadingUserReports"
+            class="loading"
+          >
+            Loading reports...
+          </div>
           
-          <div v-else class="reports-list">
+          <div
+            v-else
+            class="reports-list"
+          >
             <div 
               v-for="report in filteredUserReports" 
               :key="report.id" 
@@ -207,32 +261,41 @@
                 <p><strong>Reason:</strong> {{ report.reason }}</p>
                 <p><strong>Date:</strong> {{ formatDate(report.created_at) }}</p>
               </div>
-              <div v-if="!report.is_resolved" class="report-actions">
+              <div
+                v-if="!report.is_resolved"
+                class="report-actions"
+              >
                 <button 
                   class="btn-accept"
-                  @click="resolveUserReport(report.id, 'ACCEPT')"
                   :disabled="actionLoading"
+                  @click="resolveUserReport(report.id, 'ACCEPT')"
                 >
                   Accept & Ban User
                 </button>
                 <button 
                   class="btn-reject"
-                  @click="resolveUserReport(report.id, 'REJECT')"
                   :disabled="actionLoading"
+                  @click="resolveUserReport(report.id, 'REJECT')"
                 >
                   Reject
                 </button>
               </div>
             </div>
             
-            <div v-if="filteredUserReports.length === 0" class="empty-state">
+            <div
+              v-if="filteredUserReports.length === 0"
+              class="empty-state"
+            >
               No reports found
             </div>
           </div>
         </div>
 
         <!-- Verification Requests -->
-        <div v-if="activeTab === 'verifications'" class="section">
+        <div
+          v-if="activeTab === 'verifications'"
+          class="section"
+        >
           <div class="section-header">
             <h2>Verification Requests</h2>
             <div class="filter-buttons">
@@ -263,9 +326,17 @@
             </div>
           </div>
           
-          <div v-if="loadingVerifications" class="loading">Loading requests...</div>
+          <div
+            v-if="loadingVerifications"
+            class="loading"
+          >
+            Loading requests...
+          </div>
           
-          <div v-else class="verifications-list">
+          <div
+            v-else
+            class="verifications-list"
+          >
             <div 
               v-for="request in filteredVerifications" 
               :key="request.id" 
@@ -294,35 +365,46 @@
                   />
                 </div>
               </div>
-              <div v-if="request.status === 'pending'" class="verification-actions">
+              <div
+                v-if="request.status === 'pending'"
+                class="verification-actions"
+              >
                 <button 
                   class="btn-approve"
-                  @click="resolveVerification(request.id, 'APPROVE')"
                   :disabled="actionLoading"
+                  @click="resolveVerification(request.id, 'APPROVE')"
                 >
                   Approve
                 </button>
                 <button 
                   class="btn-reject"
-                  @click="showRejectModal(request.id)"
                   :disabled="actionLoading"
+                  @click="showRejectModal(request.id)"
                 >
                   Reject
                 </button>
               </div>
             </div>
             
-            <div v-if="filteredVerifications.length === 0" class="empty-state">
+            <div
+              v-if="filteredVerifications.length === 0"
+              class="empty-state"
+            >
               No verification requests found
             </div>
           </div>
         </div>
 
         <!-- Newsletter -->
-        <div v-if="activeTab === 'newsletter'" class="section">
+        <div
+          v-if="activeTab === 'newsletter'"
+          class="section"
+        >
           <div class="section-header">
             <h2>Send Newsletter</h2>
-            <p class="description">Send newsletters to all subscribed users</p>
+            <p class="description">
+              Send newsletters to all subscribed users
+            </p>
           </div>
           
           <div class="newsletter-form">
@@ -348,8 +430,8 @@
             
             <button 
               class="btn-send-newsletter"
-              @click="sendNewsletter"
               :disabled="!newsletterSubject || !newsletterContent || actionLoading"
+              @click="sendNewsletter"
             >
               {{ actionLoading ? 'Sending...' : 'Send Newsletter' }}
             </button>
@@ -359,17 +441,44 @@
     </div>
 
     <!-- Image Modal -->
-    <div v-if="showImageModalFlag" class="modal-overlay" @click="closeImageModal">
-      <div class="modal-content image-modal" @click.stop>
-        <button class="modal-close" @click="closeImageModal">×</button>
-        <img :src="modalImageUrl" alt="Verification photo" />
+    <div
+      v-if="showImageModalFlag"
+      class="modal-overlay"
+      @click="closeImageModal"
+    >
+      <div
+        class="modal-content image-modal"
+        @click.stop
+      >
+        <button
+          class="modal-close"
+          @click="closeImageModal"
+        >
+          ×
+        </button>
+        <img
+          :src="modalImageUrl"
+          alt="Verification photo"
+        />
       </div>
     </div>
 
     <!-- Reject Reason Modal -->
-    <div v-if="showRejectModalFlag" class="modal-overlay" @click="closeRejectModal">
-      <div class="modal-content reject-modal" @click.stop>
-        <button class="modal-close" @click="closeRejectModal">×</button>
+    <div
+      v-if="showRejectModalFlag"
+      class="modal-overlay"
+      @click="closeRejectModal"
+    >
+      <div
+        class="modal-content reject-modal"
+        @click.stop
+      >
+        <button
+          class="modal-close"
+          @click="closeRejectModal"
+        >
+          ×
+        </button>
         <h3>Reject Verification Request</h3>
         <p>Please provide a reason for rejection:</p>
         <textarea 
@@ -379,11 +488,16 @@
           class="form-textarea"
         ></textarea>
         <div class="modal-actions">
-          <button class="btn-cancel" @click="closeRejectModal">Cancel</button>
+          <button
+            class="btn-cancel"
+            @click="closeRejectModal"
+          >
+            Cancel
+          </button>
           <button 
             class="btn-confirm-reject"
-            @click="confirmRejectVerification"
             :disabled="!rejectReason || actionLoading"
+            @click="confirmRejectVerification"
           >
             Confirm Reject
           </button>
@@ -394,121 +508,121 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { adminAPI, type PostReport, type UserReport, type VerificationRequest, type UserListItem } from '@/services/api'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "@/stores/auth";
+import { adminAPI, type PostReport, type UserReport, type VerificationRequest, type UserListItem } from "@/services/api";
+import { useRouter } from "vue-router";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
 // Check if user is admin (you'll need to add role to auth store)
 const isAdmin = computed(() => {
   // For now, we'll check the token. You might want to add role to the user object
-  const token = authStore.token
-  if (!token) return false
+  const token = authStore.token;
+  if (!token) return false;
   
   try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    }).join(''))
-    const decoded = JSON.parse(jsonPayload)
-    return decoded.role === 'admin'
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(window.atob(base64).split("").map(function(c) {
+        return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(""));
+    const decoded = JSON.parse(jsonPayload);
+    return decoded.role === "admin";
   } catch {
-    return false
+    return false;
   }
-})
+});
 
 // Redirect if not admin
 onMounted(() => {
   if (!isAdmin.value) {
-    router.push('/feed')
+    router.push("/feed");
   } else {
-    loadData()
+    loadData();
   }
-})
+});
 
 // Tab Management
-const activeTab = ref('users')
+const activeTab = ref("users");
 const tabs = [
-  { id: 'users', label: 'Users' },
-  { id: 'post-reports', label: 'Post Reports' },
-  { id: 'user-reports', label: 'User Reports' },
-  { id: 'verifications', label: 'Verifications' },
-  { id: 'newsletter', label: 'Newsletter' }
-]
+  { id: "users", label: "Users" },
+  { id: "post-reports", label: "Post Reports" },
+  { id: "user-reports", label: "User Reports" },
+  { id: "verifications", label: "Verifications" },
+  { id: "newsletter", label: "Newsletter" }
+];
 
 // State
-const loadingUsers = ref(false)
-const loadingPostReports = ref(false)
-const loadingUserReports = ref(false)
-const loadingVerifications = ref(false)
-const actionLoading = ref(false)
+const loadingUsers = ref(false);
+const loadingPostReports = ref(false);
+const loadingUserReports = ref(false);
+const loadingVerifications = ref(false);
+const actionLoading = ref(false);
 
-const users = ref<UserListItem[]>([])
-const postReports = ref<PostReport[]>([])
-const userReports = ref<UserReport[]>([])
-const verifications = ref<VerificationRequest[]>([])
+const users = ref<UserListItem[]>([]);
+const postReports = ref<PostReport[]>([]);
+const userReports = ref<UserReport[]>([]);
+const verifications = ref<VerificationRequest[]>([]);
 
 // Filters
-const userSearchQuery = ref('')
-const postReportFilter = ref<'all' | 'pending' | 'resolved'>('all')
-const userReportFilter = ref<'all' | 'pending' | 'resolved'>('all')
-const verificationFilter = ref<'all' | 'pending' | 'approved' | 'rejected'>('all')
+const userSearchQuery = ref("");
+const postReportFilter = ref<"all" | "pending" | "resolved">("all");
+const userReportFilter = ref<"all" | "pending" | "resolved">("all");
+const verificationFilter = ref<"all" | "pending" | "approved" | "rejected">("all");
 
 // Newsletter
-const newsletterSubject = ref('')
-const newsletterContent = ref('')
+const newsletterSubject = ref("");
+const newsletterContent = ref("");
 
 // Modals
-const showImageModalFlag = ref(false)
-const modalImageUrl = ref('')
-const showRejectModalFlag = ref(false)
-const rejectReason = ref('')
-const rejectVerificationId = ref(0)
+const showImageModalFlag = ref(false);
+const modalImageUrl = ref("");
+const showRejectModalFlag = ref(false);
+const rejectReason = ref("");
+const rejectVerificationId = ref(0);
 
 // Computed
 const filteredUsers = computed(() => {
-  if (!userSearchQuery.value) return users.value
-  const query = userSearchQuery.value.toLowerCase()
+  if (!userSearchQuery.value) return users.value;
+  const query = userSearchQuery.value.toLowerCase();
   return users.value.filter(user => 
     user.username.toLowerCase().includes(query) ||
     user.name.toLowerCase().includes(query) ||
     user.email.toLowerCase().includes(query)
-  )
-})
+  );
+});
 
 const filteredPostReports = computed(() => {
-  if (postReportFilter.value === 'all') return postReports.value
-  if (postReportFilter.value === 'pending') return postReports.value.filter(r => !r.is_resolved)
-  return postReports.value.filter(r => r.is_resolved)
-})
+  if (postReportFilter.value === "all") return postReports.value;
+  if (postReportFilter.value === "pending") return postReports.value.filter(r => !r.is_resolved);
+  return postReports.value.filter(r => r.is_resolved);
+});
 
 const filteredUserReports = computed(() => {
-  if (userReportFilter.value === 'all') return userReports.value
-  if (userReportFilter.value === 'pending') return userReports.value.filter(r => !r.is_resolved)
-  return userReports.value.filter(r => r.is_resolved)
-})
+  if (userReportFilter.value === "all") return userReports.value;
+  if (userReportFilter.value === "pending") return userReports.value.filter(r => !r.is_resolved);
+  return userReports.value.filter(r => r.is_resolved);
+});
 
 const filteredVerifications = computed(() => {
-  if (verificationFilter.value === 'all') return verifications.value
-  return verifications.value.filter(v => v.status.toLowerCase() === verificationFilter.value)
-})
+  if (verificationFilter.value === "all") return verifications.value;
+  return verifications.value.filter(v => v.status.toLowerCase() === verificationFilter.value);
+});
 
 const getTabBadge = (tabId: string): number => {
-  if (tabId === 'post-reports') {
-    return postReports.value.filter(r => !r.is_resolved).length
+  if (tabId === "post-reports") {
+    return postReports.value.filter(r => !r.is_resolved).length;
   }
-  if (tabId === 'user-reports') {
-    return userReports.value.filter(r => !r.is_resolved).length
+  if (tabId === "user-reports") {
+    return userReports.value.filter(r => !r.is_resolved).length;
   }
-  if (tabId === 'verifications') {
-    return verifications.value.filter(v => v.status === 'pending').length
+  if (tabId === "verifications") {
+    return verifications.value.filter(v => v.status === "pending").length;
   }
-  return 0
-}
+  return 0;
+};
 
 // Load Data
 async function loadData() {
@@ -517,205 +631,205 @@ async function loadData() {
     loadPostReports(),
     loadUserReports(),
     loadVerifications()
-  ])
+  ]);
 }
 
 async function loadUsers() {
-  loadingUsers.value = true
+  loadingUsers.value = true;
   try {
-    const response = await adminAPI.getAllUsers()
-    users.value = response.users || []
+    const response = await adminAPI.getAllUsers();
+    users.value = response.users || [];
   } catch (error) {
-    console.error('Failed to load users:', error)
+    console.error("Failed to load users:", error);
   } finally {
-    loadingUsers.value = false
+    loadingUsers.value = false;
   }
 }
 
 async function loadPostReports() {
-  loadingPostReports.value = true
+  loadingPostReports.value = true;
   try {
-    const response = await adminAPI.getPostReports()
-    postReports.value = response.reports || []
+    const response = await adminAPI.getPostReports();
+    postReports.value = response.reports || [];
   } catch (error) {
-    console.error('Failed to load post reports:', error)
+    console.error("Failed to load post reports:", error);
   } finally {
-    loadingPostReports.value = false
+    loadingPostReports.value = false;
   }
 }
 
 async function loadUserReports() {
-  loadingUserReports.value = true
+  loadingUserReports.value = true;
   try {
-    const response = await adminAPI.getUserReports()
-    userReports.value = response.reports || []
+    const response = await adminAPI.getUserReports();
+    userReports.value = response.reports || [];
   } catch (error) {
-    console.error('Failed to load user reports:', error)
+    console.error("Failed to load user reports:", error);
   } finally {
-    loadingUserReports.value = false
+    loadingUserReports.value = false;
   }
 }
 
 async function loadVerifications() {
-  loadingVerifications.value = true
+  loadingVerifications.value = true;
   try {
-    const response = await adminAPI.getVerifications()
-    verifications.value = response.requests || []
+    const response = await adminAPI.getVerifications();
+    verifications.value = response.requests || [];
   } catch (error) {
-    console.error('Failed to load verifications:', error)
+    console.error("Failed to load verifications:", error);
   } finally {
-    loadingVerifications.value = false
+    loadingVerifications.value = false;
   }
 }
 
 // Actions
 async function banUser(userId: number, username: string) {
-  if (!confirm(`Are you sure you want to ban @${username}?`)) return
+  if (!confirm(`Are you sure you want to ban @${username}?`)) return;
   
-  actionLoading.value = true
+  actionLoading.value = true;
   try {
-    await adminAPI.banUser(userId)
-    alert(`User @${username} has been banned successfully`)
-    await loadUsers()
+    await adminAPI.banUser(userId);
+    alert(`User @${username} has been banned successfully`);
+    await loadUsers();
   } catch (error) {
-    console.error('Failed to ban user:', error)
-    alert('Failed to ban user')
+    console.error("Failed to ban user:", error);
+    alert("Failed to ban user");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
 async function unbanUser(userId: number, username: string) {
-  if (!confirm(`Are you sure you want to unban @${username}?`)) return
+  if (!confirm(`Are you sure you want to unban @${username}?`)) return;
   
-  actionLoading.value = true
+  actionLoading.value = true;
   try {
-    await adminAPI.unbanUser(userId)
-    alert(`User @${username} has been unbanned successfully`)
-    await loadUsers()
+    await adminAPI.unbanUser(userId);
+    alert(`User @${username} has been unbanned successfully`);
+    await loadUsers();
   } catch (error) {
-    console.error('Failed to unban user:', error)
-    alert('Failed to unban user')
+    console.error("Failed to unban user:", error);
+    alert("Failed to unban user");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
-async function resolvePostReport(reportId: number, action: 'ACCEPT' | 'REJECT') {
-  const message = action === 'ACCEPT' 
-    ? 'This will delete the reported post. Continue?' 
-    : 'Are you sure you want to reject this report?'
+async function resolvePostReport(reportId: number, action: "ACCEPT" | "REJECT") {
+  const message = action === "ACCEPT" 
+    ? "This will delete the reported post. Continue?" 
+    : "Are you sure you want to reject this report?";
   
-  if (!confirm(message)) return
+  if (!confirm(message)) return;
   
-  actionLoading.value = true
+  actionLoading.value = true;
   try {
-    await adminAPI.resolvePostReport(reportId, action)
-    alert(`Report has been ${action === 'ACCEPT' ? 'accepted and post deleted' : 'rejected'}`)
-    await loadPostReports()
+    await adminAPI.resolvePostReport(reportId, action);
+    alert(`Report has been ${action === "ACCEPT" ? "accepted and post deleted" : "rejected"}`);
+    await loadPostReports();
   } catch (error) {
-    console.error('Failed to resolve report:', error)
-    alert('Failed to resolve report')
+    console.error("Failed to resolve report:", error);
+    alert("Failed to resolve report");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
-async function resolveUserReport(reportId: number, action: 'ACCEPT' | 'REJECT') {
-  const message = action === 'ACCEPT' 
-    ? 'This will ban the reported user. Continue?' 
-    : 'Are you sure you want to reject this report?'
+async function resolveUserReport(reportId: number, action: "ACCEPT" | "REJECT") {
+  const message = action === "ACCEPT" 
+    ? "This will ban the reported user. Continue?" 
+    : "Are you sure you want to reject this report?";
   
-  if (!confirm(message)) return
+  if (!confirm(message)) return;
   
-  actionLoading.value = true
+  actionLoading.value = true;
   try {
-    await adminAPI.resolveUserReport(reportId, action)
-    alert(`Report has been ${action === 'ACCEPT' ? 'accepted and user banned' : 'rejected'}`)
-    await loadUserReports()
-    if (action === 'ACCEPT') {
-      await loadUsers() // Refresh users list
+    await adminAPI.resolveUserReport(reportId, action);
+    alert(`Report has been ${action === "ACCEPT" ? "accepted and user banned" : "rejected"}`);
+    await loadUserReports();
+    if (action === "ACCEPT") {
+      await loadUsers(); // Refresh users list
     }
   } catch (error) {
-    console.error('Failed to resolve report:', error)
-    alert('Failed to resolve report')
+    console.error("Failed to resolve report:", error);
+    alert("Failed to resolve report");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
-async function resolveVerification(verificationId: number, action: 'APPROVE' | 'REJECT', reason?: string) {
-  actionLoading.value = true
+async function resolveVerification(verificationId: number, action: "APPROVE" | "REJECT", reason?: string) {
+  actionLoading.value = true;
   try {
-    await adminAPI.resolveVerification(verificationId, action, reason)
-    alert(`Verification request has been ${action.toLowerCase()}d. Email notification sent.`)
-    await loadVerifications()
-    if (action === 'APPROVE') {
-      await loadUsers() // Refresh users list
+    await adminAPI.resolveVerification(verificationId, action, reason);
+    alert(`Verification request has been ${action.toLowerCase()}d. Email notification sent.`);
+    await loadVerifications();
+    if (action === "APPROVE") {
+      await loadUsers(); // Refresh users list
     }
   } catch (error) {
-    console.error('Failed to resolve verification:', error)
-    alert('Failed to resolve verification request')
+    console.error("Failed to resolve verification:", error);
+    alert("Failed to resolve verification request");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
 async function sendNewsletter() {
-  if (!confirm('Send newsletter to all subscribed users?')) return
+  if (!confirm("Send newsletter to all subscribed users?")) return;
   
-  actionLoading.value = true
+  actionLoading.value = true;
   try {
-    await adminAPI.sendNewsletter(newsletterSubject.value, newsletterContent.value)
-    alert('Newsletter sent successfully!')
-    newsletterSubject.value = ''
-    newsletterContent.value = ''
+    await adminAPI.sendNewsletter(newsletterSubject.value, newsletterContent.value);
+    alert("Newsletter sent successfully!");
+    newsletterSubject.value = "";
+    newsletterContent.value = "";
   } catch (error) {
-    console.error('Failed to send newsletter:', error)
-    alert('Failed to send newsletter')
+    console.error("Failed to send newsletter:", error);
+    alert("Failed to send newsletter");
   } finally {
-    actionLoading.value = false
+    actionLoading.value = false;
   }
 }
 
 // Modal functions
 function showImageModal(url: string) {
-  modalImageUrl.value = url
-  showImageModalFlag.value = true
+  modalImageUrl.value = url;
+  showImageModalFlag.value = true;
 }
 
 function closeImageModal() {
-  showImageModalFlag.value = false
-  modalImageUrl.value = ''
+  showImageModalFlag.value = false;
+  modalImageUrl.value = "";
 }
 
 function showRejectModal(verificationId: number) {
-  rejectVerificationId.value = verificationId
-  rejectReason.value = ''
-  showRejectModalFlag.value = true
+  rejectVerificationId.value = verificationId;
+  rejectReason.value = "";
+  showRejectModalFlag.value = true;
 }
 
 function closeRejectModal() {
-  showRejectModalFlag.value = false
-  rejectReason.value = ''
-  rejectVerificationId.value = 0
+  showRejectModalFlag.value = false;
+  rejectReason.value = "";
+  rejectVerificationId.value = 0;
 }
 
 function confirmRejectVerification() {
-  resolveVerification(rejectVerificationId.value, 'REJECT', rejectReason.value)
-  closeRejectModal()
+  resolveVerification(rejectVerificationId.value, "REJECT", rejectReason.value);
+  closeRejectModal();
 }
 
 // Utility
 function formatDate(dateString: string): string {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", { 
+    year: "numeric", 
+    month: "short", 
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 </script>
 

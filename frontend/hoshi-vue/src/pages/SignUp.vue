@@ -3,21 +3,35 @@
     <div class="signup-wrapper">
       <!-- Left side: Carousel/Image -->
       <div class="carousel-section">
-        <img src="/instagram-signup-hero.png" alt="Instagram" />
+        <img
+          src="/instagram-signup-hero.png"
+          alt="Instagram"
+        />
       </div>
 
       <!-- Right side: Form -->
       <div class="form-section">
         <div class="form-content">
           <!-- Logo -->
-          <h1 class="logo">hoshiBmaTchi</h1>
+          <h1 class="logo">
+            hoshiBmaTchi
+          </h1>
 
           <!-- Main heading -->
-          <p class="subtitle">Sign up to see photos and videos from your friends.</p>
+          <p class="subtitle">
+            Sign up to see photos and videos from your friends.
+          </p>
 
           <!-- Google OAuth Button -->
-          <button @click="handleGoogleSignup" class="google-btn">
-            <img src="/google-icon.svg" alt="Google" class="google-icon" />
+          <button
+            class="google-btn"
+            @click="handleGoogleSignup"
+          >
+            <img
+              src="/google-icon.svg"
+              alt="Google"
+              class="google-icon"
+            />
             Sign up with Google
           </button>
 
@@ -27,36 +41,43 @@
           </div>
 
           <!-- Error Alert -->
-          <ErrorAlert v-if="error" :message="error" @close="error = ''" />
+          <ErrorAlert
+            v-if="error"
+            :message="error"
+            @close="error = ''"
+          />
 
           <!-- Form -->
-          <form @submit.prevent="handleSubmit" class="form">
+          <form
+            class="form"
+            @submit.prevent="handleSubmit"
+          >
             <FormInput
               v-model="form.name"
               type="text"
               placeholder="Full name"
-              :errorMessage="errors.name"
+              :error-message="errors.name"
             />
 
             <FormInput
               v-model="form.username"
               type="text"
               placeholder="Username"
-              :errorMessage="errors.username"
+              :error-message="errors.username"
             />
 
             <FormInput
               v-model="form.email"
               type="email"
               placeholder="Email address"
-              :errorMessage="errors.email"
+              :error-message="errors.email"
             />
 
             <FormInput
               v-model="form.password"
               type="password"
               placeholder="Password"
-              :errorMessage="errors.password"
+              :error-message="errors.password"
             />
 
             <PasswordStrengthValidator :password="form.password" />
@@ -65,17 +86,32 @@
               v-model="form.confirmPassword"
               type="password"
               placeholder="Confirm password"
-              :errorMessage="errors.confirmPassword"
+              :error-message="errors.confirmPassword"
             />
 
             <!-- Gender Select -->
             <div class="form-group">
-              <select v-model="form.gender" class="select" :class="{ error: errors.gender }">
-                <option value="">Select gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
+              <select
+                v-model="form.gender"
+                class="select"
+                :class="{ error: errors.gender }"
+              >
+                <option value="">
+                  Select gender
+                </option>
+                <option value="male">
+                  Male
+                </option>
+                <option value="female">
+                  Female
+                </option>
               </select>
-              <p v-if="errors.gender" class="error-message">{{ errors.gender }}</p>
+              <p
+                v-if="errors.gender"
+                class="error-message"
+              >
+                {{ errors.gender }}
+              </p>
             </div>
 
             <!-- Date of Birth -->
@@ -86,7 +122,12 @@
                 class="input"
                 :class="{ error: errors.dob }"
               />
-              <p v-if="errors.dob" class="error-message">{{ errors.dob }}</p>
+              <p
+                v-if="errors.dob"
+                class="error-message"
+              >
+                {{ errors.dob }}
+              </p>
             </div>
 
             <!-- Profile Picture -->
@@ -95,35 +136,52 @@
                 <input
                   type="file"
                   accept="image/*"
-                  @change="handleProfilePictureChange"
                   class="file-input"
+                  @change="handleProfilePictureChange"
                 />
                 <span class="file-input-text">{{ profilePictureLabel }}</span>
               </label>
-              <p v-if="errors.profilePicture" class="error-message">{{ errors.profilePicture }}</p>
+              <p
+                v-if="errors.profilePicture"
+                class="error-message"
+              >
+                {{ errors.profilePicture }}
+              </p>
             </div>
 
             <!-- Checkboxes -->
             <div class="checkbox-group">
               <label class="checkbox">
-                <input v-model="form.newsletter" type="checkbox" />
+                <input
+                  v-model="form.newsletter"
+                  type="checkbox"
+                />
                 <span>Subscribe to our newsletter</span>
               </label>
               <label class="checkbox">
-                <input v-model="form.twoFA" type="checkbox" />
+                <input
+                  v-model="form.twoFA"
+                  type="checkbox"
+                />
                 <span>Enable Two-Factor Authentication</span>
               </label>
             </div>
 
             <!-- Submit Button -->
-            <button type="submit" class="submit-btn" :disabled="authStore.loading">
+            <button
+              type="submit"
+              class="submit-btn"
+              :disabled="authStore.loading"
+            >
               {{ authStore.loading ? 'Creating account...' : 'Sign up' }}
             </button>
           </form>
 
           <!-- Login Link -->
           <p class="login-link">
-            Have an account? <router-link to="/login">Log in</router-link>
+            Have an account? <router-link to="/login">
+              Log in
+            </router-link>
           </p>
         </div>
       </div>
@@ -132,151 +190,151 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import FormInput from '../components/FormInput.vue'
-import PasswordStrengthValidator from '../components/PasswordStrengthValidator.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import { useAuthStore } from '@/stores/auth'
-import { mediaAPI } from '@/services/api'
+import { ref, reactive } from "vue";
+import { useRouter } from "vue-router";
+import FormInput from "../components/FormInput.vue";
+import PasswordStrengthValidator from "../components/PasswordStrengthValidator.vue";
+import ErrorAlert from "../components/ErrorAlert.vue";
+import { useAuthStore } from "@/stores/auth";
+import { mediaAPI } from "@/services/api";
 
-const router = useRouter()
-const authStore = useAuthStore()
-const error = ref('')
-const profilePictureLabel = ref('Choose profile picture')
+const router = useRouter();
+const authStore = useAuthStore();
+const error = ref("");
+const profilePictureLabel = ref("Choose profile picture");
 
 const form = reactive({
-  name: '',
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  gender: '',
-  dob: '',
+  name: "",
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  gender: "",
+  dob: "",
   profilePicture: null as File | null,
   newsletter: false,
   twoFA: false
-})
+});
 
 const errors = reactive({
-  name: '',
-  username: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  gender: '',
-  dob: '',
-  profilePicture: ''
-})
+  name: "",
+  username: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  gender: "",
+  dob: "",
+  profilePicture: ""
+});
 
 
 
 const handleProfilePictureChange = (event: Event) => {
-  const input = event.target as HTMLInputElement
+  const input = event.target as HTMLInputElement;
   if (input.files?.[0]) {
-    form.profilePicture = input.files[0]
-    profilePictureLabel.value = input.files[0].name
-    errors.profilePicture = ''
+    form.profilePicture = input.files[0];
+    profilePictureLabel.value = input.files[0].name;
+    errors.profilePicture = "";
   }
-}
+};
 
 const handleGoogleSignup = () => {
   // Initialize Google OAuth flow
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   
   if (!googleClientId) {
-    error.value = 'Google OAuth is not configured'
-    return
+    error.value = "Google OAuth is not configured";
+    return;
   }
   
   // Redirect to Google OAuth using authorization code flow
-  const redirectUri = `${window.location.origin}/auth/google/callback`
-  const scope = 'openid profile email'
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`
+  const redirectUri = `${window.location.origin}/auth/google/callback`;
+  const scope = "openid profile email";
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${googleClientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
   
-  window.location.href = googleAuthUrl
-}
+  window.location.href = googleAuthUrl;
+};
 
 
 
 const handleSubmit = async () => {
   // Clear previous errors
   Object.keys(errors).forEach(key => {
-    errors[key as keyof typeof errors] = ''
-  })
-  error.value = ''
+    errors[key as keyof typeof errors] = "";
+  });
+  error.value = "";
 
   // Frontend validations
   if (form.name.length <= 4 || /[0-9!@#$%^&*(),.?":{}|<>]/.test(form.name)) {
-    errors.name = 'Name must be more than 4 characters with no symbols or numbers'
-    return
+    errors.name = "Name must be more than 4 characters with no symbols or numbers";
+    return;
   }
 
   if (form.username.length < 3 || form.username.length > 30) {
-    errors.username = 'Username must be 3-30 characters'
-    return
+    errors.username = "Username must be 3-30 characters";
+    return;
   }
 
   if (!/^[a-zA-Z0-9_]+$/.test(form.username)) {
-    errors.username = 'Username can only contain letters, numbers, and underscores'
-    return
+    errors.username = "Username can only contain letters, numbers, and underscores";
+    return;
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(form.email)) {
-    errors.email = 'Please enter a valid email address'
-    return
+    errors.email = "Please enter a valid email address";
+    return;
   }
 
   if (form.password.length < 8 || !/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password) || !/[!@#$%^&*(),.?":{}|<>]/.test(form.password)) {
-    errors.password = 'Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character'
-    return
+    errors.password = "Password must have at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special character";
+    return;
   }
 
   if (form.password !== form.confirmPassword) {
-    errors.confirmPassword = 'Passwords do not match'
-    return
+    errors.confirmPassword = "Passwords do not match";
+    return;
   }
 
-  if (!form.gender || (form.gender !== 'male' && form.gender !== 'female')) {
-    errors.gender = 'Please select a valid gender'
-    return
+  if (!form.gender || (form.gender !== "male" && form.gender !== "female")) {
+    errors.gender = "Please select a valid gender";
+    return;
   }
 
   if (!form.dob) {
-    errors.dob = 'Please select your date of birth'
-    return
+    errors.dob = "Please select your date of birth";
+    return;
   }
 
   // Age check (13+)
-  const today = new Date()
-  const birthDate = new Date(form.dob)
-  let age = today.getFullYear() - birthDate.getFullYear()
-  const monthDiff = today.getMonth() - birthDate.getMonth()
+  const today = new Date();
+  const birthDate = new Date(form.dob);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--
+    age--;
   }
   
   if (age < 13) {
-    errors.dob = 'You must be at least 13 years old to sign up'
-    return
+    errors.dob = "You must be at least 13 years old to sign up";
+    return;
   }
 
   try {
     // --- NEW LOGIC START ---
-    let profilePictureUrl = ''
+    let profilePictureUrl = "";
 
     // 1. If a file is selected, upload it first
     if (form.profilePicture) {
       try {
         // We reuse the same API call used in EditProfile.vue
-        const uploadRes = await mediaAPI.uploadMedia(form.profilePicture)
-        profilePictureUrl = uploadRes.media_url
+        const uploadRes = await mediaAPI.uploadMedia(form.profilePicture);
+        profilePictureUrl = uploadRes.media_url;
       } catch (uploadErr) {
-        console.error("Image upload failed", uploadErr)
+        console.error("Image upload failed", uploadErr);
         // Optional: decide if you want to stop registration or proceed without image
-        error.value = "Failed to upload profile picture. Please try a different image."
-        return
+        error.value = "Failed to upload profile picture. Please try a different image.";
+        return;
       }
     }
     // --- NEW LOGIC END ---
@@ -292,17 +350,17 @@ const handleSubmit = async () => {
       date_of_birth: form.dob,
       enable_2fa: form.twoFA,
       profile_picture_url: profilePictureUrl // <--- Pass the URL here
-    })
+    });
 
     // Redirect to OTP verification page
     router.push({
-      path: '/verify-otp',
+      path: "/verify-otp",
       query: { email: form.email }
-    })
+    });
   } catch (err: any) {
-    error.value = err?.message || 'Registration failed. Please try again.'
+    error.value = err?.message || "Registration failed. Please try again.";
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

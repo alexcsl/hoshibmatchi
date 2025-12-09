@@ -2,18 +2,31 @@
   <div class="archive-page">
     <div class="archive-container">
       <h1>Archive</h1>
-      <p class="subtitle">Only you can see your archived stories</p>
+      <p class="subtitle">
+        Only you can see your archived stories
+      </p>
 
-      <div v-if="loading" class="loading-state">
+      <div
+        v-if="loading"
+        class="loading-state"
+      >
         <p>Loading your archive...</p>
       </div>
 
-      <div v-else-if="stories.length === 0" class="empty-state">
+      <div
+        v-else-if="stories.length === 0"
+        class="empty-state"
+      >
         <p>No stories in your archive yet</p>
-        <p class="empty-subtitle">Your stories will be saved here after 24 hours</p>
+        <p class="empty-subtitle">
+          Your stories will be saved here after 24 hours
+        </p>
       </div>
 
-      <div v-else class="archive-grid">
+      <div
+        v-else
+        class="archive-grid"
+      >
         <div 
           v-for="story in stories" 
           :key="story.id" 
@@ -26,7 +39,9 @@
             :style="{ filter: getFilterStyle(story.filter_name) }"
           />
           <div class="archive-overlay">
-            <div class="story-date">{{ formatDate(story.created_at) }}</div>
+            <div class="story-date">
+              {{ formatDate(story.created_at) }}
+            </div>
           </div>
         </div>
       </div>
@@ -43,73 +58,73 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { storyAPI, type Story } from '@/services/api'
-import ArchiveStoryViewer from '@/components/ArchiveStoryViewer.vue'
+import { ref, onMounted } from "vue";
+import { storyAPI, type Story } from "@/services/api";
+import ArchiveStoryViewer from "@/components/ArchiveStoryViewer.vue";
 
-const stories = ref<Story[]>([])
-const loading = ref(true)
-const showStoryViewer = ref(false)
-const selectedStory = ref<Story | null>(null)
-const selectedStoryIndex = ref(0)
+const stories = ref<Story[]>([]);
+const loading = ref(true);
+const showStoryViewer = ref(false);
+const selectedStory = ref<Story | null>(null);
+const selectedStoryIndex = ref(0);
 
 const getMediaUrl = (url: string) => {
-  if (!url) return '/placeholder.svg'
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (!url) return "/placeholder.svg";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
-  return url
-}
+  return url;
+};
 
 const getFilterStyle = (filterName?: string) => {
-  if (!filterName || filterName === 'None') return 'none'
+  if (!filterName || filterName === "None") return "none";
   const filters: Record<string, string> = {
-    'Grayscale': 'grayscale(100%)',
-    'Sepia': 'sepia(100%)',
-    'Bright': 'brightness(1.3)',
-    'Contrast': 'contrast(1.5)',
-    'Blur': 'blur(5px)'
-  }
-  return filters[filterName] || 'none'
-}
+    "Grayscale": "grayscale(100%)",
+    "Sepia": "sepia(100%)",
+    "Bright": "brightness(1.3)",
+    "Contrast": "contrast(1.5)",
+    "Blur": "blur(5px)"
+  };
+  return filters[filterName] || "none";
+};
 
 const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr)
+  const date = new Date(dateStr);
   const options: Intl.DateTimeFormatOptions = { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric' 
-  }
-  return date.toLocaleDateString('en-US', options)
-}
+    month: "short", 
+    day: "numeric", 
+    year: "numeric" 
+  };
+  return date.toLocaleDateString("en-US", options);
+};
 
 const openStory = (story: Story) => {
-  selectedStory.value = story
-  selectedStoryIndex.value = stories.value.findIndex(s => s.id === story.id)
-  showStoryViewer.value = true
-}
+  selectedStory.value = story;
+  selectedStoryIndex.value = stories.value.findIndex(s => s.id === story.id);
+  showStoryViewer.value = true;
+};
 
 const closeStoryViewer = () => {
-  showStoryViewer.value = false
-  selectedStory.value = null
-}
+  showStoryViewer.value = false;
+  selectedStory.value = null;
+};
 
 const fetchArchive = async () => {
   try {
-    loading.value = true
-    const data = await storyAPI.getArchive()
-    stories.value = data
+    loading.value = true;
+    const data = await storyAPI.getArchive();
+    stories.value = data;
   } catch (error) {
-    console.error('Failed to fetch archive:', error)
+    console.error("Failed to fetch archive:", error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 onMounted(() => {
-  fetchArchive()
-})
+  fetchArchive();
+});
 </script>
 
 <style scoped lang="scss">

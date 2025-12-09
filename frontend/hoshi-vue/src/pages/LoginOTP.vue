@@ -1,20 +1,40 @@
 <template>
   <div class="login-otp-container">
     <div class="otp-card">
-      <h1 class="logo">Instagram</h1>
+      <h1 class="logo">
+        Instagram
+      </h1>
 
       <div class="content">
-        <h2 class="title">Two-Factor Authentication</h2>
-        <p class="subtitle">Enter the 6-digit code sent to your email</p>
+        <h2 class="title">
+          Two-Factor Authentication
+        </h2>
+        <p class="subtitle">
+          Enter the 6-digit code sent to your email
+        </p>
 
         <!-- Error Alert -->
-        <ErrorAlert v-if="error" :message="error" @close="error = ''" />
+        <ErrorAlert
+          v-if="error"
+          :message="error"
+          @close="error = ''"
+        />
 
         <!-- OTP Input -->
-        <form @submit.prevent="handleSubmit" class="otp-form">
-          <OTPInput v-model="form.otp" :errorMessage="errors.otp" />
+        <form
+          class="otp-form"
+          @submit.prevent="handleSubmit"
+        >
+          <OTPInput
+            v-model="form.otp"
+            :error-message="errors.otp"
+          />
 
-          <button type="submit" class="verify-btn" :disabled="authStore.loading">
+          <button
+            type="submit"
+            class="verify-btn"
+            :disabled="authStore.loading"
+          >
             {{ authStore.loading ? 'Verifying...' : 'Verify' }}
           </button>
         </form>
@@ -22,131 +42,140 @@
         <!-- Resend Code -->
         <p class="resend-text">
           Didn't receive the code?
-          <button @click="handleResendCode" class="resend-btn" :disabled="resendDisabled">
+          <button
+            class="resend-btn"
+            :disabled="resendDisabled"
+            @click="handleResendCode"
+          >
             {{ resendDisabled ? `Resend in ${resendCountdown}s` : 'Resend' }}
           </button>
         </p>
 
         <!-- Back to Login -->
-        <router-link to="/login" class="back-link">Back to login</router-link>
+        <router-link
+          to="/login"
+          class="back-link"
+        >
+          Back to login
+        </router-link>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import OTPInput from '../components/OTPInput.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import { useAuthStore } from '@/stores/auth'
+import { ref, reactive, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
+import OTPInput from "../components/OTPInput.vue";
+import ErrorAlert from "../components/ErrorAlert.vue";
+import { useAuthStore } from "@/stores/auth";
 
-const router = useRouter()
-const authStore = useAuthStore()
-const error = ref('')
-const resendDisabled = ref(false)
-const resendCountdown = ref(0)
-let countdownInterval: number
+const router = useRouter();
+const authStore = useAuthStore();
+const error = ref("");
+const resendDisabled = ref(false);
+const resendCountdown = ref(0);
+let countdownInterval: number;
 
 const form = reactive({
-  otp: ''
-})
+  otp: ""
+});
 
 const errors = reactive({
-  otp: ''
-})
+  otp: ""
+});
 
 const handleResendCode = async () => {
   // Get email from sessionStorage
-  const email = sessionStorage.getItem('temp_email')
+  const email = sessionStorage.getItem("temp_email");
   if (!email) {
-    error.value = 'Session expired. Please login again.'
-    router.push('/login')
-    return
+    error.value = "Session expired. Please login again.";
+    router.push("/login");
+    return;
   }
 
-  resendDisabled.value = true
-  resendCountdown.value = 60
-  error.value = ''
+  resendDisabled.value = true;
+  resendCountdown.value = 60;
+  error.value = "";
 
   try {
     // Request new OTP code
     // Note: Backend should send new OTP to user's email
-    console.log('Requesting new OTP for email:', email)
+    console.log("Requesting new OTP for email:", email);
   } catch (err: any) {
-    error.value = err?.message || 'Failed to resend code'
+    error.value = err?.message || "Failed to resend code";
   }
 
   countdownInterval = setInterval(() => {
-    resendCountdown.value--
+    resendCountdown.value--;
     if (resendCountdown.value <= 0) {
-      clearInterval(countdownInterval)
-      resendDisabled.value = false
+      clearInterval(countdownInterval);
+      resendDisabled.value = false;
     }
-  }, 1000)
-}
+  }, 1000);
+};
 
 const handleSubmit = async () => {
-  errors.otp = ''
-  error.value = ''
+  errors.otp = "";
+  error.value = "";
 
   if (form.otp.length !== 6) {
-    errors.otp = 'Please enter a valid 6-digit code'
-    return
+    errors.otp = "Please enter a valid 6-digit code";
+    return;
   }
 
   // Get email from sessionStorage
-  const email = sessionStorage.getItem('temp_email')
+  const email = sessionStorage.getItem("temp_email");
   if (!email) {
-    error.value = 'Session expired. Please login again.'
-    router.push('/login')
-    return
+    error.value = "Session expired. Please login again.";
+    router.push("/login");
+    return;
   }
 
   try {
     await authStore.verify2FA({
       email: email,
       otp_code: form.otp
-    })
+    });
 
     // Clear temporary session data
-    sessionStorage.removeItem('temp_email')
-    sessionStorage.removeItem('temp_username')
+    sessionStorage.removeItem("temp_email");
+    sessionStorage.removeItem("temp_username");
 
     // Redirect to feed
-    router.push('/feed')
+    router.push("/feed");
   } catch (err: any) {
-    error.value = err?.message || 'Verification failed. Please try again.'
+    error.value = err?.message || "Verification failed. Please try again.";
   }
-}
+};
 
 onMounted(() => {
   // Check if email exists in sessionStorage
-  const email = sessionStorage.getItem('temp_email')
+  const email = sessionStorage.getItem("temp_email");
   if (!email) {
-    error.value = 'Please login first'
-    router.push('/login')
-    return
+    error.value = "Please login first";
+    router.push("/login");
+    return;
   }
 
   // Initialize 60-second rate limit
-  resendCountdown.value = 60
-  resendDisabled.value = true
+  resendCountdown.value = 60;
+  resendDisabled.value = true;
 
   countdownInterval = setInterval(() => {
-    resendCountdown.value--
+    resendCountdown.value--;
     if (resendCountdown.value <= 0) {
-      clearInterval(countdownInterval)
-      resendDisabled.value = false
+      clearInterval(countdownInterval);
+      resendDisabled.value = false;
     }
-  }, 1000)
-})
+  }, 1000);
+});
 
 onUnmounted(() => {
   if (countdownInterval) {
-    clearInterval(countdownInterval)
+    clearInterval(countdownInterval);
   }
-})
+});
 
 </script>
 

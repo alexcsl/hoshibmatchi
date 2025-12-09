@@ -1,53 +1,96 @@
 <template>
   <div class="forgot-password-container">
     <div class="forgot-card">
-      <h1 class="logo">Instagram</h1>
+      <h1 class="logo">
+        Instagram
+      </h1>
 
       <div class="content">
-        <h2 class="title">Trouble logging in?</h2>
-        <p class="subtitle">Enter your email and we'll send you a code to reset your password.</p>
+        <h2 class="title">
+          Trouble logging in?
+        </h2>
+        <p class="subtitle">
+          Enter your email and we'll send you a code to reset your password.
+        </p>
 
         <!-- Error Alert -->
-        <ErrorAlert v-if="error" :message="error" @close="error = ''" />
+        <ErrorAlert
+          v-if="error"
+          :message="error"
+          @close="error = ''"
+        />
 
         <!-- Success Message -->
-        <div v-if="otpSent" class="success-message">
+        <div
+          v-if="otpSent"
+          class="success-message"
+        >
           Code sent to {{ form.email }}! Check your email and enter the code below.
         </div>
 
         <!-- Form -->
-        <form @submit.prevent="handleSubmit" class="form">
+        <form
+          class="form"
+          @submit.prevent="handleSubmit"
+        >
           <FormInput
             v-model="form.email"
             type="email"
             placeholder="Email address"
-            :errorMessage="errors.email"
+            :error-message="errors.email"
             :disabled="otpSent"
           />
 
           <!-- OTP Input (shown after email is sent) -->
-          <div v-if="otpSent" class="otp-section">
+          <div
+            v-if="otpSent"
+            class="otp-section"
+          >
             <label>6-Digit Code</label>
-            <OTPInput v-model="form.otp" :errorMessage="errors.otp" />
+            <OTPInput
+              v-model="form.otp"
+              :error-message="errors.otp"
+            />
           </div>
 
-          <button type="submit" class="submit-btn" :disabled="loading">
+          <button
+            type="submit"
+            class="submit-btn"
+            :disabled="loading"
+          >
             {{ loading ? 'Sending...' : otpSent ? 'Verify Code' : 'Send Reset Code' }}
           </button>
         </form>
 
         <!-- Resend Code (shown after OTP is sent) -->
-        <p v-if="otpSent" class="resend-text">
+        <p
+          v-if="otpSent"
+          class="resend-text"
+        >
           Didn't receive the code?
-          <button @click="handleResend" class="resend-btn" :disabled="!canResend">
+          <button
+            class="resend-btn"
+            :disabled="!canResend"
+            @click="handleResend"
+          >
             {{ canResend ? 'Resend' : `Resend in ${resendTimer}s` }}
           </button>
         </p>
 
         <!-- Links -->
         <div class="links">
-          <router-link to="/signup" class="link">Create new account</router-link>
-          <router-link to="/login" class="link">Back to login</router-link>
+          <router-link
+            to="/signup"
+            class="link"
+          >
+            Create new account
+          </router-link>
+          <router-link
+            to="/login"
+            class="link"
+          >
+            Back to login
+          </router-link>
         </div>
       </div>
     </div>
@@ -55,107 +98,107 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import FormInput from '../components/FormInput.vue'
-import OTPInput from '../components/OTPInput.vue'
-import ErrorAlert from '../components/ErrorAlert.vue'
-import { authAPI, handleApiError } from '../services/api'
+import { ref, reactive } from "vue";
+import { useRouter } from "vue-router";
+import FormInput from "../components/FormInput.vue";
+import OTPInput from "../components/OTPInput.vue";
+import ErrorAlert from "../components/ErrorAlert.vue";
+import { authAPI, handleApiError } from "../services/api";
 
-const router = useRouter()
-const loading = ref(false)
-const error = ref('')
-const otpSent = ref(false)
-const canResend = ref(true)
-const resendTimer = ref(60)
+const router = useRouter();
+const loading = ref(false);
+const error = ref("");
+const otpSent = ref(false);
+const canResend = ref(true);
+const resendTimer = ref(60);
 
 const form = reactive({
-  email: '',
-  otp: ''
-})
+  email: "",
+  otp: ""
+});
 
 const errors = reactive({
-  email: '',
-  otp: ''
-})
+  email: "",
+  otp: ""
+});
 
 const startResendTimer = () => {
-  canResend.value = false
-  resendTimer.value = 60
+  canResend.value = false;
+  resendTimer.value = 60;
 
   const interval = setInterval(() => {
-    resendTimer.value--
+    resendTimer.value--;
     if (resendTimer.value === 0) {
-      canResend.value = true
-      clearInterval(interval)
+      canResend.value = true;
+      clearInterval(interval);
     }
-  }, 1000)
-}
+  }, 1000);
+};
 
 const handleResend = async () => {
-  error.value = ''
-  loading.value = true
+  error.value = "";
+  loading.value = true;
 
   try {
-    await authAPI.forgotPassword({ email: form.email })
-    startResendTimer()
+    await authAPI.forgotPassword({ email: form.email });
+    startResendTimer();
   } catch (err) {
-    error.value = handleApiError(err)
+    error.value = handleApiError(err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const handleSubmit = async () => {
-  errors.email = ''
-  errors.otp = ''
-  error.value = ''
+  errors.email = "";
+  errors.otp = "";
+  error.value = "";
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(form.email)) {
-    errors.email = 'Please enter a valid email address'
-    return
+    errors.email = "Please enter a valid email address";
+    return;
   }
 
   if (otpSent.value) {
     // Verify OTP and proceed to reset password
     if (form.otp.length !== 6) {
-      errors.otp = 'Please enter a valid 6-digit code'
-      return
+      errors.otp = "Please enter a valid 6-digit code";
+      return;
     }
 
-    loading.value = true
+    loading.value = true;
 
     try {
       // Verify OTP by attempting to use it
       // We'll pass the email and OTP to the reset password page
       router.push({
-        path: '/reset-password',
+        path: "/reset-password",
         query: {
           email: form.email,
           otp: form.otp
         }
-      })
+      });
     } catch (err) {
-      error.value = handleApiError(err)
+      error.value = handleApiError(err);
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   } else {
     // Send OTP
-    loading.value = true
+    loading.value = true;
 
     try {
-      await authAPI.forgotPassword({ email: form.email })
-      otpSent.value = true
-      startResendTimer()
+      await authAPI.forgotPassword({ email: form.email });
+      otpSent.value = true;
+      startResendTimer();
     } catch (err) {
-      error.value = handleApiError(err)
+      error.value = handleApiError(err);
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

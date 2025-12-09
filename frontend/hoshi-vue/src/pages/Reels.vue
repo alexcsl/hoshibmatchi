@@ -5,29 +5,44 @@
       <p>Watch short, engaging videos from creators you follow</p>
     </div>
 
-    <div v-if="feedStore.loading && feedStore.reelsFeed.length === 0" class="loading-state">
+    <div
+      v-if="feedStore.loading && feedStore.reelsFeed.length === 0"
+      class="loading-state"
+    >
       <div class="loading-grid">
-        <div v-for="i in 6" :key="`skeleton-${i}`" class="skeleton-reel"></div>
+        <div
+          v-for="i in 6"
+          :key="`skeleton-${i}`"
+          class="skeleton-reel"
+        ></div>
       </div>
     </div>
 
-    <div v-else-if="feedStore.reelsFeed.length > 0" class="reels-container">
+    <div
+      v-else-if="feedStore.reelsFeed.length > 0"
+      class="reels-container"
+    >
       <div 
         v-for="reel in feedStore.reelsFeed" 
         :key="reel.id" 
         class="reel-item" 
         @click="handleOpenReel(reel.id)"
       >
-        <img 
-          :src="reel.media_urls[0] || '/placeholder.svg?height=500&width=300'" 
-          :alt="reel.caption" 
-          class="reel-thumbnail" 
+        <MediaThumbnail
+          :thumbnail-url="reel.thumbnail_url"
+          :media-urls="reel.media_urls"
+          :is-video="true"
+          :alt="reel.caption"
+          class-name="reel-thumbnail"
         />
         <div class="reel-overlay">
-          <div class="play-button">▶</div>
           <div class="reel-info">
-            <div class="creator">@{{ reel.author_username }}</div>
-            <div class="title">{{ reel.caption || 'Watch this reel' }}</div>
+            <div class="creator">
+              @{{ reel.author_username }}
+            </div>
+            <div class="title">
+              {{ reel.caption || 'Watch this reel' }}
+            </div>
             <div class="stats">
               <span>❤ {{ formatCount(reel.like_count) }}</span>
               <span>💬 {{ formatCount(reel.comment_count) }}</span>
@@ -37,40 +52,47 @@
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <p>No reels to watch yet</p>
-      <p class="empty-subtitle">Check back later for new reels</p>
+      <p class="empty-subtitle">
+        Check back later for new reels
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useFeedStore } from '@/stores/feed'
+import { onMounted } from "vue";
+import { useFeedStore } from "@/stores/feed";
+import SecureImage from "@/components/SecureImage.vue";
+import MediaThumbnail from "@/components/MediaThumbnail.vue";
 
-const feedStore = useFeedStore()
+const feedStore = useFeedStore();
 
 onMounted(async () => {
   if (feedStore.reelsFeed.length === 0) {
-    await feedStore.loadReelsFeed(1, 20)
+    await feedStore.loadReelsFeed(1, 20);
   }
-})
+});
 
 const handleOpenReel = (reelId: string) => {
-  const reelIndex = feedStore.reelsFeed.findIndex(r => r.id === reelId)
+  const reelIndex = feedStore.reelsFeed.findIndex(r => r.id === reelId);
   if (reelIndex !== -1 && window.openReelsViewer) {
-    window.openReelsViewer(reelIndex)
+    window.openReelsViewer(reelIndex);
   }
-}
+};
 
 const formatCount = (count: number) => {
   if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`
+    return `${(count / 1000000).toFixed(1)}M`;
   } else if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`
+    return `${(count / 1000).toFixed(1)}K`;
   }
-  return count.toString()
-}
+  return count.toString();
+};
 </script>
 
 <style scoped lang="scss">

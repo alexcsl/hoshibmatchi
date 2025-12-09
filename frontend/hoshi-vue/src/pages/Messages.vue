@@ -1,34 +1,78 @@
 <template>
   <div class="messages-page">
     <!-- Video Call Modal -->
-    <div v-if="showVideoCall" class="video-call-overlay" @click="endVideoCall">
-      <div class="video-call-modal" @click.stop>
+    <div
+      v-if="showVideoCall"
+      class="video-call-overlay"
+      @click="endVideoCall"
+    >
+      <div
+        class="video-call-modal"
+        @click.stop
+      >
         <div class="video-call-header">
           <h3>Video Call with {{ activeConversationName }}</h3>
-          <button class="close-btn" @click="endVideoCall">✕</button>
+          <button
+            class="close-btn"
+            @click="endVideoCall"
+          >
+            ✕
+          </button>
         </div>
         <div class="video-container">
-          <video ref="localVideoRef" autoplay muted class="local-video"></video>
-          <video ref="remoteVideoRef" autoplay class="remote-video"></video>
+          <video
+            ref="localVideoRef"
+            autoplay
+            muted
+            class="local-video"
+          ></video>
+          <video
+            ref="remoteVideoRef"
+            autoplay
+            class="remote-video"
+          ></video>
         </div>
         <div class="video-controls">
-          <button @click="toggleMute" :class="{ muted: isMuted }">
+          <button
+            :class="{ muted: isMuted }"
+            @click="toggleMute"
+          >
             {{ isMuted ? '🔇' : '🔊' }}
           </button>
-          <button @click="toggleVideo" :class="{ 'video-off': !isVideoEnabled }">
+          <button
+            :class="{ 'video-off': !isVideoEnabled }"
+            @click="toggleVideo"
+          >
             {{ isVideoEnabled ? '📹' : '📷' }}
           </button>
-          <button @click="endVideoCall" class="end-call-btn">📞 End Call</button>
+          <button
+            class="end-call-btn"
+            @click="endVideoCall"
+          >
+            📞 End Call
+          </button>
         </div>
       </div>
     </div>
 
     <!-- New Conversation Modal -->
-    <div v-if="showNewConversation" class="modal-overlay" @click="showNewConversation = false">
-      <div class="modal" @click.stop>
+    <div
+      v-if="showNewConversation"
+      class="modal-overlay"
+      @click="showNewConversation = false"
+    >
+      <div
+        class="modal"
+        @click.stop
+      >
         <div class="modal-header">
           <h3>New Message</h3>
-          <button class="close-btn" @click="showNewConversation = false">✕</button>
+          <button
+            class="close-btn"
+            @click="showNewConversation = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="modal-body">
           <input 
@@ -38,17 +82,28 @@
             class="search-input"
             @input="searchUsers"
           />
-          <div v-if="searchResults.length > 0" class="search-results">
+          <div
+            v-if="searchResults.length > 0"
+            class="search-results"
+          >
             <div 
               v-for="user in searchResults" 
               :key="user.user_id" 
               class="search-result-item"
               @click="createConversationWithUser(user.user_id)"
             >
-              <img :src="getMediaUrl(user.profile_picture_url)" :alt="user.username" class="avatar" />
+              <img
+                :src="getMediaUrl(user.profile_picture_url)"
+                :alt="user.username"
+                class="avatar"
+              />
               <div class="user-info">
-                <div class="username">{{ user.username }}</div>
-                <div class="name">{{ user.name }}</div>
+                <div class="username">
+                  {{ user.username }}
+                </div>
+                <div class="name">
+                  {{ user.name }}
+                </div>
               </div>
             </div>
           </div>
@@ -57,11 +112,23 @@
     </div>
 
     <!-- Edit Participants Modal -->
-    <div v-if="showEditParticipants" class="modal-overlay" @click="showEditParticipants = false">
-      <div class="modal" @click.stop>
+    <div
+      v-if="showEditParticipants"
+      class="modal-overlay"
+      @click="showEditParticipants = false"
+    >
+      <div
+        class="modal"
+        @click.stop
+      >
         <div class="modal-header">
           <h3>Edit Participants</h3>
-          <button class="close-btn" @click="showEditParticipants = false">✕</button>
+          <button
+            class="close-btn"
+            @click="showEditParticipants = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="modal-body">
           <div class="participants-section">
@@ -72,16 +139,24 @@
                 :key="participant.id || participant.user_id"
                 class="participant-item"
               >
-                <img :src="getParticipantAvatar(participant)" :alt="participant.username" class="avatar" />
+                <img
+                  :src="getParticipantAvatar(participant)"
+                  :alt="participant.username"
+                  class="avatar"
+                />
                 <div class="user-info">
-                  <div class="username">{{ participant.username }}</div>
-                  <div class="name">{{ participant.name }}</div>
+                  <div class="username">
+                    {{ participant.username }}
+                  </div>
+                  <div class="name">
+                    {{ participant.name }}
+                  </div>
                 </div>
                 <button 
                   v-if="(participant.id || participant.user_id) !== currentUserId && canEditParticipants"
-                  @click="removeParticipant(participant)"
                   class="remove-btn"
                   title="Remove participant"
+                  @click="removeParticipant(participant)"
                 >
                   ✕
                 </button>
@@ -89,7 +164,10 @@
             </div>
           </div>
           
-          <div v-if="canEditParticipants" class="add-participants-section">
+          <div
+            v-if="canEditParticipants"
+            class="add-participants-section"
+          >
             <h4>Add People</h4>
             <input 
               v-model="participantSearchQuery" 
@@ -98,19 +176,32 @@
               class="search-input"
               @input="searchUsersForParticipants"
             />
-            <div v-if="participantSearchResults.length > 0" class="search-results">
+            <div
+              v-if="participantSearchResults.length > 0"
+              class="search-results"
+            >
               <div 
                 v-for="user in participantSearchResults" 
                 :key="user.user_id" 
                 class="search-result-item"
                 @click="addParticipant(user)"
               >
-                <img :src="getMediaUrl(user.profile_picture_url)" :alt="user.username" class="avatar" />
+                <img
+                  :src="getMediaUrl(user.profile_picture_url)"
+                  :alt="user.username"
+                  class="avatar"
+                />
                 <div class="user-info">
-                  <div class="username">{{ user.username }}</div>
-                  <div class="name">{{ user.name }}</div>
+                  <div class="username">
+                    {{ user.username }}
+                  </div>
+                  <div class="name">
+                    {{ user.name }}
+                  </div>
                 </div>
-                <button class="add-btn">+</button>
+                <button class="add-btn">
+                  +
+                </button>
               </div>
             </div>
           </div>
@@ -123,7 +214,12 @@
       <div class="conversations-list">
         <div class="conversations-header">
           <h1>Messages</h1>
-          <button class="new-message-btn" @click="showNewConversation = true">✉</button>
+          <button
+            class="new-message-btn"
+            @click="showNewConversation = true"
+          >
+            ✉
+          </button>
         </div>
 
         <div class="conversations-search">
@@ -135,12 +231,28 @@
           />
         </div>
 
-        <div v-if="loading" class="loading">Loading conversations...</div>
-        <div v-else-if="filteredConversations.length === 0" class="empty-state">
-          <p>No conversations yet</p>
-          <button @click="showNewConversation = true" class="start-conversation-btn">Start a conversation</button>
+        <div
+          v-if="loading"
+          class="loading"
+        >
+          Loading conversations...
         </div>
-        <div v-else class="conversations">
+        <div
+          v-else-if="filteredConversations.length === 0"
+          class="empty-state"
+        >
+          <p>No conversations yet</p>
+          <button
+            class="start-conversation-btn"
+            @click="showNewConversation = true"
+          >
+            Start a conversation
+          </button>
+        </div>
+        <div
+          v-else
+          class="conversations"
+        >
           <div 
             v-for="conversation in filteredConversations" 
             :key="conversation.id" 
@@ -154,23 +266,40 @@
               class="avatar" 
             />
             <div class="conversation-info">
-              <div class="username">{{ getConversationName(conversation) }}</div>
-              <div class="last-message">{{ conversation.last_message?.content || 'No messages yet' }}</div>
+              <div class="username">
+                {{ getConversationName(conversation) }}
+              </div>
+              <div class="last-message">
+                {{ conversation.last_message?.content || 'No messages yet' }}
+              </div>
             </div>
-            <div class="timestamp">{{ formatTimestamp(conversation.last_message?.sent_at || conversation.created_at) }}</div>
+            <div class="timestamp">
+              {{ formatTimestamp(conversation.last_message?.sent_at || conversation.created_at) }}
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Chat Area -->
-      <div v-if="!activeConversation" class="chat-area empty">
+      <div
+        v-if="!activeConversation"
+        class="chat-area empty"
+      >
         <div class="empty-chat-state">
           <h2>Your Messages</h2>
           <p>Send private messages to a friend</p>
-          <button @click="showNewConversation = true" class="send-message-btn">Send Message</button>
+          <button
+            class="send-message-btn"
+            @click="showNewConversation = true"
+          >
+            Send Message
+          </button>
         </div>
       </div>
-      <div v-else class="chat-area">
+      <div
+        v-else
+        class="chat-area"
+      >
         <div class="chat-header">
           <div class="chat-user">
             <img 
@@ -179,21 +308,54 @@
               class="avatar" 
             />
             <div>
-              <div class="username">{{ getConversationName(activeConversation) }}</div>
-              <div class="status">{{ getOnlineStatus(activeConversation) }}</div>
+              <div class="username">
+                {{ getConversationName(activeConversation) }}
+              </div>
+              <div class="status">
+                {{ getOnlineStatus() }}
+              </div>
             </div>
           </div>
           <div class="chat-actions">
-            <button @click="toggleConversationSearch" title="Search in conversation">🔍</button>
-            <button @click="showEditParticipants = true" title="Edit Participants">✏️</button>
-            <button @click="startAudioCall" title="Audio Call">📞</button>
-            <button @click="startVideoCall" title="Video Call">📹</button>
-            <button @click="deleteConversation" title="Delete Chat" class="delete-chat-btn">🗑️</button>
+            <button
+              title="Search in conversation"
+              @click="toggleConversationSearch"
+            >
+              🔍
+            </button>
+            <button
+              title="Edit Participants"
+              @click="showEditParticipants = true"
+            >
+              ✏️
+            </button>
+            <button
+              title="Audio Call"
+              @click="startAudioCall"
+            >
+              📞
+            </button>
+            <button
+              title="Video Call"
+              @click="startVideoCall"
+            >
+              📹
+            </button>
+            <button
+              title="Delete Chat"
+              class="delete-chat-btn"
+              @click="deleteConversation"
+            >
+              🗑️
+            </button>
           </div>
         </div>
 
         <!-- Conversation Search Bar -->
-        <div v-if="showConversationSearch" class="conversation-search-bar">
+        <div
+          v-if="showConversationSearch"
+          class="conversation-search-bar"
+        >
           <input 
             v-model="conversationSearchQuery" 
             type="text" 
@@ -201,14 +363,30 @@
             class="search-input"
             @input="filterMessages"
           />
-          <button @click="toggleConversationSearch" class="close-search-btn">✕</button>
-          <div v-if="conversationSearchQuery" class="search-results-count">
+          <button
+            class="close-search-btn"
+            @click="toggleConversationSearch"
+          >
+            ✕
+          </button>
+          <div
+            v-if="conversationSearchQuery"
+            class="search-results-count"
+          >
             {{ filteredMessagesCount }} result(s) found
           </div>
         </div>
 
-        <div ref="messagesContainer" class="messages">
-          <div v-if="messagesLoading" class="loading">Loading messages...</div>
+        <div
+          ref="messagesContainer"
+          class="messages"
+        >
+          <div
+            v-if="messagesLoading"
+            class="loading"
+          >
+            Loading messages...
+          </div>
           <div 
             v-for="message in displayMessages" 
             :key="message.id" 
@@ -225,19 +403,43 @@
             />
             <div class="message-wrapper">
               <!-- Show username for received messages -->
-              <div v-if="Number(message.sender_id) !== currentUserId" class="sender-name">
+              <div
+                v-if="Number(message.sender_id) !== currentUserId"
+                class="sender-name"
+              >
                 {{ message.sender_username || 'User' }}
               </div>
               <div class="message-content">
                 <!-- Display media if present -->
-                <div v-if="message.media_url" class="message-media">
-                  <img v-if="isImage(message.media_url)" :src="getMediaUrl(message.media_url)" alt="Image" class="media-image" />
-                  <video v-else-if="isVideo(message.media_url)" :src="getMediaUrl(message.media_url)" controls class="media-video"></video>
+                <div
+                  v-if="message.media_url"
+                  class="message-media"
+                >
+                  <img
+                    v-if="isImage(message.media_url)"
+                    :src="getMediaUrl(message.media_url)"
+                    alt="Image"
+                    class="media-image"
+                  />
+                  <video
+                    v-else-if="isVideo(message.media_url)"
+                    :src="getMediaUrl(message.media_url)"
+                    controls
+                    class="media-video"
+                  ></video>
                 </div>
-                <div v-if="message.content" class="message-text">{{ message.content }}</div>
+                <div
+                  v-if="message.content"
+                  class="message-text"
+                >
+                  {{ message.content }}
+                </div>
                 <div class="message-footer">
                   <span class="message-time">{{ formatMessageTime(message.sent_at) }}</span>
-                  <span v-if="Number(message.sender_id) === currentUserId" class="message-status">
+                  <span
+                    v-if="Number(message.sender_id) === currentUserId"
+                    class="message-status"
+                  >
                     {{ getMessageStatus(message) }}
                   </span>
                 </div>
@@ -255,51 +457,92 @@
         >
           <button 
             v-if="Number(selectedMessage.sender_id) === currentUserId" 
-            @click="deleteMessage(selectedMessage.id)"
             class="context-menu-item danger"
+            @click="deleteMessage(selectedMessage.id)"
           >
             🗑️ Delete Message
           </button>
-          <button @click="copyMessage" class="context-menu-item">
+          <button
+            class="context-menu-item"
+            @click="copyMessage"
+          >
             📋 Copy
           </button>
-          <button @click="closeMessageMenu" class="context-menu-item">
+          <button
+            class="context-menu-item"
+            @click="closeMessageMenu"
+          >
             ✕ Cancel
           </button>
         </div>
 
         <div class="message-input-area">
           <input 
-            type="file" 
             ref="mediaFileInput" 
-            @change="handleMediaUpload" 
+            type="file" 
             accept="image/*,video/*,.gif" 
-            style="display: none"
+            style="display: none" 
+            @change="handleMediaUpload"
           />
-          <button class="media-btn" @click="openMediaUpload" title="Add Image/GIF/Video">📷</button>
-          <button class="emoji-btn" @click="insertEmoji" title="Add emoji">😊</button>
-          <div v-if="selectedMedia" class="media-preview">
-            <img v-if="isImage(selectedMedia.name)" :src="selectedMedia.preview" alt="Preview" class="preview-image" />
-            <video v-else-if="isVideo(selectedMedia.name)" :src="selectedMedia.preview" class="preview-video"></video>
-            <button @click="clearMediaSelection" class="clear-media-btn">✕</button>
+          <button
+            class="media-btn"
+            title="Add Image/GIF/Video"
+            @click="openMediaUpload"
+          >
+            📷
+          </button>
+          <button
+            class="emoji-btn"
+            title="Add emoji"
+            @click="insertEmoji"
+          >
+            😊
+          </button>
+          <div
+            v-if="selectedMedia"
+            class="media-preview"
+          >
+            <img
+              v-if="isImage(selectedMedia.name)"
+              :src="selectedMedia.preview"
+              alt="Preview"
+              class="preview-image"
+            />
+            <video
+              v-else-if="isVideo(selectedMedia.name)"
+              :src="selectedMedia.preview"
+              class="preview-video"
+            ></video>
+            <button
+              class="clear-media-btn"
+              @click="clearMediaSelection"
+            >
+              ✕
+            </button>
           </div>
           <input 
+            ref="messageInputRef" 
             v-model="messageText" 
             type="text" 
-            placeholder="Message..." 
+            placeholder="Message..."
             class="message-input"
             @keyup.enter="sendMessage"
-            ref="messageInputRef"
           />
           <button 
             v-if="messageText.trim() || selectedMedia" 
-            @click="sendMessage" 
-            class="send-btn"
+            class="send-btn" 
             :disabled="sending"
+            @click="sendMessage"
           >
             {{ sending ? '...' : 'Send' }}
           </button>
-          <button v-else class="send-btn" @click="sendHeart">❤</button>
+          <button
+            v-else
+            class="send-btn"
+            @click="sendHeart"
+          >
+            ❤
+          </button>
         </div>
       </div>
     </div>
@@ -307,10 +550,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { messageAPI, userAPI } from '@/services/api'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { useRoute } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import { messageAPI, userAPI } from "@/services/api";
 
 interface Participant {
   id?: number
@@ -331,7 +574,7 @@ interface Message {
   sent_at: string
   sender_username: string
   media_url?: string
-  status?: 'sent' | 'delivered' | 'seen'
+  status?: "sent" | "delivered" | "seen"
   seen_by?: string[]
 }
 
@@ -345,139 +588,136 @@ interface Conversation {
   group_image_url?: string
 }
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute();
+const authStore = useAuthStore();
 
-const conversations = ref<Conversation[]>([])
-const activeConversation = ref<Conversation | null>(null)
-const messages = ref<Message[]>([])
-const messageText = ref('')
-const conversationSearch = ref('')
-const loading = ref(true)
-const messagesLoading = ref(false)
-const sending = ref(false)
-const showNewConversation = ref(false)
-const searchQuery = ref('')
-const searchResults = ref<any[]>([])
-const showEmojiPicker = ref(false)
-const showConversationInfo = ref(false)
-const messagesContainer = ref<HTMLElement | null>(null)
-const messageInputRef = ref<HTMLInputElement | null>(null)
+const conversations = ref<Conversation[]>([]);
+const activeConversation = ref<Conversation | null>(null);
+const messages = ref<Message[]>([]);
+const messageText = ref("");
+const conversationSearch = ref("");
+const loading = ref(true);
+const messagesLoading = ref(false);
+const sending = ref(false);
+const showNewConversation = ref(false);
+const searchQuery = ref("");
+const searchResults = ref<any[]>([]);
+const messagesContainer = ref<HTMLElement | null>(null);
+const messageInputRef = ref<HTMLInputElement | null>(null);
 
 // Message context menu
-const showMessageMenu = ref(false)
-const selectedMessage = ref<Message | null>(null)
-const menuPosition = ref({ x: 0, y: 0 })
+const showMessageMenu = ref(false);
+const selectedMessage = ref<Message | null>(null);
+const menuPosition = ref({ x: 0, y: 0 });
 
 // Video call states
-const showVideoCall = ref(false)
-const localVideoRef = ref<HTMLVideoElement | null>(null)
-const remoteVideoRef = ref<HTMLVideoElement | null>(null)
-const isMuted = ref(false)
-const isVideoEnabled = ref(true)
-const localStream = ref<MediaStream | null>(null)
+const showVideoCall = ref(false);
+const localVideoRef = ref<HTMLVideoElement | null>(null);
+const remoteVideoRef = ref<HTMLVideoElement | null>(null);
+const isMuted = ref(false);
+const isVideoEnabled = ref(true);
+const localStream = ref<MediaStream | null>(null);
 
 // Edit Participants states
-const showEditParticipants = ref(false)
-const participantSearchQuery = ref('')
-const participantSearchResults = ref<any[]>([])
-const currentParticipants = ref<Participant[]>([])
+const showEditParticipants = ref(false);
+const participantSearchQuery = ref("");
+const participantSearchResults = ref<any[]>([]);
+const currentParticipants = ref<Participant[]>([]);
 
 // Media upload states
-const mediaFileInput = ref<HTMLInputElement | null>(null)
-const selectedMedia = ref<{ file: File; preview: string; name: string } | null>(null)
+const mediaFileInput = ref<HTMLInputElement | null>(null);
+const selectedMedia = ref<{ file: File; preview: string; name: string } | null>(null);
 
 // Conversation search states
-const showConversationSearch = ref(false)
-const conversationSearchQuery = ref('')
-const filteredMessagesIndices = ref<number[]>([])
+const showConversationSearch = ref(false);
+const conversationSearchQuery = ref("");
+const filteredMessagesIndices = ref<number[]>([]);
 
 // WebSocket connection
-let ws: WebSocket | null = null
+let ws: WebSocket | null = null;
 
 const currentUserId = computed(() => {
-  const user = authStore.user as any
-  return user?.user_id || user?.id || 0
-})
+  const user = authStore.user as any;
+  return user?.user_id || user?.id || 0;
+});
 
 const activeConversationName = computed(() => {
-  if (!activeConversation.value) return ''
-  return getConversationName(activeConversation.value)
-})
+  if (!activeConversation.value) return "";
+  return getConversationName(activeConversation.value);
+});
 
 const filteredConversations = computed(() => {
-  if (!conversationSearch.value.trim()) return conversations.value
-  const search = conversationSearch.value.toLowerCase()
+  if (!conversationSearch.value.trim()) return conversations.value;
+  const search = conversationSearch.value.toLowerCase();
   return conversations.value.filter(conv => 
     getConversationName(conv).toLowerCase().includes(search)
-  )
-})
+  );
+});
 
 const canEditParticipants = computed(() => {
-  if (!activeConversation.value) return false
+  if (!activeConversation.value) return false;
   // Allow editing for group chats or 1-on-1 that can become groups
-  return activeConversation.value.participants.length >= 1
-})
+  return activeConversation.value.participants.length >= 1;
+});
 
 const displayMessages = computed(() => {
   if (!conversationSearchQuery.value.trim()) {
-    return messages.value
+    return messages.value;
   }
   return messages.value.filter((msg, index) => 
     filteredMessagesIndices.value.includes(index)
-  )
-})
+  );
+});
 
 const filteredMessagesCount = computed(() => {
-  return filteredMessagesIndices.value.length
-})
+  return filteredMessagesIndices.value.length;
+});
 
 onMounted(async () => {
-  await loadConversations()
-  connectWebSocket()
+  await loadConversations();
+  connectWebSocket();
   
   // Check if we should open a specific user's conversation from route query
-  const username = route.query.user as string
+  const username = route.query.user as string;
   if (username) {
     // Search for user and create/open conversation
-    const user = await searchUserByUsername(username)
+    const user = await searchUserByUsername(username);
     if (user) {
-      await createConversationWithUser(user.user_id)
+      await createConversationWithUser(user.user_id);
     }
   }
-})
+});
 
 onUnmounted(() => {
-  disconnectWebSocket()
+  disconnectWebSocket();
   if (localStream.value) {
-    localStream.value.getTracks().forEach(track => track.stop())
+    localStream.value.getTracks().forEach(track => track.stop());
   }
-})
+});
 
 watch(activeConversation, async (newConv) => {
   if (newConv) {
-    await loadMessages(newConv.id)
-    currentParticipants.value = newConv.participants || []
-    conversationSearchQuery.value = ''
-    showConversationSearch.value = false
+    await loadMessages(newConv.id);
+    currentParticipants.value = newConv.participants || [];
+    conversationSearchQuery.value = "";
+    showConversationSearch.value = false;
   }
-})
+});
 
 const loadConversations = async () => {
-  loading.value = true
+  loading.value = true;
   try {
-    const data = await messageAPI.getConversations()
-    conversations.value = Array.isArray(data) ? data : []
+    const data = await messageAPI.getConversations();
+    conversations.value = Array.isArray(data) ? data : [];
     
-    console.log('=== CONVERSATIONS DEBUG ===')
-    console.log('Raw API response:', data)
-    console.log('Conversations count:', conversations.value.length)
-    console.log('Current user ID:', currentUserId.value)
+    console.log("=== CONVERSATIONS DEBUG ===");
+    console.log("Raw API response:", data);
+    console.log("Conversations count:", conversations.value.length);
+    console.log("Current user ID:", currentUserId.value);
     if (conversations.value.length > 0) {
-      console.log('First conversation:', JSON.stringify(conversations.value[0], null, 2))
+      console.log("First conversation:", JSON.stringify(conversations.value[0], null, 2));
       if (conversations.value[0]?.participants) {
-        console.log('First conversation participants:', conversations.value[0].participants)
+        console.log("First conversation participants:", conversations.value[0].participants);
         conversations.value[0].participants.forEach((p, i) => {
           console.log(`Participant ${i}:`, {
             id: p?.id,
@@ -486,71 +726,71 @@ const loadConversations = async () => {
             profile_picture_url: p?.profile_picture_url,
             profilePictureUrl: p?.profilePictureUrl,
             profile_url: p?.profile_url
-          })
-        })
+          });
+        });
       }
     }
-    console.log('=== END DEBUG ===')
+    console.log("=== END DEBUG ===");
     
     // Auto-select first conversation if available
     if (conversations.value.length > 0 && !activeConversation.value) {
-      activeConversation.value = conversations.value[0]
+      activeConversation.value = conversations.value[0];
     }
   } catch (error) {
-    console.error('Failed to load conversations:', error)
+    console.error("Failed to load conversations:", error);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const loadMessages = async (conversationId: string) => {
-  messagesLoading.value = true
+  messagesLoading.value = true;
   try {
-    const data = await messageAPI.getMessages(conversationId)
-    const loadedMessages = Array.isArray(data) ? data : []
+    const data = await messageAPI.getMessages(conversationId);
+    const loadedMessages = Array.isArray(data) ? data : [];
     
     // FIX 2: Sort messages chronologically (Oldest -> Newest) to ensure Top-to-Bottom flow
     messages.value = loadedMessages.sort((a, b) => {
-      return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
-    })
+      return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime();
+    });
 
-    await nextTick()
-    scrollToBottom()
+    await nextTick();
+    scrollToBottom();
   } catch (error) {
-    console.error('Failed to load messages:', error)
+    console.error("Failed to load messages:", error);
   } finally {
-    messagesLoading.value = false
+    messagesLoading.value = false;
   }
-}
+};
 
 const selectConversation = async (conversation: Conversation) => {
-  activeConversation.value = conversation
-}
+  activeConversation.value = conversation;
+};
 
 // Participant management functions
 const searchUsersForParticipants = async () => {
   if (!participantSearchQuery.value.trim()) {
-    participantSearchResults.value = []
-    return
+    participantSearchResults.value = [];
+    return;
   }
   
   try {
-    const data = await userAPI.searchUsers(participantSearchQuery.value)
-    const users = Array.isArray(data) ? data : []
+    const data = await userAPI.searchUsers(participantSearchQuery.value);
+    const users = Array.isArray(data) ? data : [];
     // Filter out users already in the conversation
-    const currentParticipantIds = currentParticipants.value.map(p => p.id || p.user_id)
-    participantSearchResults.value = users.filter(u => !currentParticipantIds.includes(u.user_id))
+    const currentParticipantIds = currentParticipants.value.map(p => p.id || p.user_id);
+    participantSearchResults.value = users.filter(u => !currentParticipantIds.includes(u.user_id));
   } catch (error) {
-    console.error('Failed to search users:', error)
+    console.error("Failed to search users:", error);
   }
-}
+};
 
 const addParticipant = async (user: any) => {
-  if (!activeConversation.value) return
+  if (!activeConversation.value) return;
   
   try {
     // Add participant to conversation via API
-    await messageAPI.addParticipant(activeConversation.value.id, user.user_id)
+    await messageAPI.addParticipant(activeConversation.value.id, user.user_id);
     
     // Update local state
     currentParticipants.value.push({
@@ -559,667 +799,667 @@ const addParticipant = async (user: any) => {
       username: user.username,
       name: user.name,
       profile_picture_url: user.profile_picture_url
-    })
+    });
     
     // Update conversation
-    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id)
+    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id);
     if (convIndex !== -1) {
-      conversations.value[convIndex].participants = [...currentParticipants.value]
-      conversations.value[convIndex].is_group = currentParticipants.value.length > 2
+      conversations.value[convIndex].participants = [...currentParticipants.value];
+      conversations.value[convIndex].is_group = currentParticipants.value.length > 2;
     }
     
-    participantSearchQuery.value = ''
-    participantSearchResults.value = []
+    participantSearchQuery.value = "";
+    participantSearchResults.value = [];
   } catch (error) {
-    console.error('Failed to add participant:', error)
-    alert('Failed to add participant. This feature may require backend support.')
+    console.error("Failed to add participant:", error);
+    alert("Failed to add participant. This feature may require backend support.");
   }
-}
+};
 
 const removeParticipant = async (participant: Participant) => {
-  if (!activeConversation.value) return
+  if (!activeConversation.value) return;
   
-  const participantId = participant.id || participant.user_id
-  if (!participantId) return
+  const participantId = participant.id || participant.user_id;
+  if (!participantId) return;
   
-  if (!confirm(`Remove ${participant.username} from this conversation?`)) return
+  if (!confirm(`Remove ${participant.username} from this conversation?`)) return;
   
   try {
     // Remove participant from conversation via API
-    await messageAPI.removeParticipant(activeConversation.value.id, participantId)
+    await messageAPI.removeParticipant(activeConversation.value.id, participantId);
     
     // Update local state
     currentParticipants.value = currentParticipants.value.filter(p => 
       (p.id || p.user_id) !== participantId
-    )
+    );
     
     // Update conversation
-    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id)
+    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id);
     if (convIndex !== -1) {
-      conversations.value[convIndex].participants = [...currentParticipants.value]
-      conversations.value[convIndex].is_group = currentParticipants.value.length > 2
+      conversations.value[convIndex].participants = [...currentParticipants.value];
+      conversations.value[convIndex].is_group = currentParticipants.value.length > 2;
     }
   } catch (error) {
-    console.error('Failed to remove participant:', error)
-    alert('Failed to remove participant. This feature may require backend support.')
+    console.error("Failed to remove participant:", error);
+    alert("Failed to remove participant. This feature may require backend support.");
   }
-}
+};
 
 const getParticipantAvatar = (participant: Participant): string => {
-  const avatar = participant.profile_picture_url || participant.profilePictureUrl || participant.profile_url || ''
-  return getMediaUrl(avatar)
-}
+  const avatar = participant.profile_picture_url || participant.profilePictureUrl || participant.profile_url || "";
+  return getMediaUrl(avatar);
+};
 
 // Media upload functions
 const openMediaUpload = () => {
-  mediaFileInput.value?.click()
-}
+  mediaFileInput.value?.click();
+};
 
 const handleMediaUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
   
   // Validate file type
-  const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm']
+  const validTypes = ["image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm"];
   if (!validTypes.includes(file.type)) {
-    alert('Please select a valid image or video file')
-    return
+    alert("Please select a valid image or video file");
+    return;
   }
   
   // Validate file size (max 50MB)
   if (file.size > 50 * 1024 * 1024) {
-    alert('File size must be less than 50MB')
-    return
+    alert("File size must be less than 50MB");
+    return;
   }
   
   // Create preview
-  const reader = new FileReader()
+  const reader = new FileReader();
   reader.onload = (e) => {
     selectedMedia.value = {
       file: file,
       preview: e.target?.result as string,
       name: file.name
-    }
-  }
-  reader.readAsDataURL(file)
-}
+    };
+  };
+  reader.readAsDataURL(file);
+};
 
 const clearMediaSelection = () => {
-  selectedMedia.value = null
+  selectedMedia.value = null;
   if (mediaFileInput.value) {
-    mediaFileInput.value.value = ''
+    mediaFileInput.value.value = "";
   }
-}
+};
 
 const isImage = (filename: string): boolean => {
-  return /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)
-}
+  return /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
+};
 
 const isVideo = (filename: string): boolean => {
-  return /\.(mp4|webm|mov)$/i.test(filename)
-}
+  return /\.(mp4|webm|mov)$/i.test(filename);
+};
 
 // Conversation search functions
 const toggleConversationSearch = () => {
-  showConversationSearch.value = !showConversationSearch.value
+  showConversationSearch.value = !showConversationSearch.value;
   if (!showConversationSearch.value) {
-    conversationSearchQuery.value = ''
-    filteredMessagesIndices.value = []
+    conversationSearchQuery.value = "";
+    filteredMessagesIndices.value = [];
   }
-}
+};
 
 const filterMessages = () => {
   if (!conversationSearchQuery.value.trim()) {
-    filteredMessagesIndices.value = []
-    return
+    filteredMessagesIndices.value = [];
+    return;
   }
   
-  const query = conversationSearchQuery.value.toLowerCase()
+  const query = conversationSearchQuery.value.toLowerCase();
   filteredMessagesIndices.value = messages.value
     .map((msg, index) => ({ msg, index }))
     .filter(({ msg }) => msg.content.toLowerCase().includes(query))
-    .map(({ index }) => index)
-}
+    .map(({ index }) => index);
+};
 
 const isMessageHighlighted = (message: Message): boolean => {
-  if (!conversationSearchQuery.value.trim()) return false
-  return message.content.toLowerCase().includes(conversationSearchQuery.value.toLowerCase())
-}
+  if (!conversationSearchQuery.value.trim()) return false;
+  return message.content.toLowerCase().includes(conversationSearchQuery.value.toLowerCase());
+};
 
 // Message status functions
 const getMessageStatus = (message: Message): string => {
   // Check if message has explicit status
-  if (message.status === 'seen') return '✓✓'
-  if (message.status === 'delivered') return '✓✓'
-  if (message.status === 'sent') return '✓'
+  if (message.status === "seen") return "✓✓";
+  if (message.status === "delivered") return "✓✓";
+  if (message.status === "sent") return "✓";
   
   // Default to sent status
-  return '✓'
-}
+  return "✓";
+};
 
 const sendMessage = async () => {
-  if ((!messageText.value.trim() && !selectedMedia.value) || !activeConversation.value || sending.value) return
+  if ((!messageText.value.trim() && !selectedMedia.value) || !activeConversation.value || sending.value) return;
   
-  sending.value = true
-  const content = messageText.value
-  const media = selectedMedia.value
-  messageText.value = '' // Clear immediately for better UX
+  sending.value = true;
+  const content = messageText.value;
+  const media = selectedMedia.value;
+  messageText.value = ""; // Clear immediately for better UX
   
   try {
-    let newMessage
+    let newMessage;
     
     if (media) {
       // Upload media and send message with media
-      console.log('Uploading media:', media.file.name)
-      const formData = new FormData()
-      formData.append('file', media.file)
+      console.log("Uploading media:", media.file.name);
+      const formData = new FormData();
+      formData.append("file", media.file);
       if (content.trim()) {
-        formData.append('content', content)
+        formData.append("content", content);
       }
-      formData.append('conversation_id', activeConversation.value.id)
+      formData.append("conversation_id", activeConversation.value.id);
       
       // This would require a media upload endpoint
-      newMessage = await messageAPI.sendMessageWithMedia(activeConversation.value.id, formData)
-      clearMediaSelection()
+      newMessage = await messageAPI.sendMessageWithMedia(activeConversation.value.id, formData);
+      clearMediaSelection();
     } else {
       // Send text-only message
-      console.log('Sending message:', content, 'to conversation:', activeConversation.value.id)
-      newMessage = await messageAPI.sendMessage(activeConversation.value.id, content)
+      console.log("Sending message:", content, "to conversation:", activeConversation.value.id);
+      newMessage = await messageAPI.sendMessage(activeConversation.value.id, content);
     }
     
-    console.log('Message sent successfully:', newMessage)
+    console.log("Message sent successfully:", newMessage);
     
     // Add message immediately for instant feedback
-    messages.value.push(newMessage)
+    messages.value.push(newMessage);
     
     // Update last message in conversation
-    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id)
+    const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id);
     if (convIndex !== -1) {
-      conversations.value[convIndex].last_message = newMessage
+      conversations.value[convIndex].last_message = newMessage;
       // Move conversation to top
-      const conv = conversations.value.splice(convIndex, 1)[0]
-      conversations.value.unshift(conv)
+      const conv = conversations.value.splice(convIndex, 1)[0];
+      conversations.value.unshift(conv);
     }
     
-    await nextTick()
-    scrollToBottom()
+    await nextTick();
+    scrollToBottom();
   } catch (error) {
-    console.error('Failed to send message:', error)
-    messageText.value = content // Restore message on error
-    alert('Failed to send message. Media upload may require backend support.')
+    console.error("Failed to send message:", error);
+    messageText.value = content; // Restore message on error
+    alert("Failed to send message. Media upload may require backend support.");
   } finally {
-    sending.value = false
+    sending.value = false;
   }
-}
+};
 
 const searchUsers = async () => {
   if (!searchQuery.value.trim()) {
-    searchResults.value = []
-    return
+    searchResults.value = [];
+    return;
   }
   
   try {
-    const data = await userAPI.searchUsers(searchQuery.value)
-    console.log('Search results:', data)
-    searchResults.value = Array.isArray(data) ? data : []
-    console.log('Parsed search results:', searchResults.value)
+    const data = await userAPI.searchUsers(searchQuery.value);
+    console.log("Search results:", data);
+    searchResults.value = Array.isArray(data) ? data : [];
+    console.log("Parsed search results:", searchResults.value);
   } catch (error) {
-    console.error('Failed to search users:', error)
+    console.error("Failed to search users:", error);
   }
-}
+};
 
 const searchUserByUsername = async (username: string) => {
   try {
-    const data = await userAPI.searchUsers(username)
-    const users = Array.isArray(data) ? data : []
-    return users.find(u => u.username === username)
+    const data = await userAPI.searchUsers(username);
+    const users = Array.isArray(data) ? data : [];
+    return users.find(u => u.username === username);
   } catch (error) {
-    console.error('Failed to search user:', error)
-    return null
+    console.error("Failed to search user:", error);
+    return null;
   }
-}
+};
 
 const createConversationWithUser = async (userId: number) => {
   try {
-    console.log('Creating conversation with userId:', userId, 'type:', typeof userId)
+    console.log("Creating conversation with userId:", userId, "type:", typeof userId);
     
     // Check if conversation already exists
     const existingConv = conversations.value.find(conv => 
       !conv.is_group && conv.participants.some(p => p.id === userId)
-    )
+    );
     
     if (existingConv) {
-      activeConversation.value = existingConv
-      showNewConversation.value = false
-      return
+      activeConversation.value = existingConv;
+      showNewConversation.value = false;
+      return;
     }
     
     // Create new conversation
-    const newConv = await messageAPI.createConversation({ participant_ids: [userId] })
-    console.log('Created conversation:', newConv)
+    const newConv = await messageAPI.createConversation({ participant_ids: [userId] });
+    console.log("Created conversation:", newConv);
     
     // Refresh conversations list to get the properly formatted conversation with participant data
-    await loadConversations()
+    await loadConversations();
     
     // Find and select the newly created conversation
-    const createdConv = conversations.value.find(c => c.id === newConv.id)
+    const createdConv = conversations.value.find(c => c.id === newConv.id);
     if (createdConv) {
-      activeConversation.value = createdConv
+      activeConversation.value = createdConv;
     } else {
-      activeConversation.value = newConv
+      activeConversation.value = newConv;
     }
     
-    showNewConversation.value = false
-    searchQuery.value = ''
-    searchResults.value = []
+    showNewConversation.value = false;
+    searchQuery.value = "";
+    searchResults.value = [];
   } catch (error) {
-    console.error('Failed to create conversation:', error)
+    console.error("Failed to create conversation:", error);
   }
-}
+};
 
 const getConversationName = (conversation: Conversation): string => {
   if (conversation.is_group) {
-    return conversation.group_name || 'Group Chat'
+    return conversation.group_name || "Group Chat";
   }
   
   // For 1-on-1, show the other person's name
   if (!conversation.participants || conversation.participants.length === 0) {
-    console.warn('Conversation has no participants:', conversation)
-    return 'Loading...'
+    console.warn("Conversation has no participants:", conversation);
+    return "Loading...";
   }
   
   // Log for debugging
-  console.log('Getting conversation name:', {
+  console.log("Getting conversation name:", {
     conversationId: conversation.id,
     participants: conversation.participants,
     currentUserId: currentUserId.value
-  })
+  });
   
   const otherUser = conversation.participants.find(p => {
-    const participantId = p?.id || p?.user_id
-    return participantId && participantId !== currentUserId.value
-  })
+    const participantId = p?.id || p?.user_id;
+    return participantId && participantId !== currentUserId.value;
+  });
   
   if (!otherUser) {
-    console.warn('Could not find other user in conversation:', {
+    console.warn("Could not find other user in conversation:", {
       conversation,
       currentUserId: currentUserId.value,
       participantIds: conversation.participants.map(p => p?.id || p?.user_id)
-    })
+    });
     
     // Fallback: show the first participant if they're not the current user
-    const firstParticipant = conversation.participants[0]
-    const firstId = firstParticipant?.id || firstParticipant?.user_id
+    const firstParticipant = conversation.participants[0];
+    const firstId = firstParticipant?.id || firstParticipant?.user_id;
     if (firstParticipant && firstId !== currentUserId.value) {
-      return firstParticipant.username || firstParticipant.name || 'User'
+      return firstParticipant.username || firstParticipant.name || "User";
     }
     
     // If first is current user, try second
     if (conversation.participants[1]) {
-      return conversation.participants[1].username || conversation.participants[1].name || 'User'
+      return conversation.participants[1].username || conversation.participants[1].name || "User";
     }
     
-    return 'Loading...'
+    return "Loading...";
   }
   
-  return otherUser.username || otherUser.name || 'User'
-}
+  return otherUser.username || otherUser.name || "User";
+};
 
 const getConversationAvatar = (conversation: Conversation): string => {
   if (conversation.is_group && conversation.group_image_url) {
-    return getMediaUrl(conversation.group_image_url)
+    return getMediaUrl(conversation.group_image_url);
   }
   
   // For 1-on-1, show the other person's avatar
   if (!conversation.participants || conversation.participants.length === 0) {
-    return '/placeholder.svg'
+    return "/placeholder.svg";
   }
   
   const otherUser = conversation.participants.find(p => {
-    const participantId = p?.id || p?.user_id
-    return participantId && participantId !== currentUserId.value
-  })
+    const participantId = p?.id || p?.user_id;
+    return participantId && participantId !== currentUserId.value;
+  });
   
   if (!otherUser) {
     // Fallback to first participant
-    const firstParticipant = conversation.participants[0]
-    const firstId = firstParticipant?.id || firstParticipant?.user_id
+    const firstParticipant = conversation.participants[0];
+    const firstId = firstParticipant?.id || firstParticipant?.user_id;
     if (firstParticipant && firstId !== currentUserId.value) {
-      const avatar = firstParticipant.profile_picture_url || firstParticipant.profilePictureUrl || firstParticipant.profile_url || ''
-      return getMediaUrl(avatar)
+      const avatar = firstParticipant.profile_picture_url || firstParticipant.profilePictureUrl || firstParticipant.profile_url || "";
+      return getMediaUrl(avatar);
     }
     if (conversation.participants[1]) {
-      const avatar = conversation.participants[1].profile_picture_url || conversation.participants[1].profilePictureUrl || conversation.participants[1].profile_url || ''
-      return getMediaUrl(avatar)
+      const avatar = conversation.participants[1].profile_picture_url || conversation.participants[1].profilePictureUrl || conversation.participants[1].profile_url || "";
+      return getMediaUrl(avatar);
     }
-    return '/placeholder.svg'
+    return "/placeholder.svg";
   }
   
-  const avatar = otherUser.profile_picture_url || otherUser.profilePictureUrl || otherUser.profile_url || ''
-  return getMediaUrl(avatar)
-}
+  const avatar = otherUser.profile_picture_url || otherUser.profilePictureUrl || otherUser.profile_url || "";
+  return getMediaUrl(avatar);
+};
 
-const getOnlineStatus = (conversation: Conversation): string => {
+const getOnlineStatus = (): string => {
   // TODO: Implement real online status via WebSocket
-  return 'Active now'
-}
+  return "Active now";
+};
 
 const getMediaUrl = (url: string): string => {
-  if (!url) return '/placeholder.svg'
-  if (url.startsWith('http')) return url
-  return `http://localhost:8000${url}`
-}
+  if (!url) return "/placeholder.svg";
+  if (url.startsWith("http")) return url;
+  return `http://localhost:8000${url}`;
+};
 
 const getSenderAvatar = (message: Message): string => {
   if (!activeConversation.value) {
-    console.log('No active conversation for avatar')
-    return '/placeholder.svg'
+    console.log("No active conversation for avatar");
+    return "/placeholder.svg";
   }
   
   if (!activeConversation.value.participants || activeConversation.value.participants.length === 0) {
-    console.log('No participants in conversation')
-    return '/placeholder.svg'
+    console.log("No participants in conversation");
+    return "/placeholder.svg";
   }
   
   // Find the sender in the conversation participants
   const sender = activeConversation.value.participants.find(
     p => {
-      if (!p) return false
-      const participantId = p.id || p.user_id
-      if (!participantId) return false
-      return participantId.toString() === message.sender_id
+      if (!p) return false;
+      const participantId = p.id || p.user_id;
+      if (!participantId) return false;
+      return participantId.toString() === message.sender_id;
     }
-  )
+  );
   
   if (!sender) {
-    console.log('Sender not found in participants:', {
+    console.log("Sender not found in participants:", {
       senderId: message.sender_id,
       participants: activeConversation.value.participants.map(p => ({
         id: p?.id,
         user_id: p?.user_id,
         username: p?.username
       }))
-    })
-    return '/placeholder.svg'
+    });
+    return "/placeholder.svg";
   }
   
-  const avatarUrl = sender.profile_picture_url || sender.profilePictureUrl || sender.profile_url || ''
-  return getMediaUrl(avatarUrl)
-}
+  const avatarUrl = sender.profile_picture_url || sender.profilePictureUrl || sender.profile_url || "";
+  return getMediaUrl(avatarUrl);
+};
 
 const formatTimestamp = (timestamp: string): string => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInMs = now.getTime() - date.getTime()
-  const diffInMins = Math.floor(diffInMs / 60000)
-  const diffInHours = Math.floor(diffInMins / 60)
-  const diffInDays = Math.floor(diffInHours / 24)
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInMins = Math.floor(diffInMs / 60000);
+  const diffInHours = Math.floor(diffInMins / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
 
-  if (diffInMins < 60) return `${diffInMins}m`
-  if (diffInHours < 24) return `${diffInHours}h`
-  if (diffInDays < 7) return `${diffInDays}d`
-  return date.toLocaleDateString()
-}
+  if (diffInMins < 60) return `${diffInMins}m`;
+  if (diffInHours < 24) return `${diffInHours}h`;
+  if (diffInDays < 7) return `${diffInDays}d`;
+  return date.toLocaleDateString();
+};
 
 const formatMessageTime = (timestamp: string): string => {
-  const date = new Date(timestamp)
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-}
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+};
 
 const scrollToBottom = () => {
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
     // Use requestAnimationFrame for smoother scroll
     requestAnimationFrame(() => {
       if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
       }
-    })
+    });
   }
-}
+};
 
 // Emoji and heart functions
 const insertEmoji = () => {
-  const emojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '😍', '🤔', '😎', '👏']
-  const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)]
-  messageText.value += randomEmoji
-  messageInputRef.value?.focus()
-}
+  const emojis = ["😊", "😂", "❤️", "👍", "🎉", "🔥", "😍", "🤔", "😎", "👏"];
+  const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+  messageText.value += randomEmoji;
+  messageInputRef.value?.focus();
+};
 
 const sendHeart = async () => {
-  if (!activeConversation.value || sending.value) return
-  messageText.value = '❤️'
-  await sendMessage()
-}
+  if (!activeConversation.value || sending.value) return;
+  messageText.value = "❤️";
+  await sendMessage();
+};
 
 // Message context menu functions
 const openMessageMenu = (message: Message, event: MouseEvent) => {
-  selectedMessage.value = message
-  menuPosition.value = { x: event.clientX, y: event.clientY }
-  showMessageMenu.value = true
+  selectedMessage.value = message;
+  menuPosition.value = { x: event.clientX, y: event.clientY };
+  showMessageMenu.value = true;
   
   // Close menu when clicking outside
-  document.addEventListener('click', closeMessageMenu, { once: true })
-}
+  document.addEventListener("click", closeMessageMenu, { once: true });
+};
 
 const closeMessageMenu = () => {
-  showMessageMenu.value = false
-  selectedMessage.value = null
-}
+  showMessageMenu.value = false;
+  selectedMessage.value = null;
+};
 
 const deleteMessage = async (messageId: string) => {
-  if (!confirm('Delete this message?')) return
+  if (!confirm("Delete this message?")) return;
   
   try {
-    await messageAPI.unsendMessage(messageId)
+    await messageAPI.unsendMessage(messageId);
     
     // Remove message from list
-    messages.value = messages.value.filter(m => m.id !== messageId)
+    messages.value = messages.value.filter(m => m.id !== messageId);
     
-    closeMessageMenu()
+    closeMessageMenu();
   } catch (error) {
-    console.error('Failed to delete message:', error)
-    alert('Failed to delete message')
+    console.error("Failed to delete message:", error);
+    alert("Failed to delete message");
   }
-}
+};
 
 const copyMessage = () => {
   if (selectedMessage.value) {
-    navigator.clipboard.writeText(selectedMessage.value.content)
-    closeMessageMenu()
+    navigator.clipboard.writeText(selectedMessage.value.content);
+    closeMessageMenu();
   }
-}
+};
 
 const deleteConversation = async () => {
-  if (!activeConversation.value) return
+  if (!activeConversation.value) return;
   
-  if (!confirm('Delete this conversation? All messages will be removed.')) return
+  if (!confirm("Delete this conversation? All messages will be removed.")) return;
   
   try {
-    await messageAPI.deleteConversation(activeConversation.value.id)
+    await messageAPI.deleteConversation(activeConversation.value.id);
     
     // Remove conversation from list
-    conversations.value = conversations.value.filter(c => c.id !== activeConversation.value?.id)
+    conversations.value = conversations.value.filter(c => c.id !== activeConversation.value?.id);
     
     // Clear active conversation
-    activeConversation.value = conversations.value[0] || null
-    messages.value = []
+    activeConversation.value = conversations.value[0] || null;
+    messages.value = [];
   } catch (error) {
-    console.error('Failed to delete conversation:', error)
-    alert('Failed to delete conversation')
+    console.error("Failed to delete conversation:", error);
+    alert("Failed to delete conversation");
   }
-}
+};
 
 // WebSocket connection
 const connectWebSocket = () => {
-  const token = localStorage.getItem('jwt_token')
-  if (!token) return
+  const token = localStorage.getItem("jwt_token");
+  if (!token) return;
   
-  const wsUrl = `ws://localhost:9004/ws?token=${token}`
-  ws = new WebSocket(wsUrl)
+  const wsUrl = `ws://localhost:9004/ws?token=${token}`;
+  ws = new WebSocket(wsUrl);
   
   ws.onopen = () => {
-    console.log('WebSocket connected')
-  }
+    console.log("WebSocket connected");
+  };
   
   ws.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data)
-      let newMessage = null
+      const data = JSON.parse(event.data);
+      let newMessage = null;
       
-      if (data.type === 'message' && data.message) {
-        newMessage = data.message
+      if (data.type === "message" && data.message) {
+        newMessage = data.message;
       } else if (data.id && data.content && data.sender_id) {
-        newMessage = data
+        newMessage = data;
       }
       
       if (newMessage) {
         // Handle active conversation updates
         if (activeConversation.value?.id === newMessage.conversation_id) {
-          const exists = messages.value.some(m => m.id === newMessage.id)
+          const exists = messages.value.some(m => m.id === newMessage.id);
           if (!exists) {
-            messages.value.push(newMessage)
+            messages.value.push(newMessage);
             
             // ★ KEY FIX: Re-sort strictly by time (Oldest -> Newest)
             // This ensures that even if a message arrives slightly late due to lag,
             // it slots into the correct position in the chat history.
             messages.value.sort((a, b) => 
               new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
-            )
+            );
 
             nextTick(() => {
-              scrollToBottom()
-            })
+              scrollToBottom();
+            });
           }
         }
         
         // Update conversation list preview
-        const convIndex = conversations.value.findIndex(c => c.id === newMessage.conversation_id)
+        const convIndex = conversations.value.findIndex(c => c.id === newMessage.conversation_id);
         if (convIndex !== -1) {
-          conversations.value[convIndex].last_message = newMessage
-          const conv = conversations.value.splice(convIndex, 1)[0]
-          conversations.value.unshift(conv)
+          conversations.value[convIndex].last_message = newMessage;
+          const conv = conversations.value.splice(convIndex, 1)[0];
+          conversations.value.unshift(conv);
         } else {
-          loadConversations()
+          loadConversations();
         }
       }
     } catch (error) {
-      console.error('Failed to parse WebSocket message:', error)
+      console.error("Failed to parse WebSocket message:", error);
     }
-  }
+  };
   
   ws.onerror = (error) => {
-    console.error('WebSocket error:', error)
-  }
+    console.error("WebSocket error:", error);
+  };
   
   ws.onclose = () => {
-    console.log('WebSocket disconnected')
+    console.log("WebSocket disconnected");
     setTimeout(() => {
       if (!ws || ws.readyState === WebSocket.CLOSED) {
-        connectWebSocket()
+        connectWebSocket();
       }
-    }, 3000)
-  }
-}
+    }, 3000);
+  };
+};
 
 const disconnectWebSocket = () => {
   if (ws) {
-    ws.close()
-    ws = null
+    ws.close();
+    ws = null;
   }
-}
+};
 
 // Video call functions
 const startVideoCall = async () => {
-  if (!activeConversation.value) return
+  if (!activeConversation.value) return;
   
   try {
     // Get video call token
-    const response = await messageAPI.getVideoToken(activeConversation.value.id)
-    console.log('Video call response:', response)
-    console.log('Room ID:', response.room_id, 'Token:', response.token)
+    const response = await messageAPI.getVideoToken(activeConversation.value.id);
+    console.log("Video call response:", response);
+    console.log("Room ID:", response.room_id, "Token:", response.token);
     
     // Get user media
     localStream.value = await navigator.mediaDevices.getUserMedia({ 
       video: true, 
       audio: true 
-    })
+    });
     
-    showVideoCall.value = true
+    showVideoCall.value = true;
     
-    await nextTick()
+    await nextTick();
     
     if (localVideoRef.value && localStream.value) {
-      localVideoRef.value.srcObject = localStream.value
+      localVideoRef.value.srcObject = localStream.value;
     }
     
     // Display room ID to user
-    alert(`Video call started for conversation ${response.room_id}\\n\\nShare this room ID with the other person to join the same call.\\n\\nNote: This is a basic implementation showing only your local video. Full WebRTC peer-to-peer connection requires additional setup.`)
+    alert(`Video call started for conversation ${response.room_id}\\n\\nShare this room ID with the other person to join the same call.\\n\\nNote: This is a basic implementation showing only your local video. Full WebRTC peer-to-peer connection requires additional setup.`);
     
     // TODO: Implement WebRTC peer connection with the token
     // For now, just show the local video
   } catch (error) {
-    console.error('Failed to start video call:', error)
-    alert('Failed to start video call. Please check camera permissions.')
+    console.error("Failed to start video call:", error);
+    alert("Failed to start video call. Please check camera permissions.");
   }
-}
+};
 
 const startAudioCall = async () => {
-  if (!activeConversation.value) return
+  if (!activeConversation.value) return;
   
   try {
     // Get video call token (same endpoint, but we won't enable video)
-    const response = await messageAPI.getVideoToken(activeConversation.value.id)
-    console.log('Audio call token:', response)
+    const response = await messageAPI.getVideoToken(activeConversation.value.id);
+    console.log("Audio call token:", response);
     
     // Get user media - AUDIO ONLY
     localStream.value = await navigator.mediaDevices.getUserMedia({ 
       video: false,  // No video for audio call
       audio: true 
-    })
+    });
     
-    showVideoCall.value = true
-    isVideoEnabled.value = false  // Mark video as disabled
+    showVideoCall.value = true;
+    isVideoEnabled.value = false;  // Mark video as disabled
     
     // No need to attach video elements since there's no video
     // TODO: Implement WebRTC peer connection with the token
   } catch (error) {
-    console.error('Failed to start audio call:', error)
-    alert('Failed to start audio call. Please check microphone permissions.')
+    console.error("Failed to start audio call:", error);
+    alert("Failed to start audio call. Please check microphone permissions.");
   }
-}
+};
 
 const endVideoCall = () => {
   if (localStream.value) {
-    localStream.value.getTracks().forEach(track => track.stop())
-    localStream.value = null
+    localStream.value.getTracks().forEach(track => track.stop());
+    localStream.value = null;
   }
-  showVideoCall.value = false
-  isVideoEnabled.value = true
-  isMuted.value = false
-}
+  showVideoCall.value = false;
+  isVideoEnabled.value = true;
+  isMuted.value = false;
+};
 
 const toggleMute = () => {
   if (localStream.value) {
-    const audioTrack = localStream.value.getAudioTracks()[0]
+    const audioTrack = localStream.value.getAudioTracks()[0];
     if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled
-      isMuted.value = !audioTrack.enabled
+      audioTrack.enabled = !audioTrack.enabled;
+      isMuted.value = !audioTrack.enabled;
     }
   }
-}
+};
 
 const toggleVideo = () => {
   if (localStream.value) {
-    const videoTrack = localStream.value.getVideoTracks()[0]
+    const videoTrack = localStream.value.getVideoTracks()[0];
     if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled
-      isVideoEnabled.value = videoTrack.enabled
+      videoTrack.enabled = !videoTrack.enabled;
+      isVideoEnabled.value = videoTrack.enabled;
     }
   }
-}
+};
 </script>
 
 <style scoped lang="scss">

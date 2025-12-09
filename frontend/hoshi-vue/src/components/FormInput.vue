@@ -4,11 +4,16 @@
       :type="type"
       :placeholder="placeholder"
       :value="modelValue"
-      @input="handleInput"
       class="input"
       :class="{ error: errorMessage }"
+      @input="handleInput"
     />
-    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+    <p
+      v-if="errorMessage"
+      class="error-message"
+    >
+      {{ errorMessage }}
+    </p>
   </div>
 </template>
 
@@ -18,16 +23,16 @@ defineProps<{
   placeholder?: string
   modelValue?: string
   errorMessage?: string
-}>()
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-}>()
+  "update:modelValue": [value: string]
+}>();
 
 const handleInput = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  emit('update:modelValue', target.value)
-}
+  const target = event.target as HTMLInputElement;
+  emit("update:modelValue", target.value);
+};
 </script>
 
 <style scoped lang="scss">

@@ -10,6 +10,12 @@ service MediaService {
   
   // Upload media with automatic thumbnail generation for videos
   rpc UploadMedia (UploadMediaRequest) returns (UploadMediaResponse);
+  
+  // Get a secure pre-signed URL to access media (for private buckets)
+  rpc GetMediaURL (GetMediaURLRequest) returns (GetMediaURLResponse);
+  
+  // Generate thumbnail for an uploaded video
+  rpc GenerateThumbnail (GenerateThumbnailRequest) returns (GenerateThumbnailResponse);
 }
 
 message GetUploadURLRequest {
@@ -33,4 +39,23 @@ message UploadMediaRequest {
 message UploadMediaResponse {
   string media_url = 1; // The URL of the uploaded media
   string thumbnail_url = 2; // The URL of the generated thumbnail (empty for non-videos)
+}
+
+message GetMediaURLRequest {
+  string object_name = 1; // The object path in MinIO (e.g., "user-123/posts/abc.jpg")
+  int32 expiry_seconds = 2; // Optional expiry time in seconds (default: 3600)
+}
+
+message GetMediaURLResponse {
+  string media_url = 1; // The pre-signed GET URL with expiration
+}
+
+message GenerateThumbnailRequest {
+  string object_name = 1; // The video object path in MinIO (e.g., "user-123/posts/video.mp4")
+  int64 user_id = 2; // User ID for organizing thumbnails
+  double timestamp_seconds = 3; // Timestamp in seconds for thumbnail frame (default: 1.0)
+}
+
+message GenerateThumbnailResponse {
+  string thumbnail_url = 1; // The thumbnail object path (e.g., "user-123/thumbnails/abc.jpg")
 }

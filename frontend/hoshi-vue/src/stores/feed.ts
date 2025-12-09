@@ -1,5 +1,5 @@
-import { defineStore } from 'pinia'
-import { feedAPI, postAPI, collectionAPI, storyAPI } from '@/services/api'
+import { defineStore } from "pinia";
+import { feedAPI, postAPI, collectionAPI, storyAPI } from "@/services/api";
 
 interface Post {
   id: string
@@ -16,6 +16,7 @@ interface Post {
   share_count?: number
   is_liked?: boolean
   is_saved?: boolean
+  thumbnail_url?: string
 }
 
 interface FeedState {
@@ -30,7 +31,7 @@ interface FeedState {
   hasMore: boolean
 }
 
-export const useFeedStore = defineStore('feed', {
+export const useFeedStore = defineStore("feed", {
   state: (): FeedState => ({
     homeFeed: [],
     exploreFeed: [],
@@ -45,34 +46,34 @@ export const useFeedStore = defineStore('feed', {
 
   actions: {
     async loadHomeFeed(page: number = 1, limit: number = 20) {
-      this.loading = true
+      this.loading = true;
       try {
-        console.log('Fetching home feed - page:', page, 'limit:', limit)
-        const response = await feedAPI.getHomeFeed(page, limit)
-        console.log('API response:', response)
-        console.log('Response type:', typeof response)
-        console.log('Is array?:', Array.isArray(response))
+        console.log("Fetching home feed - page:", page, "limit:", limit);
+        const response = await feedAPI.getHomeFeed(page, limit);
+        console.log("API response:", response);
+        console.log("Response type:", typeof response);
+        console.log("Is array?:", Array.isArray(response));
         
         // Handle different possible response structures
-        let posts = []
+        let posts = [];
         if (Array.isArray(response)) {
           // Response is directly an array
-          posts = response
-          console.log('Response is direct array with', posts.length, 'posts')
+          posts = response;
+          console.log("Response is direct array with", posts.length, "posts");
         } else if (response.posts && Array.isArray(response.posts)) {
-          posts = response.posts
-          console.log('Found posts in response.posts with', posts.length, 'posts')
+          posts = response.posts;
+          console.log("Found posts in response.posts with", posts.length, "posts");
         } else if (response.data && Array.isArray(response.data)) {
-          posts = response.data
-          console.log('Found posts in response.data with', posts.length, 'posts')
+          posts = response.data;
+          console.log("Found posts in response.data with", posts.length, "posts");
         } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-          posts = response.data.posts
-          console.log('Found posts in response.data.posts with', posts.length, 'posts')
+          posts = response.data.posts;
+          console.log("Found posts in response.data.posts with", posts.length, "posts");
         }
         
-        console.log('Extracted posts:', posts.length, 'items')
+        console.log("Extracted posts:", posts.length, "items");
         if (posts.length > 0) {
-          console.log('First post sample:', posts[0])
+          console.log("First post sample:", posts[0]);
         }
         
         // Ensure all posts have valid numeric values
@@ -83,50 +84,50 @@ export const useFeedStore = defineStore('feed', {
           share_count: post.share_count || 0,
           is_liked: post.is_liked || false,
           is_saved: post.is_saved || false
-        }))
+        }));
         
         if (page === 1) {
-          this.homeFeed = posts
+          this.homeFeed = posts;
         } else {
-          this.homeFeed.push(...posts)
+          this.homeFeed.push(...posts);
         }
-        this.homePage = page
-        this.hasMore = posts.length === limit
+        this.homePage = page;
+        this.hasMore = posts.length === limit;
         
-        console.log('Home feed after load:', this.homeFeed.length, 'posts')
+        console.log("Home feed after load:", this.homeFeed.length, "posts");
       } catch (error: any) {
-        console.error('Failed to load home feed:', error)
-        console.error('Error details:', error.response?.data || error.message)
+        console.error("Failed to load home feed:", error);
+        console.error("Error details:", error.response?.data || error.message);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async loadStoryFeed() {
       try {
-        const response = await storyAPI.getStoryFeed()
+        const response = await storyAPI.getStoryFeed();
         // Backend returns array directly, not wrapped in an object
-        this.storyFeed = Array.isArray(response) ? response : (response.story_groups || [])
+        this.storyFeed = Array.isArray(response) ? response : (response.story_groups || []);
       } catch (error) {
-        console.error("Failed to load stories", error)
+        console.error("Failed to load stories", error);
       }
     },
 
     async loadExploreFeed(page: number = 1, limit: number = 20) {
-      this.loading = true
+      this.loading = true;
       try {
-        const response = await feedAPI.getExploreFeed(page, limit)
+        const response = await feedAPI.getExploreFeed(page, limit);
         
         // Handle different possible response structures
-        let posts = []
+        let posts = [];
         if (Array.isArray(response)) {
-          posts = response
+          posts = response;
         } else if (response.posts && Array.isArray(response.posts)) {
-          posts = response.posts
+          posts = response.posts;
         } else if (response.data && Array.isArray(response.data)) {
-          posts = response.data
+          posts = response.data;
         } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-          posts = response.data.posts
+          posts = response.data.posts;
         }
         
         // Ensure all posts have valid numeric values
@@ -137,38 +138,50 @@ export const useFeedStore = defineStore('feed', {
           share_count: post.share_count || 0,
           is_liked: post.is_liked || false,
           is_saved: post.is_saved || false
-        }))
+        }));
+        
+        // Debug logging for thumbnails
+        console.log(`📸 Explore Feed loaded ${posts.length} posts`);
+        posts.forEach((post: any, index: number) => {
+          if (post.is_reel || (post.media_urls && post.media_urls[0] && post.media_urls[0].match(/\.(mp4|mov|avi|webm|mkv)$/i))) {
+            console.log(`  Post ${index + 1} (ID: ${post.id}):`, {
+              is_reel: post.is_reel,
+              thumbnail_url: post.thumbnail_url || '(empty)',
+              first_media: post.media_urls?.[0]?.substring(0, 50)
+            });
+          }
+        });
         
         if (page === 1) {
-          this.exploreFeed = posts
+          this.exploreFeed = posts;
         } else {
-          this.exploreFeed.push(...posts)
+          this.exploreFeed.push(...posts);
         }
-        this.explorePage = page
-        this.hasMore = posts.length === limit
+        this.explorePage = page;
+        this.hasMore = posts.length === limit;
       } catch (error: any) {
-        console.error('Failed to load explore feed:', error)
-        console.error('Error details:', error.response?.data || error.message)
+        console.error("Failed to load explore feed:", error);
+        console.error("Error details:", error.response?.data || error.message);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
     async loadReelsFeed(page: number = 1, limit: number = 20) {
-      this.loading = true
+      this.loading = true;
       try {
-        const response = await feedAPI.getReelsFeed(page, limit)
+        const response = await feedAPI.getReelsFeed(page, limit);
         
         // Handle different possible response structures
-        let posts = []
+        let posts = [];
         if (Array.isArray(response)) {
-          posts = response
+          posts = response;
         } else if (response.posts && Array.isArray(response.posts)) {
-          posts = response.posts
+          posts = response.posts;
         } else if (response.data && Array.isArray(response.data)) {
-          posts = response.data
+          posts = response.data;
         } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-          posts = response.data.posts
+          posts = response.data.posts;
         }
         
         // Ensure all posts have valid numeric values
@@ -179,115 +192,115 @@ export const useFeedStore = defineStore('feed', {
           share_count: post.share_count || 0,
           is_liked: post.is_liked || false,
           is_saved: post.is_saved || false
-        }))
+        }));
         
         if (page === 1) {
-          this.reelsFeed = posts
+          this.reelsFeed = posts;
         } else {
-          this.reelsFeed.push(...posts)
+          this.reelsFeed.push(...posts);
         }
-        this.reelsPage = page
-        this.hasMore = posts.length === limit
+        this.reelsPage = page;
+        this.hasMore = posts.length === limit;
       } catch (error: any) {
-        console.error('Failed to load reels feed:', error)
-        console.error('Error details:', error.response?.data || error.message)
+        console.error("Failed to load reels feed:", error);
+        console.error("Error details:", error.response?.data || error.message);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    async toggleLike(postId: string, feedType: 'home' | 'explore' | 'reels' = 'home') {
-      const feed = feedType === 'home' ? this.homeFeed : feedType === 'explore' ? this.exploreFeed : this.reelsFeed
-      const post = feed.find(p => p.id === postId)
-      if (!post) return
+    async toggleLike(postId: string, feedType: "home" | "explore" | "reels" = "home") {
+      const feed = feedType === "home" ? this.homeFeed : feedType === "explore" ? this.exploreFeed : this.reelsFeed;
+      const post = feed.find(p => p.id === postId);
+      if (!post) return;
 
       // Optimistic update
-      const wasLiked = post.is_liked || false
-      post.is_liked = !wasLiked
+      const wasLiked = post.is_liked || false;
+      post.is_liked = !wasLiked;
       
       // Ensure like_count is a number
-      if (typeof post.like_count !== 'number' || isNaN(post.like_count)) {
-        post.like_count = 0
+      if (typeof post.like_count !== "number" || isNaN(post.like_count)) {
+        post.like_count = 0;
       }
       
-      post.like_count += post.is_liked ? 1 : -1
+      post.like_count += post.is_liked ? 1 : -1;
 
       try {
         if (wasLiked) {
-          await postAPI.unlikePost(postId)
+          await postAPI.unlikePost(postId);
         } else {
-          await postAPI.likePost(postId)
+          await postAPI.likePost(postId);
         }
       } catch (error) {
         // Rollback on error
-        post.is_liked = wasLiked
-        post.like_count += wasLiked ? 1 : -1
-        console.error('Failed to toggle like:', error)
+        post.is_liked = wasLiked;
+        post.like_count += wasLiked ? 1 : -1;
+        console.error("Failed to toggle like:", error);
       }
     },
 
-    async toggleSave(postId: string, collectionId: string = '1', feedType: 'home' | 'explore' | 'reels' = 'home') {
-      const feed = feedType === 'home' ? this.homeFeed : feedType === 'explore' ? this.exploreFeed : this.reelsFeed
-      const post = feed.find(p => p.id === postId)
-      if (!post) return
+    async toggleSave(postId: string, feedType: "home" | "explore" | "reels" = "home") {
+      const feed = feedType === "home" ? this.homeFeed : feedType === "explore" ? this.exploreFeed : this.reelsFeed;
+      const post = feed.find(p => p.id === postId);
+      if (!post) return;
 
       // Optimistic update
-      const wasSaved = post.is_saved || false
-      post.is_saved = !wasSaved
+      const wasSaved = post.is_saved || false;
+      post.is_saved = !wasSaved;
 
       try {
         // Use numeric post ID
-        const numericPostId = parseInt(postId)
+        const numericPostId = parseInt(postId);
         if (isNaN(numericPostId)) {
-          throw new Error('Invalid post ID')
+          throw new Error("Invalid post ID");
         }
 
         if (wasSaved) {
           // Unsave: Backend requires us to know which collection, so fetch collections first
           try {
-            const collectionsRes = await collectionAPI.getAll()
-            const collections = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes.collections || [])
+            const collectionsRes = await collectionAPI.getAll();
+            const collections = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes.collections || []);
             
             if (collections.length > 0) {
               // Try to unsave from the first collection (usually the default one)
-              await collectionAPI.unsavePost(String(collections[0].id), postId)
+              await collectionAPI.unsavePost(String(collections[0].id), postId);
             }
           } catch (err) {
-            console.error('Failed to unsave:', err)
+            console.error("Failed to unsave:", err);
           }
         } else {
           // Save: Use collection ID 1 - backend will auto-create if needed
-          await collectionAPI.savePost('1', numericPostId)
+          await collectionAPI.savePost("1", numericPostId);
         }
       } catch (error: any) {
         // Rollback on error
-        post.is_saved = wasSaved
-        console.error('Failed to toggle save:', error)
-        console.error('Error details:', error.response?.data || error.message)
+        post.is_saved = wasSaved;
+        console.error("Failed to toggle save:", error);
+        console.error("Error details:", error.response?.data || error.message);
       }
     },
 
     addPost(post: Post) {
-      this.homeFeed.unshift(post)
+      this.homeFeed.unshift(post);
     },
 
     updatePost(postId: string, updates: Partial<Post>) {
       const updateFeed = (feed: Post[]) => {
-        const index = feed.findIndex(p => p.id === postId)
+        const index = feed.findIndex(p => p.id === postId);
         if (index !== -1) {
-          feed[index] = { ...feed[index], ...updates }
+          feed[index] = { ...feed[index], ...updates };
         }
-      }
+      };
 
-      updateFeed(this.homeFeed)
-      updateFeed(this.exploreFeed)
-      updateFeed(this.reelsFeed)
+      updateFeed(this.homeFeed);
+      updateFeed(this.exploreFeed);
+      updateFeed(this.reelsFeed);
     },
 
     removePost(postId: string) {
-      this.homeFeed = this.homeFeed.filter(p => p.id !== postId)
-      this.exploreFeed = this.exploreFeed.filter(p => p.id !== postId)
-      this.reelsFeed = this.reelsFeed.filter(p => p.id !== postId)
+      this.homeFeed = this.homeFeed.filter(p => p.id !== postId);
+      this.exploreFeed = this.exploreFeed.filter(p => p.id !== postId);
+      this.reelsFeed = this.reelsFeed.filter(p => p.id !== postId);
     }
   }
-})
+});

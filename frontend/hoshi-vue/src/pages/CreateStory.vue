@@ -4,30 +4,63 @@
       <!-- Left Panel: Upload Area -->
       <div class="upload-panel">
         <!-- Upload Area - shown when no media selected -->
-        <div v-show="!storyMedia" class="upload-area" @dragover="handleDragOver" @dragleave="handleDragLeave" @drop="handleDrop">
+        <div
+          v-show="!storyMedia"
+          class="upload-area"
+          @dragover="handleDragOver"
+          @dragleave="handleDragLeave"
+          @drop="handleDrop"
+        >
           <div :class="['upload-content', { 'dragging': isDragging }]">
-            <div class="upload-icon">📸</div>
+            <div class="upload-icon">
+              📸
+            </div>
             <h2>Create a story</h2>
             <p>Upload a photo or video to get started</p>
-            <button class="upload-btn" @click="triggerFileUpload">Choose from device</button>
+            <button
+              class="upload-btn"
+              @click="triggerFileUpload"
+            >
+              Choose from device
+            </button>
           </div>
           <input 
             ref="fileInput" 
             type="file" 
             accept="image/*,video/*" 
-            @change="handleFileUpload"
             style="display: none"
+            @change="handleFileUpload"
           />
         </div>
 
         <!-- Story Preview - shown when media selected -->
-        <div v-show="storyMedia" class="story-preview-container">
-          <div class="story-preview" :style="{ filter: getFilterStyle(currentFilter) }">
-            <img v-show="storyType === 'image'" :src="storyMedia" alt="Story preview" class="preview-media" />
-            <video v-show="storyType === 'video'" :src="storyMedia" class="preview-media" @loadedmetadata="updateVideoDuration"></video>
+        <div
+          v-show="storyMedia"
+          class="story-preview-container"
+        >
+          <div
+            class="story-preview"
+            :style="{ filter: getFilterStyle(currentFilter) }"
+          >
+            <img
+              v-show="storyType === 'image'"
+              :src="storyMedia"
+              alt="Story preview"
+              class="preview-media"
+            />
+            <video
+              v-show="storyType === 'video'"
+              :src="storyMedia"
+              class="preview-media"
+              @loadedmetadata="updateVideoDuration"
+            ></video>
             
             <!-- Text Overlay -->
-            <div v-show="textOverlay.text" :class="['text-overlay', `text-${textOverlay.position}`]" :style="textOverlayStyle">
+            <div
+              v-show="textOverlay.text"
+              :class="['text-overlay', `text-${textOverlay.position}`]"
+              :style="textOverlayStyle"
+            >
               {{ textOverlay.text }}
             </div>
 
@@ -44,7 +77,12 @@
           </div>
 
           <!-- Change Media Button -->
-          <button class="change-media-btn" @click="resetMedia">Change Media</button>
+          <button
+            class="change-media-btn"
+            @click="resetMedia"
+          >
+            Change Media
+          </button>
         </div>
       </div>
 
@@ -52,7 +90,12 @@
       <div class="tools-panel">
         <div class="tools-header">
           <h3>Story Editor</h3>
-          <button class="close-btn" @click="goBack">✕</button>
+          <button
+            class="close-btn"
+            @click="goBack"
+          >
+            ✕
+          </button>
         </div>
 
         <div class="tools-section">
@@ -68,7 +111,9 @@
               class="text-input"
               maxlength="200"
             ></textarea>
-            <p class="char-count">{{ textOverlay.text.length }}/200</p>
+            <p class="char-count">
+              {{ textOverlay.text.length }}/200
+            </p>
 
             <!-- Text Position -->
             <div class="position-selector">
@@ -138,23 +183,41 @@
           <!-- Story Settings -->
           <div class="tool-group settings-group">
             <label class="checkbox-label">
-              <input v-model="storySettings.allowReplies" type="checkbox" />
+              <input
+                v-model="storySettings.allowReplies"
+                type="checkbox"
+              />
               <span>Allow replies</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="storySettings.hideViews" type="checkbox" />
+              <input
+                v-model="storySettings.hideViews"
+                type="checkbox"
+              />
               <span>Hide views</span>
             </label>
             <label class="checkbox-label">
-              <input v-model="storySettings.saveToDrafts" type="checkbox" />
+              <input
+                v-model="storySettings.saveToDrafts"
+                type="checkbox"
+              />
               <span>Save to drafts</span>
             </label>
           </div>
 
           <!-- Action Buttons -->
           <div class="action-buttons">
-            <button class="discard-btn" @click="goBack">Discard</button>
-            <button class="share-btn" @click="handleShareStory" :disabled="isLoading">
+            <button
+              class="discard-btn"
+              @click="goBack"
+            >
+              Discard
+            </button>
+            <button
+              class="share-btn"
+              :disabled="isLoading"
+              @click="handleShareStory"
+            >
               {{ isLoading ? 'Sharing...' : 'Share Story' }}
             </button>
           </div>
@@ -166,135 +229,135 @@
 
 <!-- eslint-disable-next-line vue/no-setup-props-destructure -->
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { mediaAPI, storyAPI } from '@/services/api'
+import { ref, reactive, computed } from "vue";
+import { useRouter } from "vue-router";
+import { mediaAPI, storyAPI } from "@/services/api";
 
-const router = useRouter()
-const fileInput = ref<HTMLInputElement>()
-const selectedFile = ref<File | null>(null)
-const isDragging = ref(false)
-const isLoading = ref(false)
-const storyMedia = ref<string>('')
-const storyType = ref<'image' | 'video'>('image')
-const currentFilter = ref('None')
-const videoDuration = ref(0)
-const isDraggingSticker = ref(false)
-const currentStickerIndex = ref(-1)
-const dragOffset = reactive({ x: 0, y: 0 })
+const router = useRouter();
+const fileInput = ref<HTMLInputElement>();
+const selectedFile = ref<File | null>(null);
+const isDragging = ref(false);
+const isLoading = ref(false);
+const storyMedia = ref<string>("");
+const storyType = ref<"image" | "video">("image");
+const currentFilter = ref("None");
+const videoDuration = ref(0);
+const isDraggingSticker = ref(false);
+const currentStickerIndex = ref(-1);
+const dragOffset = reactive({ x: 0, y: 0 });
 
 const textOverlay = reactive({
-  text: '',
-  position: 'bottom',
-  color: '#ffffff',
+  text: "",
+  position: "bottom",
+  color: "#ffffff",
   fontSize: 24,
-})
+});
 
-const stickers = ref<Array<{ emoji: string; style: Record<string, any> }>>([])
+const stickers = ref<Array<{ emoji: string; style: Record<string, any> }>>([]);
 
 const storySettings = reactive({
   allowReplies: true,
   hideViews: false,
   saveToDrafts: false,
-})
+});
 
-const textColors = ['#ffffff', '#000000', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff']
-const positionOptions = ['top', 'middle', 'bottom']
-const stickersLibrary = ['😀', '😂', '❤️', '👍', '🔥', '✨', '🎉', '🎊', '🌟', '💯', '👏', '🙌', '💕', '😍', '🤔', '😎']
+const textColors = ["#ffffff", "#000000", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"];
+const positionOptions = ["top", "middle", "bottom"];
+const stickersLibrary = ["😀", "😂", "❤️", "👍", "🔥", "✨", "🎉", "🎊", "🌟", "💯", "👏", "🙌", "💕", "😍", "🤔", "😎"];
 const filters = [
-  { name: 'None', css: 'filter: none' },
-  { name: 'Grayscale', css: 'filter: grayscale(100%)' },
-  { name: 'Sepia', css: 'filter: sepia(100%)' },
-  { name: 'Bright', css: 'filter: brightness(1.3)' },
-  { name: 'Contrast', css: 'filter: contrast(1.5)' },
-  { name: 'Blur', css: 'filter: blur(5px)' },
-]
+  { name: "None", css: "filter: none" },
+  { name: "Grayscale", css: "filter: grayscale(100%)" },
+  { name: "Sepia", css: "filter: sepia(100%)" },
+  { name: "Bright", css: "filter: brightness(1.3)" },
+  { name: "Contrast", css: "filter: contrast(1.5)" },
+  { name: "Blur", css: "filter: blur(5px)" },
+];
 
 const textOverlayStyle = computed(() => ({
   color: textOverlay.color,
   fontSize: `${textOverlay.fontSize}px`,
-}))
+}));
 
 const getFilterStyle = (filterName: string) => {
-  const filter = filters.find(f => f.name === filterName)
-  return filter?.css || 'filter: none'
-}
+  const filter = filters.find(f => f.name === filterName);
+  return filter?.css || "filter: none";
+};
 
 const startDrag = (event: MouseEvent, index: number) => {
-  isDraggingSticker.value = true
-  currentStickerIndex.value = index
+  isDraggingSticker.value = true;
+  currentStickerIndex.value = index;
   
   // Calculate offset to prevent jumping
-  const stickerEl = (event.target as HTMLElement)
-  dragOffset.x = event.clientX - stickerEl.offsetLeft
-  dragOffset.y = event.clientY - stickerEl.offsetTop
+  const stickerEl = (event.target as HTMLElement);
+  dragOffset.x = event.clientX - stickerEl.offsetLeft;
+  dragOffset.y = event.clientY - stickerEl.offsetTop;
   
-  window.addEventListener('mousemove', onDrag)
-  window.addEventListener('mouseup', stopDrag)
-}
+  window.addEventListener("mousemove", onDrag);
+  window.addEventListener("mouseup", stopDrag);
+};
 
 const onDrag = (event: MouseEvent) => {
-  if (!isDraggingSticker.value || currentStickerIndex.value === -1) return
+  if (!isDraggingSticker.value || currentStickerIndex.value === -1) return;
   
-  const container = document.querySelector('.story-preview') as HTMLElement
-  if (!container) return
+  const container = document.querySelector(".story-preview") as HTMLElement;
+  if (!container) return;
 
   // Calculate new position relative to container
   // (Simplified logic, might need adjustment based on your CSS positioning)
-  const newLeft = event.clientX - dragOffset.x
-  const newTop = event.clientY - dragOffset.y
+  const newLeft = event.clientX - dragOffset.x;
+  const newTop = event.clientY - dragOffset.y;
   
   // Update sticker style
-  stickers.value[currentStickerIndex.value].style.left = `${newLeft}px`
-  stickers.value[currentStickerIndex.value].style.top = `${newTop}px`
-}
+  stickers.value[currentStickerIndex.value].style.left = `${newLeft}px`;
+  stickers.value[currentStickerIndex.value].style.top = `${newTop}px`;
+};
 
 const stopDrag = () => {
-  isDraggingSticker.value = false
-  currentStickerIndex.value = -1
-  window.removeEventListener('mousemove', onDrag)
-  window.removeEventListener('mouseup', stopDrag)
-}
+  isDraggingSticker.value = false;
+  currentStickerIndex.value = -1;
+  window.removeEventListener("mousemove", onDrag);
+  window.removeEventListener("mouseup", stopDrag);
+};
 
 const triggerFileUpload = () => {
-  fileInput.value?.click()
-}
+  fileInput.value?.click();
+};
 
 const handleFileUpload = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
   
   if (file) {
-    selectedFile.value = file
-    const reader = new FileReader()
+    selectedFile.value = file;
+    const reader = new FileReader();
     reader.onload = (e) => {
-      storyMedia.value = e.target?.result as string
-      storyType.value = file.type.startsWith('video') ? 'video' : 'image'
-    }
-    reader.readAsDataURL(file)
+      storyMedia.value = e.target?.result as string;
+      storyType.value = file.type.startsWith("video") ? "video" : "image";
+    };
+    reader.readAsDataURL(file);
   }
-}
+};
 
 const handleDrop = (event: DragEvent) => {
-  event.preventDefault()
-  isDragging.value = false
+  event.preventDefault();
+  isDragging.value = false;
   
-  const file = event.dataTransfer?.files?.[0]
+  const file = event.dataTransfer?.files?.[0];
   if (file) {
-    selectedFile.value = file
-    const reader = new FileReader()
+    selectedFile.value = file;
+    const reader = new FileReader();
     reader.onload = (e) => {
-      storyMedia.value = e.target?.result as string
-      storyType.value = file.type.startsWith('video') ? 'video' : 'image'
-    }
-    reader.readAsDataURL(file)
+      storyMedia.value = e.target?.result as string;
+      storyType.value = file.type.startsWith("video") ? "video" : "image";
+    };
+    reader.readAsDataURL(file);
   }
-}
+};
 
 const updateVideoDuration = (event: Event) => {
-  const video = event.target as HTMLVideoElement
-  videoDuration.value = Math.floor(video.duration)
-}
+  const video = event.target as HTMLVideoElement;
+  videoDuration.value = Math.floor(video.duration);
+};
 
 const addSticker = (emoji: string) => {
   stickers.value.push({
@@ -302,34 +365,34 @@ const addSticker = (emoji: string) => {
     style: {
       top: `${Math.random() * 70 + 10}%`,
       left: `${Math.random() * 70 + 10}%`,
-      fontSize: '48px',
-      cursor: 'move',
+      fontSize: "48px",
+      cursor: "move",
     },
-  })
-}
+  });
+};
 
 const applyFilter = (filterName: string) => {
-  currentFilter.value = filterName
-}
+  currentFilter.value = filterName;
+};
 
 const resetMedia = () => {
-  storyMedia.value = ''
-  storyType.value = 'image'
-  textOverlay.text = ''
-  stickers.value = []
-  currentFilter.value = 'None'
-}
+  storyMedia.value = "";
+  storyType.value = "image";
+  textOverlay.text = "";
+  stickers.value = [];
+  currentFilter.value = "None";
+};
 
 const handleShareStory = async () => {
   if (!storyMedia.value || !selectedFile.value) {
-    alert('Please select an image or video first')
-    return
+    alert("Please select an image or video first");
+    return;
   }
 
-  isLoading.value = true
+  isLoading.value = true;
   try {
     // Upload Media
-      const { media_url } = await mediaAPI.uploadMedia(selectedFile.value!) // Using file object
+      const { media_url } = await mediaAPI.uploadMedia(selectedFile.value!); // Using file object
       
       // Create Story with Metadata
       await storyAPI.createStory({
@@ -339,37 +402,37 @@ const handleShareStory = async () => {
           filter_name: currentFilter.value,
           // Serialize stickers to string for storage
           stickers_json: JSON.stringify(stickers.value)
-    })
+    });
 
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    alert('Story shared successfully!')
-    router.push('/feed')
+    alert("Story shared successfully!");
+    router.push("/feed");
   } catch (error) {
-    console.error('Error sharing story:', error)
-    alert('Error sharing story. Please try again.')
+    console.error("Error sharing story:", error);
+    alert("Error sharing story. Please try again.");
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
-}
+};
 
 const goBack = () => {
   if (storyMedia.value) {
-    if (confirm('Discard this story?')) {
-      router.back()
+    if (confirm("Discard this story?")) {
+      router.back();
     }
   } else {
-    router.back()
+    router.back();
   }
-}
+};
 
 const handleDragOver = () => {
-  isDragging.value = true
-}
+  isDragging.value = true;
+};
 
 const handleDragLeave = () => {
-  isDragging.value = false
-}
+  isDragging.value = false;
+};
 </script>
 
 <style scoped lang="scss">

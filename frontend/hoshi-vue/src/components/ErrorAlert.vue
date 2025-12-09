@@ -1,19 +1,27 @@
 <template>
-  <div v-if="message" class="error-alert">
+  <div
+    v-if="message"
+    class="error-alert"
+  >
     <span class="error-icon">⚠</span>
     <span class="error-text">{{ message }}</span>
-    <button @click="$emit('close')" class="close-btn">✕</button>
+    <button
+      class="close-btn"
+      @click="$emit('close')"
+    >
+      ✕
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
 defineProps<{
   message?: string
-}>()
+}>();
 
 defineEmits<{
   close: []
-}>()
+}>();
 </script>
 
 <style scoped lang="scss">

@@ -3,70 +3,119 @@
     <div class="edit-profile-container">
       <div class="edit-header">
         <h1>Edit profile</h1>
-        <button class="close-btn" @click="goBack">✕</button>
+        <button
+          class="close-btn"
+          @click="goBack"
+        >
+          ✕
+        </button>
       </div>
 
       <div class="profile-picture-section">
-        <img :src="profilePicture || '/default-avatar.svg'" alt="Profile" class="profile-pic" />
-        <button class="change-photo-btn" @click="triggerFileUpload">Change photo</button>
+        <img
+          :src="profilePicture || '/default-avatar.svg'"
+          alt="Profile"
+          class="profile-pic"
+        />
+        <button
+          class="change-photo-btn"
+          @click="triggerFileUpload"
+        >
+          Change photo
+        </button>
         <input 
           ref="fileInput" 
           type="file" 
           accept="image/*" 
-          @change="handleProfilePictureChange"
           style="display: none"
+          @change="handleProfilePictureChange"
         />
       </div>
 
-      <form @submit.prevent="handleSubmit" class="edit-form">
+      <form
+        class="edit-form"
+        @submit.prevent="handleSubmit"
+      >
         <div class="form-group">
           <label for="name">Name</label>
           <input
+            id="name"
             v-model="formData.name"
             type="text"
-            id="name"
             class="form-input"
             placeholder="Name"
           />
-          <p class="error-text" v-if="errors.name">{{ errors.name }}</p>
-          <p class="field-hint">Help people discover your account by using the name you're known by.</p>
+          <p
+            v-if="errors.name"
+            class="error-text"
+          >
+            {{ errors.name }}
+          </p>
+          <p class="field-hint">
+            Help people discover your account by using the name you're known by.
+          </p>
         </div>
 
         <div class="form-group">
           <label for="username">Username</label>
           <input
+            id="username"
             v-model="formData.username"
             type="text"
-            id="username"
             class="form-input"
             placeholder="Username"
           />
-          <p class="error-text" v-if="errors.username">{{ errors.username }}</p>
+          <p
+            v-if="errors.username"
+            class="error-text"
+          >
+            {{ errors.username }}
+          </p>
         </div>
 
         <div class="form-group">
           <label for="bio">Bio</label>
           <textarea
-            v-model="formData.bio"
             id="bio"
+            v-model="formData.bio"
             class="form-input bio-input"
             placeholder="Bio"
             maxlength="150"
           ></textarea>
-          <div class="char-count">{{ formData.bio.length }} / 150</div>
+          <div class="char-count">
+            {{ formData.bio.length }} / 150
+          </div>
         </div>
 
         <div class="form-group">
           <label for="gender">Gender</label>
-          <select v-model="formData.gender" id="gender" class="form-input select-input">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
+          <select
+            id="gender"
+            v-model="formData.gender"
+            class="form-input select-input"
+          >
+            <option value="male">
+              Male
+            </option>
+            <option value="female">
+              Female
+            </option>
           </select>
         </div>
 
         <div class="form-actions">
-          <button type="button" class="cancel-btn" @click="goBack">Cancel</button>
-          <button type="submit" class="save-btn" :disabled="isSubmitting">
+          <button
+            type="button"
+            class="cancel-btn"
+            @click="goBack"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="save-btn"
+            :disabled="isSubmitting"
+          >
             {{ isSubmitting ? 'Saving...' : 'Save' }}
           </button>
         </div>
@@ -76,127 +125,127 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import apiClient, { mediaAPI } from '@/services/api'
+import { ref, onMounted, reactive } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import apiClient, { mediaAPI } from "@/services/api";
 
-const router = useRouter()
-const authStore = useAuthStore()
-const fileInput = ref<HTMLInputElement | null>(null)
+const router = useRouter();
+const authStore = useAuthStore();
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const formData = reactive({
-  name: '',
-  username: '',
-  bio: '',
-  gender: 'Prefer not to say'
-})
+  name: "",
+  username: "",
+  bio: "",
+  gender: "Prefer not to say"
+});
 
-const profilePicture = ref('')
-const isSubmitting = ref(false)
+const profilePicture = ref("");
+const isSubmitting = ref(false);
 const errors = reactive({
-  name: '',
-  username: ''
-})
+  name: "",
+  username: ""
+});
 
 // Load initial data
 const fetchUserData = async () => {
   try {
-    const username = authStore.user?.username
-    if (!username) return
+    const username = authStore.user?.username;
+    if (!username) return;
     
-    const response = await apiClient.get(`/users/${username}`)
-    const user = response.data.user || response.data
+    const response = await apiClient.get(`/users/${username}`);
+    const user = response.data.user || response.data;
     
-    formData.name = user.name || ''
-    formData.username = user.username || ''
-    formData.bio = user.bio || ''
-    formData.gender = user.gender || 'Prefer not to say'
-    profilePicture.value = user.profile_picture_url || ''
+    formData.name = user.name || "";
+    formData.username = user.username || "";
+    formData.bio = user.bio || "";
+    formData.gender = user.gender || "Prefer not to say";
+    profilePicture.value = user.profile_picture_url || "";
   } catch (err) {
-    console.error("Failed to fetch user data", err)
+    console.error("Failed to fetch user data", err);
   }
-}
+};
 
 const triggerFileUpload = () => {
-  fileInput.value?.click()
-}
+  fileInput.value?.click();
+};
 
 const handleProfilePictureChange = async (event: Event) => {
-  const target = event.target as HTMLInputElement
+  const target = event.target as HTMLInputElement;
   if (target.files && target.files[0]) {
-    const file = target.files[0]
+    const file = target.files[0];
     try {
         // Upload Logic
-        const uploadRes = await mediaAPI.uploadMedia(file)
-        profilePicture.value = uploadRes.media_url
+        const uploadRes = await mediaAPI.uploadMedia(file);
+        profilePicture.value = uploadRes.media_url;
         // Auto-save the picture update or wait for form submit?
         // Usually better to wait for form submit, but for picture specifically 
         // it's often instant. Let's keep it for the form submit.
-    } catch (err) {
-        alert("Failed to upload image")
+    } catch {
+        alert("Failed to upload image");
     }
   }
-}
+};
 
 const validate = () => {
-  let isValid = true
-  errors.name = ''
-  errors.username = ''
+  let isValid = true;
+  errors.name = "";
+  errors.username = "";
 
   if (!formData.name.trim()) {
-    errors.name = 'Name is required'
-    isValid = false
+    errors.name = "Name is required";
+    isValid = false;
   }
 
   if (!formData.username.trim()) {
-    errors.username = 'Username is required'
-    isValid = false
+    errors.username = "Username is required";
+    isValid = false;
   }
 
-  return isValid
-}
+  return isValid;
+};
 
 const handleSubmit = async () => {
-  if (!validate()) return
-  isSubmitting.value = true
+  if (!validate()) return;
+  isSubmitting.value = true;
   
   try {
     // Construct update payload
     // Note: API might need specific structure. Based on gateway:
     // PUT /profile/edit -> handleUpdateProfile_Gin
     
-    await apiClient.put('/profile/edit', {
+    await apiClient.put("/profile/edit", {
         name: formData.name,
         username: formData.username,
         bio: formData.bio,
         gender: formData.gender,
         profile_picture_url: profilePicture.value // If your backend supports this in the same call
-    })
+    });
     
     // Update local store
     if (authStore.user) {
-        authStore.user.username = formData.username
-        authStore.user.name = formData.name
+        authStore.user.username = formData.username;
+        authStore.user.name = formData.name;
         // Trigger a refresh of auth token/data if possible
     }
     
-    router.push('/profile')
+    router.push("/profile");
   } catch (err: any) {
-    console.error(err)
-    alert(err.response?.data?.error || "Failed to update profile")
+    console.error(err);
+    alert(err.response?.data?.error || "Failed to update profile");
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 const goBack = () => {
-  router.back()
-}
+  router.back();
+};
 
 onMounted(() => {
-  fetchUserData()
-})
+  fetchUserData();
+});
 </script>
 
 <style scoped lang="scss">

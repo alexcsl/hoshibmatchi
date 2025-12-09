@@ -1,37 +1,78 @@
 <template>
-  <div class="post" @click="handlePostClick">
+  <div
+    class="post"
+    @click="handlePostClick"
+  >
     <div class="post-header">
       <div class="user-info">
-        <img 
-          :src="post.author_profile_url || '/placeholder.svg?height=32&width=32'" 
+        <SecureImage 
+          :src="post.author_profile_url" 
           :alt="post.author_username" 
-          class="avatar" 
+          class-name="avatar"
+          loading-placeholder="/placeholder.svg?height=32&width=32"
+          error-placeholder="/default-avatar.svg"
         />
         <div>
           <div class="username">
             {{ post.author_username }}
-            <span v-if="post.author_is_verified" class="verified">✓</span>
+            <span
+              v-if="post.author_is_verified"
+              class="verified"
+            >✓</span>
           </div>
-          <div v-if="post.location" class="location">{{ post.location }}</div>
-          <div class="timestamp">{{ formatTimestamp(post.created_at) }}</div>
+          <div
+            v-if="post.location"
+            class="location"
+          >
+            {{ post.location }}
+          </div>
+          <div class="timestamp">
+            {{ formatTimestamp(post.created_at) }}
+          </div>
         </div>
       </div>
-      <button class="options-btn" @click.stop="handleOptions">⋯</button>
+      <button
+        class="options-btn"
+        @click.stop="handleOptions"
+      >
+        ⋯
+      </button>
     </div>
 
     <div class="post-media">
-      <img 
-        v-if="post.media_urls?.length > 0" 
-        :src="getMediaUrl(post.media_urls[0])" 
-        :alt="post.caption" 
-        class="post-image"
-        @error="handleImageError"
-      />
-      <div v-else class="no-media-placeholder">
+      <template v-if="post.media_urls?.length > 0">
+        <div v-if="loadingMedia" class="media-loading">
+          <div class="loading-spinner">Loading media...</div>
+        </div>
+        <template v-else>
+          <video 
+            v-if="isVideoUrl(getCurrentMediaUrl)"
+            :src="getCurrentMediaUrl" 
+            class="post-image"
+            controls
+            playsinline
+            @error="handleImageError"
+          ></video>
+          <img 
+            v-else
+            :src="getCurrentMediaUrl" 
+            :alt="post.caption" 
+            class="post-image"
+            @error="handleImageError"
+          />
+        </template>
+      </template>
+      <div
+        v-else
+        class="no-media-placeholder"
+      >
         <span>📷</span>
         <p>No media</p>
       </div>
-      <div v-if="post.media_urls?.length > 1" class="media-indicator">
+      <div
+        v-if="post.media_urls?.length > 1"
+        class="media-indicator"
+      >
         📷 {{ currentMediaIndex + 1 }}/{{ post.media_urls.length }}
       </div>
     </div>
@@ -41,80 +82,131 @@
         <button 
           class="icon-btn" 
           :class="{ liked: post.is_liked }" 
-          @click.stop="handleLike"
           :aria-label="post.is_liked ? 'Unlike' : 'Like'"
+          @click.stop="handleLike"
         >
           {{ post.is_liked ? '❤️' : '🤍' }}
         </button>
-        <button class="icon-btn" @click.stop="handleComment" aria-label="Comment">💬</button>
-        <button class="icon-btn" @click.stop="handleShare" aria-label="Share">📤</button>
+        <button
+          class="icon-btn"
+          aria-label="Comment"
+          @click.stop="handleComment"
+        >
+          💬
+        </button>
+        <button
+          class="icon-btn"
+          aria-label="Share"
+          @click.stop="handleShare"
+        >
+          📤
+        </button>
       </div>
       <button 
         class="icon-btn" 
         :class="{ saved: post.is_saved }" 
-        @click.stop="handleSave"
         :aria-label="post.is_saved ? 'Unsave' : 'Save'"
+        @click.stop="handleSave"
       >
         {{ post.is_saved ? '🔖' : '🏷️' }}
       </button>
     </div>
 
     <div class="post-content">
-      <div class="likes" @click.stop="handleShowLikes" style="cursor: pointer;">
+      <div
+        class="likes"
+        style="cursor: pointer;"
+        @click.stop="handleShowLikes"
+      >
         <strong>{{ formatLikes(post.like_count) }}</strong>
       </div>
       <div class="caption">
-          <strong>{{ post.author_username }}</strong>
-          <span v-if="!showingSummary" v-html="formattedCaption" @click="handleRichTextClick"></span>
-          <span v-else>{{ aiSummary }}</span>
+        <strong>{{ post.author_username }}</strong>
+        <span
+          v-if="!showingSummary"
+          @click="handleRichTextClick"
+          v-html="formattedCaption"
+        ></span>
+        <span v-else>{{ aiSummary }}</span>
       </div>
       
-      <button class="ai-btn" @click.stop="toggleSummary">
+      <button
+        class="ai-btn"
+        @click.stop="toggleSummary"
+      >
         {{ showingSummary ? 'Show Original' : '✨ Summarize with AI' }}
       </button>
-      <div v-if="post.comment_count > 0" class="comments-link" @click.stop="handleViewComments">
+      <div
+        v-if="post.comment_count > 0"
+        class="comments-link"
+        @click.stop="handleViewComments"
+      >
         View all {{ post.comment_count }} comments
       </div>
     </div>
 
     <div class="comment-input">
       <input 
-        type="text" 
-        v-model="commentText"
+        v-model="commentText" 
+        type="text"
         placeholder="Add a comment..." 
         @keyup.enter="handleAddComment"
         @click.stop
       />
       <button 
         v-if="commentText.trim()" 
-        @click.stop="handleAddComment"
         :disabled="isSubmitting"
+        @click.stop="handleAddComment"
       >
         Post
       </button>
     </div>
 
     <!-- Share Modal -->
-    <div v-if="showShareModal" class="share-modal-overlay" @click.stop="showShareModal = false">
-      <div class="share-modal" @click.stop>
+    <div
+      v-if="showShareModal"
+      class="share-modal-overlay"
+      @click.stop="showShareModal = false"
+    >
+      <div
+        class="share-modal"
+        @click.stop
+      >
         <div class="share-header">
           <h3>Share</h3>
-          <button class="close-share-btn" @click="showShareModal = false">✕</button>
+          <button
+            class="close-share-btn"
+            @click="showShareModal = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="share-options">
-          <button class="share-option" @click="copyLink">
+          <button
+            class="share-option"
+            @click="copyLink"
+          >
             <span class="share-icon">🔗</span>
             <span>Copy Link</span>
           </button>
-          <button class="share-option" @click="shareToFacebook">
+          <button
+            class="share-option"
+            @click="shareToFacebook"
+          >
             <span class="share-icon">📘</span>
             <span>Facebook</span>
           </button>
-          <button class="share-option" @click="shareToTwitter">
+          <button
+            class="share-option"
+            @click="shareToTwitter"
+          >
             <span class="share-icon">🐦</span>
             <span>Twitter</span>
           </button>
-          <button class="share-option" @click="shareViaEmail">
+          <button
+            class="share-option"
+            @click="shareViaEmail"
+          >
             <span class="share-icon">✉️</span>
             <span>Email</span>
           </button>
@@ -123,17 +215,35 @@
     </div>
 
     <!-- Options Modal -->
-    <div v-if="showOptionsModal" class="share-modal-overlay" @click.stop="showOptionsModal = false">
-      <div class="options-modal" @click.stop>
-        <button v-if="isOwnPost" class="option-btn danger" @click="handleDeletePost">
+    <div
+      v-if="showOptionsModal"
+      class="share-modal-overlay"
+      @click.stop="showOptionsModal = false"
+    >
+      <div
+        class="options-modal"
+        @click.stop
+      >
+        <button
+          v-if="isOwnPost"
+          class="option-btn danger"
+          @click="handleDeletePost"
+        >
           <span>🗑️</span>
           <span>Delete Post</span>
         </button>
-        <button v-if="!isOwnPost" class="option-btn" @click="showOptionsModal = false">
+        <button
+          v-if="!isOwnPost"
+          class="option-btn"
+          @click="showOptionsModal = false"
+        >
           <span>🚫</span>
           <span>Report</span>
         </button>
-        <button class="option-btn" @click="showOptionsModal = false">
+        <button
+          class="option-btn"
+          @click="showOptionsModal = false"
+        >
           <span>✕</span>
           <span>Cancel</span>
         </button>
@@ -141,16 +251,43 @@
     </div>
 
     <!-- Likes Modal -->
-    <div v-if="showLikesModal" class="share-modal-overlay" @click.stop="showLikesModal = false">
-      <div class="likes-modal" @click.stop>
+    <div
+      v-if="showLikesModal"
+      class="share-modal-overlay"
+      @click.stop="showLikesModal = false"
+    >
+      <div
+        class="likes-modal"
+        @click.stop
+      >
         <div class="likes-header">
           <h3>Likes</h3>
-          <button class="close-likes-btn" @click="showLikesModal = false">✕</button>
+          <button
+            class="close-likes-btn"
+            @click="showLikesModal = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="likes-list">
-          <div v-if="loadingLikers" class="loading-likers">Loading...</div>
-          <div v-else-if="likers.length === 0" class="no-likers">No likes yet</div>
-          <div v-else v-for="liker in likers" :key="liker.user_id" class="liker-item">
+          <div
+            v-if="loadingLikers"
+            class="loading-likers"
+          >
+            Loading...
+          </div>
+          <div
+            v-else-if="likers.length === 0"
+            class="no-likers"
+          >
+            No likes yet
+          </div>
+          <div
+            v-for="liker in likers"
+            v-else
+            :key="liker.user_id"
+            class="liker-item"
+          >
             <img 
               :src="liker.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
               :alt="liker.username" 
@@ -159,9 +296,17 @@
             <div class="liker-info">
               <div class="liker-username">
                 {{ liker.username }}
-                <span v-if="liker.is_verified" class="verified">✓</span>
+                <span
+                  v-if="liker.is_verified"
+                  class="verified"
+                >✓</span>
               </div>
-              <div v-if="liker.full_name" class="liker-fullname">{{ liker.full_name }}</div>
+              <div
+                v-if="liker.full_name"
+                class="liker-fullname"
+              >
+                {{ liker.full_name }}
+              </div>
             </div>
           </div>
         </div>
@@ -171,10 +316,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { postAPI } from '@/services/api'
-import { useAuthStore } from '@/stores/auth'
-import { useRichText } from '@/composables/useRichText'
+import { ref, computed, onMounted, watch } from "vue";
+import { postAPI } from "@/services/api";
+import { useAuthStore } from "@/stores/auth";
+import { useRichText } from "@/composables/useRichText";
+import { getSecureMediaURL } from "@/services/media";
+import SecureImage from "@/components/SecureImage.vue";
 
 interface Post {
   id: string
@@ -196,7 +343,7 @@ interface Post {
 
 const props = defineProps<{
   post: Post
-}>()
+}>();
 
 const emit = defineEmits<{
   like: [postId: string]
@@ -207,217 +354,281 @@ const emit = defineEmits<{
   openOptions: [postId: string]
   deleted: [postId: string]
   archived: [postId: string]
-}>()
+}>();
 
-const commentText = ref('')
-const isSubmitting = ref(false)
-const currentMediaIndex = ref(0)
-const authStore = useAuthStore()
-const { formatRichText, handleRichTextClick } = useRichText()
+const commentText = ref("");
+const isSubmitting = ref(false);
+const currentMediaIndex = ref(0);
+const authStore = useAuthStore();
+const { formatRichText, handleRichTextClick } = useRichText();
+
+// Secure URLs for media
+const secureMediaUrls = ref<string[]>([]);
+const loadingMedia = ref(true);
 
 const isOwnPost = computed(() => {
-  return authStore.user?.user_id === props.post.author_id
-})
+  return authStore.user?.user_id === props.post.author_id;
+});
+
+// Load secure URLs for all media
+const loadSecureUrls = async () => {
+  if (!props.post.media_urls || props.post.media_urls.length === 0) {
+    loadingMedia.value = false;
+    return;
+  }
+
+  loadingMedia.value = true;
+  try {
+    const urls = await Promise.all(
+      props.post.media_urls.map(url => getSecureMediaURL(url))
+    );
+    secureMediaUrls.value = urls;
+  } catch (error) {
+    console.error('Failed to load secure media URLs:', error);
+    secureMediaUrls.value = props.post.media_urls; // Fallback to original URLs
+  } finally {
+    loadingMedia.value = false;
+  }
+};
+
+// Load secure URLs on mount and when media_urls change
+onMounted(() => {
+  loadSecureUrls();
+});
+
+watch(() => props.post.media_urls, () => {
+  loadSecureUrls();
+}, { deep: true });
 
 const formatTimestamp = (timestamp: string) => {
-  const date = new Date(timestamp)
-  const now = new Date()
-  const diffInMs = now.getTime() - date.getTime()
-  const diffInSecs = Math.floor(diffInMs / 1000)
-  const diffInMins = Math.floor(diffInSecs / 60)
-  const diffInHours = Math.floor(diffInMins / 60)
-  const diffInDays = Math.floor(diffInHours / 24)
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInSecs = Math.floor(diffInMs / 1000);
+  const diffInMins = Math.floor(diffInSecs / 60);
+  const diffInHours = Math.floor(diffInMins / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
 
   if (diffInDays > 7) {
-    return date.toLocaleDateString()
+    return date.toLocaleDateString();
   } else if (diffInDays > 0) {
-    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`
+    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
   } else if (diffInHours > 0) {
-    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
   } else if (diffInMins > 0) {
-    return `${diffInMins} minute${diffInMins > 1 ? 's' : ''} ago`
+    return `${diffInMins} minute${diffInMins > 1 ? "s" : ""} ago`;
   } else {
-    return 'Just now'
+    return "Just now";
   }
-}
+};
 
 const formatLikes = (count: number) => {
-  const likeCount = count || 0
+  const likeCount = count || 0;
   if (likeCount >= 1000000) {
-    return `${(likeCount / 1000000).toFixed(1)}M likes`
+    return `${(likeCount / 1000000).toFixed(1)}M likes`;
   } else if (likeCount >= 1000) {
-    return `${(likeCount / 1000).toFixed(1)}K likes`
+    return `${(likeCount / 1000).toFixed(1)}K likes`;
   } else if (likeCount === 0) {
-    return '0 likes'
+    return "0 likes";
   } else {
-    return `${likeCount} like${likeCount !== 1 ? 's' : ''}`
+    return `${likeCount} like${likeCount !== 1 ? "s" : ""}`;
   }
-}
+};
 
 const getMediaUrl = (url: string) => {
-  // Check if it's a valid URL
-  if (!url || url.trim() === '') {
-    return '/placeholder.svg?height=600&width=600&text=No+Image'
+  // This function is now mostly for fallback
+  // We use secureMediaUrls array for actual display
+  if (!url || url.trim() === "") {
+    return "/placeholder.svg?height=600&width=600&text=No+Image";
   }
   
   // If it's a relative path, prepend the API base URL
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
   
-  return url
-}
+  return url;
+};
+
+// Get the current media URL (secure or fallback)
+const getCurrentMediaUrl = computed(() => {
+  if (loadingMedia.value) {
+    return "/placeholder.svg?height=600&width=600&text=Loading";
+  }
+  
+  if (secureMediaUrls.value.length > 0 && secureMediaUrls.value[currentMediaIndex.value]) {
+    return secureMediaUrls.value[currentMediaIndex.value];
+  }
+  
+  if (props.post.media_urls && props.post.media_urls.length > 0) {
+    return getMediaUrl(props.post.media_urls[currentMediaIndex.value]);
+  }
+  
+  return "/placeholder.svg?height=600&width=600&text=No+Image";
+});
+
+const isVideoUrl = (url: string) => {
+  if (!url) return false;
+  const videoExtensions = [".mp4", ".webm", ".ogg", ".mov"];
+  const lowerUrl = url.toLowerCase();
+  return videoExtensions.some(ext => lowerUrl.includes(ext));
+};
 
 const handleImageError = (event: Event) => {
-  const img = event.target as HTMLImageElement
-  img.src = '/placeholder.svg?height=600&width=600&text=Image+Not+Found'
-}
+  const target = event.target as HTMLImageElement | HTMLVideoElement;
+  if (target.tagName === "VIDEO") {
+    console.error("Video failed to load:", target.src);
+    // You could show an error placeholder here
+  } else {
+    target.src = "/placeholder.svg?height=600&width=600&text=Image+Not+Found";
+  }
+};
 
 const handleLike = () => {
-  emit('like', props.post.id)
-}
+  emit("like", props.post.id);
+};
 
 const handleSave = () => {
-  emit('save', props.post.id)
-}
+  emit("save", props.post.id);
+};
 
 const handleComment = () => {
-  emit('openDetails', props.post.id)
-}
+  emit("openDetails", props.post.id);
+};
 
 // Share Modal State
-const showShareModal = ref(false)
-const showOptionsModal = ref(false)
-const showLikesModal = ref(false)
-const likers = ref<any[]>([])
-const loadingLikers = ref(false)
+const showShareModal = ref(false);
+const showOptionsModal = ref(false);
+const showLikesModal = ref(false);
+const likers = ref<any[]>([]);
+const loadingLikers = ref(false);
 
 const handleShare = () => {
-  showShareModal.value = true
-}
+  showShareModal.value = true;
+};
 
 const handleShowLikes = async () => {
-  if (props.post.like_count === 0) return
+  if (props.post.like_count === 0) return;
   
-  showLikesModal.value = true
-  loadingLikers.value = true
+  showLikesModal.value = true;
+  loadingLikers.value = true;
   
   try {
-    const response = await postAPI.getPostLikers(props.post.id)
-    likers.value = response
+    const response = await postAPI.getPostLikers(props.post.id);
+    likers.value = response;
   } catch (error) {
-    console.error('Failed to load likers:', error)
-    likers.value = []
+    console.error("Failed to load likers:", error);
+    likers.value = [];
   } finally {
-    loadingLikers.value = false
+    loadingLikers.value = false;
   }
-}
+};
 
 const copyLink = async () => {
-  const url = `${window.location.origin}/post/${props.post.id}`
+  const url = `${window.location.origin}/post/${props.post.id}`;
   try {
-    await navigator.clipboard.writeText(url)
-    alert('Link copied to clipboard!')
-    showShareModal.value = false
+    await navigator.clipboard.writeText(url);
+    alert("Link copied to clipboard!");
+    showShareModal.value = false;
   } catch (err) {
-    console.error('Failed to copy', err)
+    console.error("Failed to copy", err);
   }
-}
+};
 
 const shareToFacebook = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`
-  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank')
-  showShareModal.value = false
-}
+  const url = `${window.location.origin}/post/${props.post.id}`;
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank");
+  showShareModal.value = false;
+};
 
 const shareToTwitter = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`
-  const text = props.post.caption ? props.post.caption.substring(0, 200) : 'Check out this post!'
-  window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank')
-  showShareModal.value = false
-}
+  const url = `${window.location.origin}/post/${props.post.id}`;
+  const text = props.post.caption ? props.post.caption.substring(0, 200) : "Check out this post!";
+  window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
+  showShareModal.value = false;
+};
 
 const shareViaEmail = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`
-  const subject = 'Check out this post!'
-  const body = `I thought you might like this: ${url}`
-  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-  showShareModal.value = false
-}
+  const url = `${window.location.origin}/post/${props.post.id}`;
+  const subject = "Check out this post!";
+  const body = `I thought you might like this: ${url}`;
+  window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  showShareModal.value = false;
+};
 
 const handlePostClick = () => {
-  emit('openDetails', props.post.id)
-}
+  emit("openDetails", props.post.id);
+};
 
 const handleViewComments = () => {
-  emit('openDetails', props.post.id)
-}
+  emit("openDetails", props.post.id);
+};
 
 const handleOptions = () => {
-  showOptionsModal.value = true
-}
+  showOptionsModal.value = true;
+};
 
 const handleDeletePost = async () => {
-  if (!confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
-    return
+  if (!confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+    return;
   }
   
   try {
-    await postAPI.deletePost(props.post.id)
-    showOptionsModal.value = false
+    await postAPI.deletePost(props.post.id);
+    showOptionsModal.value = false;
     // Emit event to parent to remove from feed
-    emit('deleted', props.post.id)
-    alert('Post deleted successfully')
+    emit("deleted", props.post.id);
+    alert("Post deleted successfully");
   } catch (error) {
-    console.error('Failed to delete post:', error)
-    alert('Failed to delete post. Please try again.')
+    console.error("Failed to delete post:", error);
+    alert("Failed to delete post. Please try again.");
   }
-}
+};
 
 const handleAddComment = async () => {
-  if (!commentText.value.trim() || isSubmitting.value) return
+  if (!commentText.value.trim() || isSubmitting.value) return;
   
-  isSubmitting.value = true
+  isSubmitting.value = true;
   try {
-    emit('comment', props.post.id, commentText.value.trim())
-    commentText.value = ''
+    emit("comment", props.post.id, commentText.value.trim());
+    commentText.value = "";
   } finally {
-    isSubmitting.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
-const showingSummary = ref(false)
-const aiSummary = ref('')
-const loadingAi = ref(false)
+const showingSummary = ref(false);
+const aiSummary = ref("");
+const loadingAi = ref(false);
 
 // Rich Text Formatter for hashtags and mentions
 const formattedCaption = computed(() => {
-  if (!props.post.caption) return ''
-  return formatRichText(props.post.caption)
-})
+  if (!props.post.caption) return "";
+  return formatRichText(props.post.caption);
+});
 
 const toggleSummary = async () => {
     if (showingSummary.value) {
-        showingSummary.value = false
-        return
+        showingSummary.value = false;
+        return;
     }
     
     if (aiSummary.value) {
-        showingSummary.value = true
-        return
+        showingSummary.value = true;
+        return;
     }
     
-    loadingAi.value = true
+    loadingAi.value = true;
     try {
-        const res = await postAPI.summarizeCaption(props.post.id)
-        aiSummary.value = res.summary
-        showingSummary.value = true
-    } catch(e) {
-        alert("AI Summarization failed")
+        const res = await postAPI.summarizeCaption(props.post.id);
+        aiSummary.value = res.summary;
+        showingSummary.value = true;
+    } catch {
+        alert("AI Summarization failed");
     } finally {
-        loadingAi.value = false
+        loadingAi.value = false;
     }
-}
+};
 
 </script>
 
@@ -822,6 +1033,26 @@ const toggleSummary = async () => {
         border-radius: 50%;
       }
     }
+  }
+
+  .media-loading {
+    width: 100%;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    color: #8e8e8e;
+    
+    .loading-spinner {
+      font-size: 14px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
   }
 
   .likes-list {

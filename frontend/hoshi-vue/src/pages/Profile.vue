@@ -1,40 +1,73 @@
 <template>
   <div class="profile-page">
-    <div v-if="loading" class="loading">Loading profile...</div>
+    <div
+      v-if="loading"
+      class="loading"
+    >
+      Loading profile...
+    </div>
     
-    <div v-else-if="error" class="error">
+    <div
+      v-else-if="error"
+      class="error"
+    >
       <div class="error-content">
         <h3>{{ error }}</h3>
-        <p v-if="isOwnProfileError">We couldn't load your profile info.</p>
-        <button v-if="isOwnProfileError" @click="retryAuth" class="retry-btn">Retry</button>
+        <p v-if="isOwnProfileError">
+          We couldn't load your profile info.
+        </p>
+        <button
+          v-if="isOwnProfileError"
+          class="retry-btn"
+          @click="retryAuth"
+        >
+          Retry
+        </button>
       </div>
     </div>
     
-    <div v-else class="profile-container">
+    <div
+      v-else
+      class="profile-container"
+    >
       <div class="profile-header">
-        <img 
-          :src="profile.profile_picture_url || '/default-avatar.svg'" 
-          :alt="profile.username" 
-          class="profile-pic" 
+        <SecureImage
+          :src="profile.profile_picture_url"
+          :alt="profile.username"
+          class-name="profile-pic"
+          loading-placeholder="/default-avatar.svg"
+          error-placeholder="/default-avatar.svg"
         />
         <div class="profile-info">
           <div class="profile-top">
             <h1>{{ profile.username }}</h1>
             
-            <button v-if="isOwnProfile" class="edit-btn" @click="$router.push('/edit-profile')">
+            <button
+              v-if="isOwnProfile"
+              class="edit-btn"
+              @click="$router.push('/edit-profile')"
+            >
               Edit profile
             </button>
             
-            <div v-else class="action-buttons">
+            <div
+              v-else
+              class="action-buttons"
+            >
               <button 
                 class="follow-btn" 
                 :class="{ following: profile.is_following }"
-                @click="toggleFollow"
                 :disabled="followLoading"
+                @click="toggleFollow"
               >
                 {{ profile.is_following ? 'Following' : 'Follow' }}
               </button>
-              <button class="message-btn" @click="sendMessage">Message</button>
+              <button
+                class="message-btn"
+                @click="sendMessage"
+              >
+                Message
+              </button>
             </div>
           </div>
 
@@ -43,20 +76,38 @@
               <span class="number">{{ formatNumber((profile.posts_count || 0) + (profile.reel_count || 0)) }}</span>
               <span class="label">posts</span>
             </div>
-            <button class="stat" @click="showFollowers">
+            <button
+              class="stat"
+              @click="showFollowers"
+            >
               <span class="number">{{ formatNumber(profile.followers_count || 0) }}</span>
               <span class="label">followers</span>
             </button>
-            <button class="stat" @click="showFollowing">
+            <button
+              class="stat"
+              @click="showFollowing"
+            >
               <span class="number">{{ formatNumber(profile.following_count || 0) }}</span>
               <span class="label">following</span>
             </button>
           </div>
 
           <div class="bio">
-            <h2 class="name">{{ profile.name || profile.username }}</h2>
-            <p v-if="profile.bio" class="bio-text">{{ profile.bio }}</p>
-            <a v-if="profile.website" :href="profile.website" target="_blank" class="website">
+            <h2 class="name">
+              {{ profile.name || profile.username }}
+            </h2>
+            <p
+              v-if="profile.bio"
+              class="bio-text"
+            >
+              {{ profile.bio }}
+            </p>
+            <a
+              v-if="profile.website"
+              :href="profile.website"
+              target="_blank"
+              class="website"
+            >
               {{ profile.website }}
             </a>
           </div>
@@ -64,44 +115,85 @@
       </div>
 
       <div class="profile-tabs">
-        <button class="tab" :class="{ active: activeTab === 'posts' }" @click="switchTab('posts')">
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'posts' }"
+          @click="switchTab('posts')"
+        >
           <span class="icon">▦</span> POSTS
         </button>
-        <button class="tab" :class="{ active: activeTab === 'reels' }" @click="switchTab('reels')">
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'reels' }"
+          @click="switchTab('reels')"
+        >
           <span class="icon">▶</span> REELS
         </button>
-        <button v-if="isOwnProfile" class="tab" :class="{ active: activeTab === 'saved' }" @click="switchTab('saved')">
+        <button
+          v-if="isOwnProfile"
+          class="tab"
+          :class="{ active: activeTab === 'saved' }"
+          @click="switchTab('saved')"
+        >
           <span class="icon">🔖</span> SAVED
         </button>
-        <button class="tab" :class="{ active: activeTab === 'tagged' }" @click="switchTab('tagged')">
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'tagged' }"
+          @click="switchTab('tagged')"
+        >
           <span class="icon">📌</span> TAGGED
         </button>
       </div>
 
-      <div v-if="postsLoading" class="loading">Loading posts...</div>
+      <div
+        v-if="postsLoading"
+        class="loading"
+      >
+        Loading posts...
+      </div>
       
-      <div v-else-if="posts.length === 0" class="empty-state">
-        <div class="empty-icon">📷</div>
+      <div
+        v-else-if="posts.length === 0"
+        class="empty-state"
+      >
+        <div class="empty-icon">
+          📷
+        </div>
         <h3>{{ emptyStateMessage }}</h3>
       </div>
 
-      <div v-else class="content-grid">
-        <div v-for="post in posts" :key="post.id" class="grid-item" @click="openPost(post)">
-          <img 
+      <div
+        v-else
+        class="content-grid"
+      >
+        <div
+          v-for="post in posts"
+          :key="post.id"
+          class="grid-item"
+          @click="openPost(post)"
+        >
+          <MediaThumbnail
             v-if="post.media_urls && post.media_urls.length > 0"
-            :src="getMediaUrl(post.media_urls[0])" 
-            :alt="post.caption" 
-            @error="handleImageError"
+            :thumbnail-url="post.thumbnail_url"
+            :media-urls="post.media_urls"
+            :is-video="post.is_reel"
+            :alt="post.caption"
+            class-name=""
           />
-          <div v-if="post.is_reel" class="type-badge">▶</div>
           
           <div class="post-overlay">
-             <div class="overlay-stats">
-               <span>❤️ {{ formatNumber(post.like_count || 0) }}</span>
-               <span>💬 {{ formatNumber(post.comment_count || 0) }}</span>
-             </div>
+            <div class="overlay-stats">
+              <span>❤️ {{ formatNumber(post.like_count || 0) }}</span>
+              <span>💬 {{ formatNumber(post.comment_count || 0) }}</span>
+            </div>
           </div>
-          <div v-if="post.media_urls && post.media_urls.length > 1" class="multi-icon">▦</div>
+          <div
+            v-if="post.media_urls && post.media_urls.length > 1"
+            class="multi-icon"
+          >
+            ▦
+          </div>
         </div>
       </div>
     </div>
@@ -116,27 +208,65 @@
     />
 
     <!-- Followers Modal -->
-    <div v-if="showFollowersModal" class="modal-overlay" @click="showFollowersModal = false">
-      <div class="followers-modal" @click.stop>
+    <div
+      v-if="showFollowersModal"
+      class="modal-overlay"
+      @click="showFollowersModal = false"
+    >
+      <div
+        class="followers-modal"
+        @click.stop
+      >
         <div class="modal-header">
           <h3>Followers</h3>
-          <button class="close-btn" @click="showFollowersModal = false">✕</button>
+          <button
+            class="close-btn"
+            @click="showFollowersModal = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="users-list">
-          <div v-if="loadingFollowers" class="loading-users">Loading...</div>
-          <div v-else-if="followers.length === 0" class="no-users">No followers yet</div>
-          <div v-else v-for="user in followers" :key="user.user_id" class="user-item" @click="navigateToProfile(user.username)">
-            <img 
-              :src="user.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
-              :alt="user.username" 
-              class="user-avatar" 
+          <div
+            v-if="loadingFollowers"
+            class="loading-users"
+          >
+            Loading...
+          </div>
+          <div
+            v-else-if="followers.length === 0"
+            class="no-users"
+          >
+            No followers yet
+          </div>
+          <div
+            v-for="user in followers"
+            v-else
+            :key="user.user_id"
+            class="user-item"
+            @click="navigateToProfile(user.username)"
+          >
+            <SecureImage
+              :src="user.profile_picture_url"
+              :alt="user.username"
+              class-name="user-avatar"
+              loading-placeholder="/placeholder.svg?height=40&width=40"
+              error-placeholder="/placeholder.svg?height=40&width=40"
             />
             <div class="user-info">
               <div class="user-username">
                 {{ user.username }}
-                <span v-if="user.is_verified" class="verified">✓</span>
+                <span
+                  v-if="user.is_verified"
+                  class="verified"
+                >✓</span>
               </div>
-              <div v-if="user.full_name" class="user-fullname">{{ user.full_name }}</div>
+              <div
+                v-if="user.full_name"
+                class="user-fullname"
+              >
+                {{ user.full_name }}
+              </div>
             </div>
           </div>
         </div>
@@ -144,27 +274,65 @@
     </div>
 
     <!-- Following Modal -->
-    <div v-if="showFollowingModal" class="modal-overlay" @click="showFollowingModal = false">
-      <div class="followers-modal" @click.stop>
+    <div
+      v-if="showFollowingModal"
+      class="modal-overlay"
+      @click="showFollowingModal = false"
+    >
+      <div
+        class="followers-modal"
+        @click.stop
+      >
         <div class="modal-header">
           <h3>Following</h3>
-          <button class="close-btn" @click="showFollowingModal = false">✕</button>
+          <button
+            class="close-btn"
+            @click="showFollowingModal = false"
+          >
+            ✕
+          </button>
         </div>
         <div class="users-list">
-          <div v-if="loadingFollowing" class="loading-users">Loading...</div>
-          <div v-else-if="following.length === 0" class="no-users">Not following anyone yet</div>
-          <div v-else v-for="user in following" :key="user.user_id" class="user-item" @click="navigateToProfile(user.username)">
-            <img 
-              :src="user.profile_picture_url || '/placeholder.svg?height=40&width=40'" 
-              :alt="user.username" 
-              class="user-avatar" 
+          <div
+            v-if="loadingFollowing"
+            class="loading-users"
+          >
+            Loading...
+          </div>
+          <div
+            v-else-if="following.length === 0"
+            class="no-users"
+          >
+            Not following anyone yet
+          </div>
+          <div
+            v-for="user in following"
+            v-else
+            :key="user.user_id"
+            class="user-item"
+            @click="navigateToProfile(user.username)"
+          >
+            <SecureImage
+              :src="user.profile_picture_url"
+              :alt="user.username"
+              class-name="user-avatar"
+              loading-placeholder="/placeholder.svg?height=40&width=40"
+              error-placeholder="/placeholder.svg?height=40&width=40"
             />
             <div class="user-info">
               <div class="user-username">
                 {{ user.username }}
-                <span v-if="user.is_verified" class="verified">✓</span>
+                <span
+                  v-if="user.is_verified"
+                  class="verified"
+                >✓</span>
               </div>
-              <div v-if="user.full_name" class="user-fullname">{{ user.full_name }}</div>
+              <div
+                v-if="user.full_name"
+                class="user-fullname"
+              >
+                {{ user.full_name }}
+              </div>
             </div>
           </div>
         </div>
@@ -174,347 +342,349 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import apiClient, { userAPI } from '@/services/api'
-import PostDetailsOverlay from '@/components/PostDetailsOverlay.vue'
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
+import apiClient, { userAPI } from "@/services/api";
+import PostDetailsOverlay from "@/components/PostDetailsOverlay.vue";
+import SecureImage from "@/components/SecureImage.vue";
+import MediaThumbnail from "@/components/MediaThumbnail.vue";
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
+const route = useRoute();
+const router = useRouter();
+const authStore = useAuthStore();
 
-const profile = ref<any>({})
-const posts = ref<any[]>([])
-const loading = ref(true)
-const postsLoading = ref(false)
-const error = ref('')
-const activeTab = ref('posts')
-const followLoading = ref(false)
-const showPostDetails = ref(false)
-const selectedPost = ref<any>(null)
+const profile = ref<any>({});
+const posts = ref<any[]>([]);
+const loading = ref(true);
+const postsLoading = ref(false);
+const error = ref("");
+const activeTab = ref("posts");
+const followLoading = ref(false);
+const showPostDetails = ref(false);
+const selectedPost = ref<any>(null);
 
 const isOwnProfile = computed(() => {
-  if (!authStore.user) return false
-  if (!route.params.username) return true
-  return route.params.username === authStore.user.username
-})
+  if (!authStore.user) return false;
+  if (!route.params.username) return true;
+  return route.params.username === authStore.user.username;
+});
 
-const isOwnProfileError = computed(() => error.value && !route.params.username)
+const isOwnProfileError = computed(() => error.value && !route.params.username);
 
 const emptyStateMessage = computed(() => {
-  if (activeTab.value === 'posts') return 'No posts yet'
-  if (activeTab.value === 'reels') return 'No reels yet'
-  if (activeTab.value === 'saved') return 'No saved posts'
-  return 'No tagged posts'
-})
+  if (activeTab.value === "posts") return "No posts yet";
+  if (activeTab.value === "reels") return "No reels yet";
+  if (activeTab.value === "saved") return "No saved posts";
+  return "No tagged posts";
+});
 
 const getTargetUsername = (): string | null => {
-  const routeParam = route.params.username as string
-  if (routeParam && routeParam !== 'undefined') return routeParam
-  if (authStore.user?.username) return authStore.user.username
-  return null
-}
+  const routeParam = route.params.username as string;
+  if (routeParam && routeParam !== "undefined") return routeParam;
+  if (authStore.user?.username) return authStore.user.username;
+  return null;
+};
 
 const fetchProfile = async () => {
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
   try {
-    const username = getTargetUsername()
+    const username = getTargetUsername();
     if (!username) {
-      if (!route.params.username) return 
-      error.value = 'User not found'
-      loading.value = false
-      return
+      if (!route.params.username) return; 
+      error.value = "User not found";
+      loading.value = false;
+      return;
     }
     
-    const response = await apiClient.get(`/users/${username}`)
-    const data = response.data
+    const response = await apiClient.get(`/users/${username}`);
+    const data = response.data;
     if (data.user) {
-        profile.value = { ...data.user, posts_count: data.post_count, reel_count: data.reel_count }
+        profile.value = { ...data.user, posts_count: data.post_count, reel_count: data.reel_count };
     } else {
-        profile.value = data
+        profile.value = data;
     }
 
-    if (!route.params.username && username) router.replace(`/profile/${username}`)
+    if (!route.params.username && username) router.replace(`/profile/${username}`);
   } catch (err: any) {
-    console.error('Profile Error:', err)
-    error.value = 'Failed to load profile'
+    console.error("Profile Error:", err);
+    error.value = "Failed to load profile";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
 const fetchPosts = async (tab: string) => {
-  postsLoading.value = true
+  postsLoading.value = true;
   try {
-    const username = getTargetUsername()
+    const username = getTargetUsername();
     if (!username) {
-        if (!route.params.username && loading.value) return
-        posts.value = []
-        postsLoading.value = false
-        return
+        if (!route.params.username && loading.value) return;
+        posts.value = [];
+        postsLoading.value = false;
+        return;
     }
 
-    if (tab === 'tagged') {
-        const response = await userAPI.getUserTagged(username) // Use new API
-        posts.value = response || []
+    if (tab === "tagged") {
+        const response = await userAPI.getUserTagged(username); // Use new API
+        posts.value = response || [];
     }
 
-    if (tab === 'saved') {
+    if (tab === "saved") {
         // --- Fetch Saved Posts (Collections) ---
         // Get all collections
-        const collectionsRes = await apiClient.get('/collections')
-        const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || [])
+        const collectionsRes = await apiClient.get("/collections");
+        const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || []);
         
         // Fetch posts from all collections and combine them
-        const allSavedPosts: any[] = []
+        const allSavedPosts: any[] = [];
         
         for (const collection of collections) {
             try {
-                const savedPostsRes = await apiClient.get(`/collections/${collection.id}`)
+                const savedPostsRes = await apiClient.get(`/collections/${collection.id}`);
                 // Backend returns posts array directly, not wrapped in {posts: [...]}
-                const collectionPosts = Array.isArray(savedPostsRes.data) ? savedPostsRes.data : (savedPostsRes.data.posts || [])
-                allSavedPosts.push(...collectionPosts)
+                const collectionPosts = Array.isArray(savedPostsRes.data) ? savedPostsRes.data : (savedPostsRes.data.posts || []);
+                allSavedPosts.push(...collectionPosts);
             } catch (err) {
-                console.error(`Failed to fetch posts from collection ${collection.id}:`, err)
+                console.error(`Failed to fetch posts from collection ${collection.id}:`, err);
             }
         }
         
         // Remove duplicates based on post ID
         const uniquePosts = Array.from(
             new Map(allSavedPosts.map(post => [post.id, post])).values()
-        )
+        );
         
-        posts.value = uniquePosts
+        posts.value = uniquePosts;
     } else {
         // Standard endpoints
-        let endpoint = `/users/${username}/posts`
-        if (tab === 'reels') endpoint = `/users/${username}/reels`
-        else if (tab === 'tagged') endpoint = `/users/${username}/tagged`
+        let endpoint = `/users/${username}/posts`;
+        if (tab === "reels") endpoint = `/users/${username}/reels`;
+        else if (tab === "tagged") endpoint = `/users/${username}/tagged`;
 
-        const response = await apiClient.get(endpoint)
-        const rawData = response.data
-        if (rawData.posts) posts.value = rawData.posts
-        else if (rawData.reels) posts.value = rawData.reels
-        else if (Array.isArray(rawData)) posts.value = rawData
-        else posts.value = []
+        const response = await apiClient.get(endpoint);
+        const rawData = response.data;
+        if (rawData.posts) posts.value = rawData.posts;
+        else if (rawData.reels) posts.value = rawData.reels;
+        else if (Array.isArray(rawData)) posts.value = rawData;
+        else posts.value = [];
     }
   } catch (err) {
-    console.error('Posts Error:', err)
-    posts.value = []
+    console.error("Posts Error:", err);
+    posts.value = [];
   } finally {
-    postsLoading.value = false
+    postsLoading.value = false;
   }
-}
+};
 
 const switchTab = (tab: string) => {
-  activeTab.value = tab
-  fetchPosts(tab)
-}
+  activeTab.value = tab;
+  fetchPosts(tab);
+};
 
 const openPost = (post: any) => {
-  selectedPost.value = post
-  showPostDetails.value = true
-}
+  selectedPost.value = post;
+  showPostDetails.value = true;
+};
 
 const closePostDetails = () => {
-  showPostDetails.value = false
-  selectedPost.value = null
-}
+  showPostDetails.value = false;
+  selectedPost.value = null;
+};
 
 const handlePostLike = async (postId: string) => {
-  if (!selectedPost.value) return
+  if (!selectedPost.value) return;
   
   // Optimistic update
-  const wasLiked = selectedPost.value.is_liked || false
-  selectedPost.value.is_liked = !wasLiked
-  selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? -1 : 1)
+  const wasLiked = selectedPost.value.is_liked || false;
+  selectedPost.value.is_liked = !wasLiked;
+  selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? -1 : 1);
   
   // Also update in posts array
-  const postInList = posts.value.find(p => p.id === postId)
+  const postInList = posts.value.find(p => p.id === postId);
   if (postInList) {
-    postInList.is_liked = !wasLiked
-    postInList.like_count = (postInList.like_count || 0) + (wasLiked ? -1 : 1)
+    postInList.is_liked = !wasLiked;
+    postInList.like_count = (postInList.like_count || 0) + (wasLiked ? -1 : 1);
   }
   
   try {
     if (wasLiked) {
-      await apiClient.delete(`/posts/${postId}/like`)
+      await apiClient.delete(`/posts/${postId}/like`);
     } else {
-      await apiClient.post(`/posts/${postId}/like`)
+      await apiClient.post(`/posts/${postId}/like`);
     }
   } catch (err) {
     // Rollback on error
-    selectedPost.value.is_liked = wasLiked
-    selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? 1 : -1)
+    selectedPost.value.is_liked = wasLiked;
+    selectedPost.value.like_count = (selectedPost.value.like_count || 0) + (wasLiked ? 1 : -1);
     if (postInList) {
-      postInList.is_liked = wasLiked
-      postInList.like_count = (postInList.like_count || 0) + (wasLiked ? 1 : -1)
+      postInList.is_liked = wasLiked;
+      postInList.like_count = (postInList.like_count || 0) + (wasLiked ? 1 : -1);
     }
-    console.error('Failed to toggle like:', err)
+    console.error("Failed to toggle like:", err);
   }
-}
+};
 
 const handlePostSave = async (postId: string) => {
-  if (!selectedPost.value) return
+  if (!selectedPost.value) return;
   
   // Optimistic update
-  const wasSaved = selectedPost.value.is_saved || false
-  selectedPost.value.is_saved = !wasSaved
+  const wasSaved = selectedPost.value.is_saved || false;
+  selectedPost.value.is_saved = !wasSaved;
   
   // Also update in posts array
-  const postInList = posts.value.find(p => p.id === postId)
+  const postInList = posts.value.find(p => p.id === postId);
   if (postInList) {
-    postInList.is_saved = !wasSaved
+    postInList.is_saved = !wasSaved;
   }
   
   try {
-    const numericPostId = parseInt(postId)
+    const numericPostId = parseInt(postId);
     if (isNaN(numericPostId)) {
-      throw new Error('Invalid post ID')
+      throw new Error("Invalid post ID");
     }
     
     if (wasSaved) {
       // Unsave: Fetch collections and try to unsave
-      const collectionsRes = await apiClient.get('/collections')
-      const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || [])
+      const collectionsRes = await apiClient.get("/collections");
+      const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || []);
       
       if (collections.length > 0) {
-        await apiClient.delete(`/collections/${collections[0].id}/posts/${postId}`)
+        await apiClient.delete(`/collections/${collections[0].id}/posts/${postId}`);
       }
     } else {
       // Save: Use collection ID 1 - backend will auto-create if needed
-      await apiClient.post(`/collections/1/posts`, { post_id: numericPostId })
+      await apiClient.post("/collections/1/posts", { post_id: numericPostId });
     }
   } catch (err) {
     // Rollback on error
-    selectedPost.value.is_saved = wasSaved
+    selectedPost.value.is_saved = wasSaved;
     if (postInList) {
-      postInList.is_saved = wasSaved
+      postInList.is_saved = wasSaved;
     }
-    console.error('Failed to toggle save:', err)
+    console.error("Failed to toggle save:", err);
   }
-}
+};
 
 const toggleFollow = async () => {
-  if (followLoading.value) return
-  followLoading.value = true
+  if (followLoading.value) return;
+  followLoading.value = true;
 
-  const targetId = profile.value.user_id || profile.value.id
+  const targetId = profile.value.user_id || profile.value.id;
   if (!targetId) {
-    console.error("Cannot follow: User ID is missing on profile object", profile.value)
-    alert("Error: User ID not found")
-    followLoading.value = false
-    return
+    console.error("Cannot follow: User ID is missing on profile object", profile.value);
+    alert("Error: User ID not found");
+    followLoading.value = false;
+    return;
   }
 
   try {
     if (profile.value.is_following) {
-      await apiClient.delete(`/users/${targetId}/follow`)
-      profile.value.is_following = false
-      profile.value.followers_count--
+      await apiClient.delete(`/users/${targetId}/follow`);
+      profile.value.is_following = false;
+      profile.value.followers_count--;
     } else {
-      await apiClient.post(`/users/${targetId}/follow`)
-      profile.value.is_following = true
-      profile.value.followers_count++
+      await apiClient.post(`/users/${targetId}/follow`);
+      profile.value.is_following = true;
+      profile.value.followers_count++;
     }
   } catch (err) { 
-    console.error(err) 
+    console.error(err); 
   } finally { 
-    followLoading.value = false 
+    followLoading.value = false; 
   }
-}
+};
 
-const sendMessage = () => router.push({ name: 'Messages', query: { user: profile.value.username } })
+const sendMessage = () => router.push({ name: "Messages", query: { user: profile.value.username } });
 
-const showFollowersModal = ref(false)
-const showFollowingModal = ref(false)
-const followers = ref<any[]>([])
-const following = ref<any[]>([])
-const loadingFollowers = ref(false)
-const loadingFollowing = ref(false)
+const showFollowersModal = ref(false);
+const showFollowingModal = ref(false);
+const followers = ref<any[]>([]);
+const following = ref<any[]>([]);
+const loadingFollowers = ref(false);
+const loadingFollowing = ref(false);
 
 const showFollowers = async () => {
-  showFollowersModal.value = true
-  loadingFollowers.value = true
+  showFollowersModal.value = true;
+  loadingFollowers.value = true;
   
   try {
-    const userId = profile.value?.user_id || authStore.user?.user_id
+    const userId = profile.value?.user_id || authStore.user?.user_id;
     if (userId) {
-      const response = await userAPI.getFollowers(userId)
-      followers.value = response
+      const response = await userAPI.getFollowers(userId);
+      followers.value = response;
     }
   } catch (err) {
-    console.error('Failed to load followers:', err)
-    followers.value = []
+    console.error("Failed to load followers:", err);
+    followers.value = [];
   } finally {
-    loadingFollowers.value = false
+    loadingFollowers.value = false;
   }
-}
+};
 
 const showFollowing = async () => {
-  showFollowingModal.value = true
-  loadingFollowing.value = true
+  showFollowingModal.value = true;
+  loadingFollowing.value = true;
   
   try {
-    const userId = profile.value?.user_id || authStore.user?.user_id
+    const userId = profile.value?.user_id || authStore.user?.user_id;
     if (userId) {
-      const response = await userAPI.getFollowing(userId)
-      following.value = response
+      const response = await userAPI.getFollowing(userId);
+      following.value = response;
     }
   } catch (err) {
-    console.error('Failed to load following:', err)
-    following.value = []
+    console.error("Failed to load following:", err);
+    following.value = [];
   } finally {
-    loadingFollowing.value = false
+    loadingFollowing.value = false;
   }
-}
+};
 
 const navigateToProfile = (username: string) => {
-  showFollowersModal.value = false
-  showFollowingModal.value = false
-  router.push(`/${username}`)
-}
+  showFollowersModal.value = false;
+  showFollowingModal.value = false;
+  router.push(`/${username}`);
+};
 
 const formatNumber = (num: number) => {
-  if (!num) return '0'
-  if (num >= 1000000) return `${(num/1000000).toFixed(1)}M`
-  if (num >= 1000) return `${(num/1000).toFixed(1)}K`
-  return num.toString()
-}
+  if (!num) return "0";
+  if (num >= 1000000) return `${(num/1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num/1000).toFixed(1)}K`;
+  return num.toString();
+};
 
 const getMediaUrl = (url: string) => {
-  if (!url) return '/placeholder.svg'
-  if (url.startsWith('http')) return url
-  return `http://localhost:8000${url}`
-}
+  if (!url) return "/placeholder.svg";
+  if (url.startsWith("http")) return url;
+  return `http://localhost:8000${url}`;
+};
 
 const handleImageError = (e: Event) => {
-  (e.target as HTMLImageElement).src = '/placeholder.svg'
-}
+  (e.target as HTMLImageElement).src = "/placeholder.svg";
+};
 
 const retryAuth = () => {
-    fetchProfile()
-    fetchPosts(activeTab.value)
-}
+    fetchProfile();
+    fetchPosts(activeTab.value);
+};
 
 onMounted(() => {
-  fetchProfile()
-  fetchPosts('posts')
-})
+  fetchProfile();
+  fetchPosts("posts");
+});
 
 watch(() => authStore.user, (newUser) => {
     if (newUser && !route.params.username) {
-        fetchProfile()
-        fetchPosts(activeTab.value)
+        fetchProfile();
+        fetchPosts(activeTab.value);
     }
-}, { deep: true })
+}, { deep: true });
 
 watch(() => route.params.username, () => {
-  fetchProfile()
-  fetchPosts('posts')
-})
+  fetchProfile();
+  fetchPosts("posts");
+});
 </script>
 
 <style scoped lang="scss">

@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore } from "pinia";
 
 interface UserProfile {
   user_id: number
@@ -21,7 +21,7 @@ interface UserState {
   error: string | null
 }
 
-export const useUserStore = defineStore('user', {
+export const useUserStore = defineStore("user", {
   state: (): UserState => ({
     profiles: {},
     loading: false,
@@ -34,19 +34,20 @@ export const useUserStore = defineStore('user', {
 
   actions: {
     async fetchUserProfile(username: string) {
-      this.loading = true
-      this.error = null
+      this.loading = true;
+      this.error = null;
 
       try {
         // TODO: Call API
         // const response = await userAPI.getProfile(username)
         // this.profiles[username] = response
         // return response
+        console.warn("fetchUserProfile not implemented for", username);
       } catch (error: any) {
-        this.error = error.response?.data?.error || 'Failed to load profile'
-        throw error
+        this.error = error.response?.data?.error || "Failed to load profile";
+        throw error;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
@@ -57,16 +58,16 @@ export const useUserStore = defineStore('user', {
         
         // Update local state optimistically
         if (this.profiles[username]) {
-          this.profiles[username].is_followed_by_self = true
-          this.profiles[username].follower_count++
+          this.profiles[username].is_followed_by_self = true;
+          this.profiles[username].follower_count++;
         }
       } catch (error) {
         // Revert on error
         if (this.profiles[username]) {
-          this.profiles[username].is_followed_by_self = false
-          this.profiles[username].follower_count--
+          this.profiles[username].is_followed_by_self = false;
+          this.profiles[username].follower_count--;
         }
-        throw error
+        throw error;
       }
     },
 
@@ -77,21 +78,21 @@ export const useUserStore = defineStore('user', {
         
         // Update local state optimistically
         if (this.profiles[username]) {
-          this.profiles[username].is_followed_by_self = false
-          this.profiles[username].follower_count--
+          this.profiles[username].is_followed_by_self = false;
+          this.profiles[username].follower_count--;
         }
       } catch (error) {
         // Revert on error
         if (this.profiles[username]) {
-          this.profiles[username].is_followed_by_self = true
-          this.profiles[username].follower_count++
+          this.profiles[username].is_followed_by_self = true;
+          this.profiles[username].follower_count++;
         }
-        throw error
+        throw error;
       }
     },
 
     clearCache() {
-      this.profiles = {}
+      this.profiles = {};
     }
   }
-})
+});

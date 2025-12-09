@@ -1,23 +1,46 @@
 <template>
-  <div class="story-viewer" @click="handleClick" @mousedown="handlePauseStart" @mouseup="handlePauseEnd" @mouseleave="handlePauseEnd">
-    <button class="close-btn" @click.stop="$emit('close')">✕</button>
+  <div
+    class="story-viewer"
+    @click="handleClick"
+    @mousedown="handlePauseStart"
+    @mouseup="handlePauseEnd"
+    @mouseleave="handlePauseEnd"
+  >
+    <button
+      class="close-btn"
+      @click.stop="$emit('close')"
+    >
+      ✕
+    </button>
 
     <div class="story-container">
       <div class="story-image-wrapper">
+        <div v-if="loadingMedia" class="media-loading">
+          <div class="loading-spinner">Loading story...</div>
+        </div>
         <img 
-          :src="getMediaUrl(story.media_url)" 
+          v-else-if="secureMediaUrl"
+          :src="secureMediaUrl" 
           :alt="story.author_username" 
           class="story-image" 
           :style="{ filter: getFilterStyle(story.filter_name) }"
         />
         
         <!-- Pause Indicator -->
-        <div v-if="isPaused" class="pause-indicator">
-          <div class="pause-icon">⏸</div>
+        <div
+          v-if="isPaused"
+          class="pause-indicator"
+        >
+          <div class="pause-icon">
+            ⏸
+          </div>
         </div>
         
         <!-- Text Overlay -->
-        <div v-if="story.caption" class="text-overlay">
+        <div
+          v-if="story.caption"
+          class="text-overlay"
+        >
           {{ story.caption }}
         </div>
         
@@ -32,35 +55,76 @@
         </div>
         
         <div class="story-progress">
-          <div class="progress-bar" :style="{ width: progressPercentage + '%' }"></div>
+          <div
+            class="progress-bar"
+            :style="{ width: progressPercentage + '%' }"
+          ></div>
         </div>
       </div>
 
       <div class="story-header">
         <div class="user-info">
-          <img :src="story.author_profile_url || '/default-avatar.svg'" :alt="story.author_username" class="avatar" />
+          <img
+            :src="story.author_profile_url || '/default-avatar.svg'"
+            :alt="story.author_username"
+            class="avatar"
+          />
           <div>
-            <div class="username">{{ story.author_username }}</div>
-            <div class="timestamp">{{ formatTime(story.created_at) }}</div>
+            <div class="username">
+              {{ story.author_username }}
+            </div>
+            <div class="timestamp">
+              {{ formatTime(story.created_at) }}
+            </div>
           </div>
         </div>
-        <button class="more-btn" @click.stop>⋯</button>
+        <button
+          class="more-btn"
+          @click.stop
+        >
+          ⋯
+        </button>
       </div>
 
-      <button v-if="canGoPrev" class="nav-btn prev" @click.stop="goToPrev">◀</button>
-      <button v-if="canGoNext" class="nav-btn next" @click.stop="goToNext">▶</button>
+      <button
+        v-if="canGoPrev"
+        class="nav-btn prev"
+        @click.stop="goToPrev"
+      >
+        ◀
+      </button>
+      <button
+        v-if="canGoNext"
+        class="nav-btn next"
+        @click.stop="goToNext"
+      >
+        ▶
+      </button>
 
       <!-- Action Buttons -->
-      <div class="story-actions" @click.stop>
-        <button class="action-btn" @click="toggleLike" :class="{ liked: isLiked }">
+      <div
+        class="story-actions"
+        @click.stop
+      >
+        <button
+          class="action-btn"
+          :class="{ liked: isLiked }"
+          @click="toggleLike"
+        >
           <span class="icon">{{ isLiked ? '❤️' : '🤍' }}</span>
         </button>
-        <button class="action-btn" @click="handleShare">
+        <button
+          class="action-btn"
+          @click="handleShare"
+        >
           <span class="icon">📤</span>
         </button>
       </div>
 
-      <div class="story-reply" @click.stop>
+      <div
+        class="story-reply"
+        @click.stop
+      >
         <input 
           v-model="replyMessage" 
           type="text" 
@@ -68,35 +132,55 @@
           class="reply-input"
           @keyup.enter="sendReply"
         />
-        <button class="send-btn" @click="sendReply" :disabled="!replyMessage.trim()">📤</button>
+        <button
+          class="send-btn"
+          :disabled="!replyMessage.trim()"
+          @click="sendReply"
+        >
+          📤
+        </button>
       </div>
     </div>
 
     <!-- Share Modal -->
-    <div v-if="showShareModal" class="modal-overlay" @click.stop="closeShareModal">
-      <div class="modal-content" @click.stop>
+    <div
+      v-if="showShareModal"
+      class="modal-overlay"
+      @click.stop="closeShareModal"
+    >
+      <div
+        class="modal-content"
+        @click.stop
+      >
         <h3>Share Story</h3>
         <p>Choose a recipient:</p>
         <div class="share-options">
-          <div class="share-option" @click="shareToMessages">
+          <div
+            class="share-option"
+            @click="shareToMessages"
+          >
             <span class="icon">💬</span>
             <span>Send in Message</span>
           </div>
         </div>
-        <button class="modal-close-btn" @click="closeShareModal">Cancel</button>
+        <button
+          class="modal-close-btn"
+          @click="closeShareModal"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { storyAPI } from '@/services/api'
-import { useAuthStore } from '@/stores/auth'
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
+import { useRouter } from "vue-router";
+import { storyAPI } from "@/services/api";
+import { getSecureMediaURL } from "@/services/media";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
 
 // Interface matching Backend Protobuf/JSON
 export interface Story {
@@ -114,218 +198,245 @@ export interface Story {
 const props = defineProps<{
   stories: Story[]
   initialIndex?: number
-}>()
+}>();
 
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'prev'): void
-  (e: 'next'): void
-}>()
+  (e: "close"): void
+  (e: "prev"): void
+  (e: "next"): void
+}>();
 
-const currentIndex = ref(props.initialIndex || 0)
-const progress = ref(0)
-const storyDuration = 5000 
-const isPaused = ref(false)
-const isLiked = ref(false)
-const replyMessage = ref('')
-const showShareModal = ref(false)
+const currentIndex = ref(props.initialIndex || 0);
+const progress = ref(0);
+const storyDuration = 5000; 
+const isPaused = ref(false);
+const isLiked = ref(false);
+const replyMessage = ref("");
+const showShareModal = ref(false);
 
-const story = computed(() => props.stories[currentIndex.value])
-const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100))
-const canGoPrev = computed(() => currentIndex.value > 0)
-const canGoNext = computed(() => currentIndex.value < props.stories.length - 1)
+// Secure media URL
+const secureMediaUrl = ref<string>("");
+const loadingMedia = ref(true);
+
+const story = computed(() => props.stories[currentIndex.value]);
+const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100));
+const canGoPrev = computed(() => currentIndex.value > 0);
+const canGoNext = computed(() => currentIndex.value < props.stories.length - 1);
 
 // Update liked status when story changes
 const updateLikedStatus = () => {
-  isLiked.value = story.value.is_liked || false
-}
+  isLiked.value = story.value.is_liked || false;
+};
 
 // Parse stickers from JSON
 const parsedStickers = computed(() => {
   try {
     if (story.value.stickers_json) {
-      return JSON.parse(story.value.stickers_json)
+      return JSON.parse(story.value.stickers_json);
     }
   } catch (e) {
-    console.error('Failed to parse stickers:', e)
+    console.error("Failed to parse stickers:", e);
   }
-  return []
-})
+  return [];
+});
 
 // Get filter CSS
 const getFilterStyle = (filterName?: string) => {
-  if (!filterName || filterName === 'None') return 'none'
+  if (!filterName || filterName === "None") return "none";
   const filters: Record<string, string> = {
-    'Grayscale': 'grayscale(100%)',
-    'Sepia': 'sepia(100%)',
-    'Bright': 'brightness(1.3)',
-    'Contrast': 'contrast(1.5)',
-    'Blur': 'blur(5px)'
-  }
-  return filters[filterName] || 'none'
-}
+    "Grayscale": "grayscale(100%)",
+    "Sepia": "sepia(100%)",
+    "Bright": "brightness(1.3)",
+    "Contrast": "contrast(1.5)",
+    "Blur": "blur(5px)"
+  };
+  return filters[filterName] || "none";
+};
 
 // Helper for media URLs
 const getMediaUrl = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-    return `http://localhost:8000${url.startsWith('/') ? url : '/' + url}`
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
+    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
   }
-  return url
-}
+  return url;
+};
 
 // Helper for timestamp
 const formatTime = (dateStr: string) => {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = Math.floor((now.getTime() - date.getTime()) / 1000) // seconds
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000); // seconds
 
-  if (diff < 60) return 'Just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  return `${Math.floor(diff / 86400)}d`
-}
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
+};
 
-let interval: number | null = null
+let interval: number | null = null;
 
 const startProgress = () => {
-  if (isPaused.value) return
-  stopProgress() // Ensure no duplicate intervals
-  progress.value = 0
+  if (isPaused.value) return;
+  stopProgress(); // Ensure no duplicate intervals
+  progress.value = 0;
   interval = setInterval(() => {
     if (!isPaused.value) {
-      progress.value += 100
+      progress.value += 100;
       if (progress.value >= storyDuration) {
         if (canGoNext.value) {
-          goToNext()
+          goToNext();
         } else {
-          emit('close')
+          emit("close");
         }
       }
     }
-  }, 100)
-}
+  }, 100);
+};
 
 const stopProgress = () => {
   if (interval) {
-    clearInterval(interval)
-    interval = null
+    clearInterval(interval);
+    interval = null;
   }
-}
+};
 
 const handlePauseStart = () => {
-  isPaused.value = true
-}
+  isPaused.value = true;
+};
 
 const handlePauseEnd = () => {
-  isPaused.value = false
-}
+  isPaused.value = false;
+};
 
 const goToNext = () => {
   if (canGoNext.value) {
-    currentIndex.value++
-    emit('next')
-    updateLikedStatus()
-    startProgress()
+    currentIndex.value++;
+    emit("next");
+    updateLikedStatus();
+    startProgress();
   } else {
-    emit('close')
+    emit("close");
   }
-}
+};
 
 const goToPrev = () => {
   if (canGoPrev.value) {
-    currentIndex.value--
-    emit('prev')
-    updateLikedStatus()
-    startProgress()
+    currentIndex.value--;
+    emit("prev");
+    updateLikedStatus();
+    startProgress();
   } else {
       // Restart current story if at beginning
-      startProgress()
+      startProgress();
   }
-}
+};
 
 const handleClick = (event: MouseEvent) => {
   // Don't navigate if clicking on buttons or inputs
-  const target = event.target as HTMLElement
-  if (target.closest('.action-btn, .reply-input, .send-btn, .nav-btn, .close-btn, .more-btn')) {
-    return
+  const target = event.target as HTMLElement;
+  if (target.closest(".action-btn, .reply-input, .send-btn, .nav-btn, .close-btn, .more-btn")) {
+    return;
   }
 
-  const element = event.currentTarget as HTMLElement
-  const rect = element.getBoundingClientRect()
-  const x = event.clientX - rect.left
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+  const x = event.clientX - rect.left;
 
   if (x > rect.width / 2) {
-    goToNext()
+    goToNext();
   } else {
-    goToPrev()
+    goToPrev();
   }
-}
+};
 
 // Like functionality
 const toggleLike = async () => {
   try {
     if (isLiked.value) {
-      await storyAPI.unlikeStory(story.value.id)
-      isLiked.value = false
+      await storyAPI.unlikeStory(story.value.id);
+      isLiked.value = false;
     } else {
-      await storyAPI.likeStory(story.value.id)
-      isLiked.value = true
+      await storyAPI.likeStory(story.value.id);
+      isLiked.value = true;
     }
   } catch (error) {
-    console.error('Failed to toggle like:', error)
+    console.error("Failed to toggle like:", error);
   }
-}
+};
 
 // Reply functionality
 const sendReply = () => {
-  if (!replyMessage.value.trim()) return
+  if (!replyMessage.value.trim()) return;
   
   // Navigate to messages with the story author
   router.push({
-    name: 'Messages',
+    name: "Messages",
     query: {
       user: story.value.author_username,
       message: `Story reply: ${replyMessage.value}`
     }
-  })
+  });
   
-  replyMessage.value = ''
-  emit('close')
-}
+  replyMessage.value = "";
+  emit("close");
+};
 
 // Share functionality
 const handleShare = () => {
-  showShareModal.value = true
-}
+  showShareModal.value = true;
+};
 
 const closeShareModal = () => {
-  showShareModal.value = false
-}
+  showShareModal.value = false;
+};
 
 const shareToMessages = () => {
   // Navigate to messages to share the story
   router.push({
-    name: 'Messages',
+    name: "Messages",
     query: {
       shareStory: story.value.id,
       shareUrl: getMediaUrl(story.value.media_url)
     }
-  })
+  });
   
-  closeShareModal()
-  emit('close')
-}
+  closeShareModal();
+  emit("close");
+};
+
+// Load secure media URL when story changes
+const loadSecureMedia = async () => {
+  loadingMedia.value = true;
+  secureMediaUrl.value = "";
+  
+  try {
+    if (story.value.media_url) {
+      secureMediaUrl.value = await getSecureMediaURL(story.value.media_url);
+    }
+  } catch (error) {
+    console.error("Failed to load story media:", error);
+  } finally {
+    loadingMedia.value = false;
+  }
+};
+
+// Watch for story changes
+watch(story, () => {
+  loadSecureMedia();
+  updateLikedStatus();
+  startProgress();
+}, { immediate: true });
 
 onMounted(() => {
-  updateLikedStatus()
-  startProgress()
-})
+  updateLikedStatus();
+  startProgress();
+});
 
 onUnmounted(() => {
-  stopProgress()
-})
+  stopProgress();
+});
 </script>
 
 <style scoped lang="scss">
@@ -368,6 +479,20 @@ onUnmounted(() => {
   position: relative;
   flex: 1;
   overflow: hidden;
+
+  .media-loading {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+
+    .loading-spinner {
+      color: #fff;
+      font-size: 16px;
+    }
+  }
 
   .story-image {
     width: 100%;

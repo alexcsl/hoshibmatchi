@@ -25,8 +25,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/adrg/strutil"
-	"github.com/adrg/strutil/metrics"
 	"github.com/golang-jwt/jwt/v5"
 
 	"gorm.io/driver/postgres"
@@ -101,6 +99,112 @@ type VerificationRequest struct {
 type searchResult struct {
 	user       User
 	similarity float64
+}
+
+// jaroWinklerDistance calculates the Jaro-Winkler similarity between two strings
+// Returns a value between 0.0 (no similarity) and 1.0 (identical)
+func jaroWinklerDistance(s1, s2 string) float64 {
+	// Convert to lowercase for case-insensitive comparison
+	s1 = strings.ToLower(s1)
+	s2 = strings.ToLower(s2)
+
+	if s1 == s2 {
+		return 1.0
+	}
+
+	len1 := len(s1)
+	len2 := len(s2)
+
+	if len1 == 0 || len2 == 0 {
+		return 0.0
+	}
+
+	// Calculate the match window
+	matchWindow := 0
+	if len1 > len2 {
+		matchWindow = len1/2 - 1
+	} else {
+		matchWindow = len2/2 - 1
+	}
+	if matchWindow < 1 {
+		matchWindow = 1
+	}
+
+	// Initialize arrays to track matches
+	s1Matches := make([]bool, len1)
+	s2Matches := make([]bool, len2)
+
+	matches := 0
+	transpositions := 0
+
+	// Find matches
+	for i := 0; i < len1; i++ {
+		start := 0
+		if i-matchWindow > 0 {
+			start = i - matchWindow
+		}
+		end := i + matchWindow + 1
+		if end > len2 {
+			end = len2
+		}
+
+		for j := start; j < end; j++ {
+			if s2Matches[j] || s1[i] != s2[j] {
+				continue
+			}
+			s1Matches[i] = true
+			s2Matches[j] = true
+			matches++
+			break
+		}
+	}
+
+	if matches == 0 {
+		return 0.0
+	}
+
+	// Count transpositions
+	k := 0
+	for i := 0; i < len1; i++ {
+		if !s1Matches[i] {
+			continue
+		}
+		for !s2Matches[k] {
+			k++
+		}
+		if s1[i] != s2[k] {
+			transpositions++
+		}
+		k++
+	}
+
+	// Calculate Jaro similarity
+	jaroSimilarity := (float64(matches)/float64(len1) +
+		float64(matches)/float64(len2) +
+		float64(matches-transpositions/2)/float64(matches)) / 3.0
+
+	// Calculate common prefix length (up to 4 characters)
+	prefixLen := 0
+	maxPrefix := 4
+	if len1 < maxPrefix {
+		maxPrefix = len1
+	}
+	if len2 < maxPrefix {
+		maxPrefix = len2
+	}
+	for i := 0; i < maxPrefix; i++ {
+		if s1[i] == s2[i] {
+			prefixLen++
+		} else {
+			break
+		}
+	}
+
+	// Apply Winkler modification
+	const p = 0.1 // Scaling factor
+	jaroWinkler := jaroSimilarity + float64(prefixLen)*p*(1.0-jaroSimilarity)
+
+	return jaroWinkler
 }
 
 // Not secure
@@ -348,7 +452,7 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	// Find user by email OR username
 	err := s.db.Where("email = ? OR username = ?", req.EmailOrUsername, req.EmailOrUsername).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
-		return nil, status.Error(codes.NotFound, "Invalid credentials")
+		return nil, status.Error(codes.Unauthenticated, "Invalid credentials")
 	} else if err != nil {
 		return nil, status.Error(codes.Internal, "Database error")
 	}
@@ -1116,12 +1220,9 @@ func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*
 	}
 
 	// --- Step 2: Calculate Jaro-Winkler distance (as required by PDF) ---
-	jw := metrics.NewJaroWinkler()
-	jw.CaseSensitive = false // Make search case-insensitive
-
 	var results []searchResult
 	for _, user := range users {
-		similarity := strutil.Similarity(req.Query, user.Username, jw)
+		similarity := jaroWinklerDistance(req.Query, user.Username)
 		results = append(results, searchResult{
 			user:       user,
 			similarity: similarity,

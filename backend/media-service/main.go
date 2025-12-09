@@ -71,7 +71,7 @@ func main() {
 		log.Fatalf("Failed to create signing client: %v", err)
 	}
 
-	// 3. Ensure Bucket Exists & Set Public Policy
+	// 3. Ensure Bucket Exists (Private by default)
 	ctx := context.Background()
 	exists, err := internalClient.BucketExists(ctx, minioBucketName)
 	if err != nil || !exists {
@@ -79,24 +79,15 @@ func main() {
 		log.Printf("Created bucket '%s'", minioBucketName)
 	}
 
-	// --- CRITICAL FIX: Make Bucket Publicly Readable ---
-	// This allows the browser to load images via <img src="..."> without 403 errors.
-	policy := fmt.Sprintf(`{
-		"Version": "2012-10-17",
-		"Statement": [
-			{
-				"Effect": "Allow",
-				"Principal": {"AWS": ["*"]},
-				"Action": ["s3:GetObject"],
-				"Resource": ["arn:aws:s3:::%s/*"]
-			}
-		]
-	}`, minioBucketName)
-
-	if err := internalClient.SetBucketPolicy(ctx, minioBucketName, policy); err != nil {
-		log.Printf("Warning: Failed to set bucket policy: %v", err)
+	// --- PRODUCTION BUCKET POLICY: PRIVATE ---
+	// Bucket is now PRIVATE by default
+	// All media access uses pre-signed URLs for security
+	// Remove any existing public policy
+	if err := internalClient.SetBucketPolicy(ctx, minioBucketName, ""); err != nil {
+		log.Printf("Warning: Failed to clear bucket policy: %v", err)
 	} else {
-		log.Println("Bucket policy set to public-read")
+		log.Println("Bucket policy set to PRIVATE (production mode)")
+		log.Println("All media access now requires pre-signed URLs")
 	}
 
 	// 4. Start gRPC
@@ -127,12 +118,118 @@ func (s *server) GetUploadURL(ctx context.Context, req *pb.GetUploadURLRequest) 
 		return nil, status.Error(codes.Internal, "Failed to create upload URL")
 	}
 
-	// Construct public URL for database
-	finalURL := fmt.Sprintf("http://%s/%s/%s", minioExternalEndpoint, minioBucketName, objectName)
+	// Store object name (not direct URL) for pre-signed access
+	// Frontend will need to call GetMediaURL to get actual viewing URL
+	finalURL := objectName // Store the object path, not the full URL
 
 	return &pb.GetUploadURLResponse{
 		UploadUrl:     uploadURL.String(),
-		FinalMediaUrl: finalURL,
+		FinalMediaUrl: finalURL, // Returns object path like "user-123/posts/abc.jpg"
+	}, nil
+}
+
+// --- RPC: GetMediaURL (Generate Pre-signed GET URL for viewing media) ---
+func (s *server) GetMediaURL(ctx context.Context, req *pb.GetMediaURLRequest) (*pb.GetMediaURLResponse, error) {
+	if req.ObjectName == "" {
+		return nil, status.Error(codes.InvalidArgument, "object_name is required")
+	}
+
+	// Default expiry is 1 hour
+	expiry := time.Hour
+	if req.ExpirySeconds > 0 {
+		expiry = time.Duration(req.ExpirySeconds) * time.Second
+	}
+
+	// Generate pre-signed GET URL for viewing/downloading
+	presignedURL, err := s.signingClient.PresignedGetObject(
+		context.Background(),
+		minioBucketName,
+		req.ObjectName,
+		expiry,
+		nil, // No custom request parameters
+	)
+	if err != nil {
+		log.Printf("Failed to generate pre-signed GET URL: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to create media URL")
+	}
+
+	return &pb.GetMediaURLResponse{
+		MediaUrl: presignedURL.String(),
+	}, nil
+}
+
+// --- RPC: GenerateThumbnail (For videos uploaded via GetUploadURL) ---
+func (s *server) GenerateThumbnail(ctx context.Context, req *pb.GenerateThumbnailRequest) (*pb.GenerateThumbnailResponse, error) {
+	log.Println("=== GENERATE THUMBNAIL RPC ===")
+	log.Printf("Request: object_name=%s, user_id=%d, timestamp=%.2f", req.ObjectName, req.UserId, req.TimestampSeconds)
+
+	if req.ObjectName == "" {
+		log.Println("❌ Missing object_name")
+		return nil, status.Error(codes.InvalidArgument, "object_name is required")
+	}
+
+	// Extract filename from object path
+	parts := strings.Split(req.ObjectName, "/")
+	if len(parts) == 0 {
+		log.Println("❌ Invalid object_name format")
+		return nil, status.Error(codes.InvalidArgument, "invalid object_name")
+	}
+	filename := parts[len(parts)-1]
+	log.Printf("Extracted filename: %s", filename)
+
+	// Check if it's a video file
+	if !isVideoFile(filename) {
+		log.Printf("⚠️ Not a video file, skipping thumbnail generation")
+		return &pb.GenerateThumbnailResponse{ThumbnailUrl: ""}, nil
+	}
+
+	// Create temp directory
+	uniqueID := uuid.New().String()
+	tempDir := filepath.Join("/tmp", uniqueID)
+	log.Printf("Creating temp directory: %s", tempDir)
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		log.Printf("❌ Failed to create temp directory: %v", err)
+		return nil, status.Errorf(codes.Internal, "Failed to create temp directory: %v", err)
+	}
+	defer func() {
+		log.Printf("Cleaning up temp directory: %s", tempDir)
+		os.RemoveAll(tempDir)
+	}()
+
+	// Download video from MinIO to temp
+	videoPath := filepath.Join(tempDir, filename)
+	log.Printf("Downloading video from MinIO: %s -> %s", req.ObjectName, videoPath)
+	err := s.internalClient.FGetObject(ctx, minioBucketName, req.ObjectName, videoPath, minio.GetObjectOptions{})
+	if err != nil {
+		log.Printf("❌ Failed to download video: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to download video for thumbnail generation")
+	}
+	log.Printf("✅ Video downloaded successfully")
+
+	// Generate thumbnail
+	thumbnailPath := filepath.Join(tempDir, "thumbnail.jpg")
+	log.Printf("Generating thumbnail at %.2f seconds -> %s", req.TimestampSeconds, thumbnailPath)
+	if err := generateThumbnail(videoPath, thumbnailPath, req.TimestampSeconds); err != nil {
+		log.Printf("❌ Failed to generate thumbnail: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to generate thumbnail")
+	}
+	log.Printf("✅ Thumbnail generated successfully")
+
+	// Upload thumbnail to MinIO
+	// Extract just the filename without extension for unique ID
+	nameWithoutExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+	thumbnailName := fmt.Sprintf("user-%d/thumbnails/%s.jpg", req.UserId, nameWithoutExt)
+	log.Printf("Uploading thumbnail to MinIO: %s", thumbnailName)
+
+	if err := s.uploadFileToMinio(ctx, thumbnailPath, thumbnailName, "image/jpeg"); err != nil {
+		log.Printf("❌ Failed to upload thumbnail: %v", err)
+		return nil, status.Error(codes.Internal, "Failed to upload thumbnail")
+	}
+
+	log.Printf("✅ Thumbnail uploaded: %s", thumbnailName)
+	log.Println("=== THUMBNAIL GENERATION COMPLETE ===")
+	return &pb.GenerateThumbnailResponse{
+		ThumbnailUrl: thumbnailName, // Return object path
 	}, nil
 }
 
@@ -162,26 +259,26 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to upload file")
 	}
 
-	// Construct public URLs
-	mediaURL := fmt.Sprintf("http://%s/%s/%s", minioExternalEndpoint, minioBucketName, objectName)
+	// Store object paths (not full URLs) for presigned URL access
+	mediaURL := objectName
 	thumbnailURL := ""
 
-	// Restore Video Logic
+	// Video thumbnail generation
 	if isVideoFile(req.Filename) {
 		thumbnailName := fmt.Sprintf("user-%d/thumbnails/%s.jpg", req.UserId, uniqueID)
 		thumbnailPath := filepath.Join(tempDir, "thumbnail.jpg")
 
-		if err := generateThumbnail(tempFilePath, thumbnailPath); err != nil {
+		if err := generateThumbnail(tempFilePath, thumbnailPath, 1.0); err != nil {
 			log.Printf("Warning: Failed to generate thumbnail: %v", err)
 		} else {
 			if err := s.uploadFileToMinio(ctx, thumbnailPath, thumbnailName, "image/jpeg"); err != nil {
 				log.Printf("Warning: Failed to upload thumbnail: %v", err)
 			} else {
-				thumbnailURL = fmt.Sprintf("http://%s/%s/%s", minioExternalEndpoint, minioBucketName, thumbnailName)
+				thumbnailURL = thumbnailName // Object path for presigned access
 			}
 		}
 	} else if isImageFile(req.Filename) {
-		// Restore Image Optimization Logic
+		// Image optimization
 		optimizedPaths, err := optimizeImage(tempFilePath, tempDir)
 		if err != nil {
 			log.Printf("Warning: Failed to optimize image: %v", err)
@@ -192,10 +289,10 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 					log.Printf("Warning: Failed to upload %s version: %v", sizeName, err)
 				} else {
 					if sizeName == "large" {
-						mediaURL = fmt.Sprintf("http://%s/%s/%s", minioExternalEndpoint, minioBucketName, optimizedObjectName)
+						mediaURL = optimizedObjectName // Use optimized version as main
 					}
 					if sizeName == "thumb" {
-						thumbnailURL = fmt.Sprintf("http://%s/%s/%s", minioExternalEndpoint, minioBucketName, optimizedObjectName)
+						thumbnailURL = optimizedObjectName // Object path for presigned access
 					}
 				}
 			}
@@ -203,8 +300,8 @@ func (s *server) UploadMedia(ctx context.Context, req *pb.UploadMediaRequest) (*
 	}
 
 	return &pb.UploadMediaResponse{
-		MediaUrl:     mediaURL,
-		ThumbnailUrl: thumbnailURL,
+		MediaUrl:     mediaURL,     // Object path like "user-123/media/abc.mp4"
+		ThumbnailUrl: thumbnailURL, // Object path like "user-123/thumbnails/abc.jpg"
 	}, nil
 }
 
@@ -229,13 +326,22 @@ func (s *server) uploadFileToMinio(ctx context.Context, localPath, objectName, c
 	return err
 }
 
-func generateThumbnail(videoPath, outputPath string) error {
-	cmd := exec.Command("ffmpeg", "-ss", "00:00:01", "-i", videoPath, "-vframes", "1", "-q:v", "2", "-y", outputPath)
+func generateThumbnail(videoPath, outputPath string, timestampSeconds float64) error {
+	// Default to 1 second if not specified
+	if timestampSeconds <= 0 {
+		timestampSeconds = 1.0
+	}
+	timestamp := fmt.Sprintf("%.2f", timestampSeconds)
+
+	log.Printf("Running ffmpeg: extracting frame at %s seconds", timestamp)
+	cmd := exec.Command("ffmpeg", "-ss", timestamp, "-i", videoPath, "-vframes", "1", "-q:v", "2", "-y", outputPath)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		log.Printf("❌ ffmpeg failed: %v, stderr: %s", err, stderr.String())
 		return fmt.Errorf("ffmpeg failed: %v, stderr: %s", err, stderr.String())
 	}
+	log.Printf("✅ ffmpeg completed successfully")
 	return nil
 }
 
@@ -243,7 +349,9 @@ func isVideoFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	videoExts := []string{".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
 	for _, videoExt := range videoExts {
-		if ext == videoExt { return true }
+		if ext == videoExt {
+			return true
+		}
 	}
 	return false
 }
@@ -252,7 +360,9 @@ func isImageFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	imageExts := []string{".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"}
 	for _, imgExt := range imageExts {
-		if ext == imgExt { return true }
+		if ext == imgExt {
+			return true
+		}
 	}
 	return false
 }

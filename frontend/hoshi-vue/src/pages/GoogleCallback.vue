@@ -8,62 +8,62 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { authAPI, saveAuthData, handleApiError } from '../services/api'
+import { onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { authAPI, saveAuthData, handleApiError } from "../services/api";
 
-const router = useRouter()
-const message = ref('Processing Google login...')
+const router = useRouter();
+const message = ref("Processing Google login...");
 
 onMounted(async () => {
   try {
     // Get the auth_code from URL query params (OAuth 2.0 authorization code flow)
-    const params = new URLSearchParams(window.location.search)
-    const authCode = params.get('code')
+    const params = new URLSearchParams(window.location.search);
+    const authCode = params.get("code");
 
     if (!authCode) {
-      message.value = 'No authorization code received'
+      message.value = "No authorization code received";
       setTimeout(() => {
-        router.push('/login')
-      }, 2000)
-      return
+        router.push("/login");
+      }, 2000);
+      return;
     }
 
     // Send auth_code to backend
-    const response = await authAPI.googleAuth({ auth_code: authCode })
+    const response = await authAPI.googleAuth({ auth_code: authCode });
 
     // Save token and user data (Google OAuth returns access_token)
-    const token = response.access_token || response.token || ''
-    saveAuthData(token, response)
+    const token = response.access_token || response.token || "";
+    saveAuthData(token, response);
 
     // Check if user needs to complete their profile
     if (response.needs_profile_completion) {
       // New Google user - redirect to profile completion
-      message.value = 'Account created! Please complete your profile...'
+      message.value = "Account created! Please complete your profile...";
       setTimeout(() => {
         router.push({
-          name: 'google-complete-profile',
+          name: "google-complete-profile",
           query: {
-            name: response.name || '',
-            email: response.email || '',
-            picture: response.profile_picture_url || ''
+            name: response.name || "",
+            email: response.email || "",
+            picture: response.profile_picture_url || ""
           }
-        })
-      }, 1000)
+        });
+      }, 1000);
     } else {
       // Existing user - redirect to feed
-      message.value = 'Login successful! Redirecting...'
+      message.value = "Login successful! Redirecting...";
       setTimeout(() => {
-        router.push('/feed')
-      }, 1000)
+        router.push("/feed");
+      }, 1000);
     }
   } catch (err) {
-    message.value = handleApiError(err)
+    message.value = handleApiError(err);
     setTimeout(() => {
-      router.push('/login')
-    }, 3000)
+      router.push("/login");
+    }, 3000);
   }
-})
+});
 </script>
 
 <style scoped>
