@@ -1373,14 +1373,9 @@ func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 		return nil, status.Error(codes.NotFound, "Post not found")
 	}
 
-	// Check if the user is the post owner or an admin
-	var user User
-	if err := s.db.First(&user, req.AdminUserId).Error; err != nil {
-		return nil, status.Error(codes.Internal, "Failed to verify user")
-	}
-
-	// Only allow deletion if user is the post owner or an admin
-	if post.UserID != req.AdminUserId && !user.IsAdmin {
+	// Only allow deletion if user is the post owner
+	// (Admin check can be added later if needed via user-service gRPC call)
+	if post.AuthorID != req.AdminUserId {
 		return nil, status.Error(codes.PermissionDenied, "You can only delete your own posts")
 	}
 

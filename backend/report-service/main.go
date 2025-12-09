@@ -139,7 +139,7 @@ func (s *server) ReportPost(ctx context.Context, req *pb.ReportPostRequest) (*pb
 	}
 
 	// 2. Check if the user is trying to report their own post
-	if postRes.Post.AuthorId == req.ReporterId {
+	if postRes.AuthorId == req.ReporterId {
 		return nil, status.Error(codes.InvalidArgument, "You cannot report your own post")
 	}
 
