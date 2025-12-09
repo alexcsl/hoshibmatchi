@@ -167,6 +167,12 @@
               </label>
             </div>
 
+            <!-- Turnstile Widget -->
+            <div class="turnstile-container">
+              <div id="signup-turnstile"></div>
+              <p v-if="turnstileError" class="error-message">{{ turnstileError }}</p>
+            </div>
+
             <!-- Submit Button -->
             <button
               type="submit"
@@ -190,18 +196,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import FormInput from "../components/FormInput.vue";
 import PasswordStrengthValidator from "../components/PasswordStrengthValidator.vue";
 import ErrorAlert from "../components/ErrorAlert.vue";
 import { useAuthStore } from "@/stores/auth";
 import { mediaAPI } from "@/services/api";
+import { useTurnstile } from "@/composables/useTurnstile";
 
 const router = useRouter();
 const authStore = useAuthStore();
 const error = ref("");
 const profilePictureLabel = ref("Choose profile picture");
+
+const { 
+  turnstileToken, 
+  turnstileError, 
+  initTurnstile, 
+  resetTurnstile, 
+  removeTurnstile 
+} = useTurnstile();
 
 const form = reactive({
   name: "",
@@ -263,6 +278,12 @@ const handleSubmit = async () => {
     errors[key as keyof typeof errors] = "";
   });
   error.value = "";
+
+  // Validate Turnstile token
+  if (!turnstileToken.value) {
+    error.value = "Please complete the security verification";
+    return;
+  }
 
   // Frontend validations
   if (form.name.length <= 4 || /[0-9!@#$%^&*(),.?":{}|<>]/.test(form.name)) {
@@ -349,7 +370,8 @@ const handleSubmit = async () => {
       gender: form.gender,
       date_of_birth: form.dob,
       enable_2fa: form.twoFA,
-      profile_picture_url: profilePictureUrl // <--- Pass the URL here
+      profile_picture_url: profilePictureUrl, // <--- Pass the URL here
+      turnstile_token: turnstileToken.value
     });
 
     // Redirect to OTP verification page
@@ -359,8 +381,17 @@ const handleSubmit = async () => {
     });
   } catch (err: any) {
     error.value = err?.message || "Registration failed. Please try again.";
+    resetTurnstile();
   }
 };
+
+onMounted(() => {
+  initTurnstile('signup-turnstile');
+});
+
+onUnmounted(() => {
+  removeTurnstile();
+});
 </script>
 
 <style scoped lang="scss">
@@ -579,6 +610,16 @@ const handleSubmit = async () => {
       accent-color: #0a66c2;
     }
   }
+}
+
+.turnstile-container {
+  width: 100%;
+  min-height: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
 }
 
 .submit-btn {

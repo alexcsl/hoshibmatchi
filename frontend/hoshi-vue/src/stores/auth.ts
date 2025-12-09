@@ -77,7 +77,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async login(credentials: { email_or_username: string; password: string }) {
+    async login(credentials: { email_or_username: string; password: string; turnstile_token?: string }) {
       this.loading = true;
       this.error = null;
 

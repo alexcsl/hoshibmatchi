@@ -64,6 +64,17 @@
               :error-message="errors.password"
             />
 
+            <!-- Cloudflare Turnstile -->
+            <div class="turnstile-container">
+              <div id="login-turnstile"></div>
+              <div
+                v-if="turnstileError"
+                class="turnstile-error"
+              >
+                {{ turnstileError }}
+              </div>
+            </div>
+
             <button
               type="submit"
               class="login-btn"
@@ -136,15 +147,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import FormInput from "../components/FormInput.vue";
 import ErrorAlert from "../components/ErrorAlert.vue";
 import { useAuthStore } from "@/stores/auth";
+import { useTurnstile } from "@/composables/useTurnstile";
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+
+// Turnstile setup
+const { turnstileToken, turnstileError, initTurnstile, resetTurnstile, removeTurnstile } = useTurnstile();
 
 const error = ref("");
 const successMessage = ref("");
@@ -159,29 +174,6 @@ const form = reactive({
 const errors = reactive({
   username: "",
   password: ""
-});
-
-onMounted(() => {
-  // Check if user just registered
-  if (route.query.registered === "true") {
-    successMessage.value = "Registration successful! Please log in with your credentials.";
-    if (route.query.email) {
-      form.username = route.query.email as string;
-    }
-  }
-  
-  // Check if user just verified email
-  if (route.query.verified === "true") {
-    successMessage.value = "Email verified successfully! Please log in with your credentials.";
-    if (route.query.email) {
-      form.username = route.query.email as string;
-    }
-  }
-  
-  // Check if password was reset
-  if (route.query.reset === "success") {
-    successMessage.value = "Password reset successful! Please log in with your new password.";
-  }
 });
 
 const handleGoogleLogin = () => {
@@ -217,10 +209,17 @@ const handleSubmit = async () => {
     return;
   }
 
+  // Validate Turnstile token
+  if (!turnstileToken.value) {
+    error.value = "Please complete the verification challenge.";
+    return;
+  }
+
   try {
     const response = await authStore.login({
       email_or_username: form.username,
-      password: form.password
+      password: form.password,
+      turnstile_token: turnstileToken.value
     });
     
     // Check if 2FA is required
@@ -253,8 +252,42 @@ const handleSubmit = async () => {
       error.value = errorMessage;
       showVerificationLink.value = false;
     }
+    // Reset Turnstile on error
+    resetTurnstile();
   }
 };
+
+// Initialize Turnstile on mount
+onMounted(() => {
+  // Check if user just registered
+  if (route.query.registered === "true") {
+    successMessage.value = "Registration successful! Please log in with your credentials.";
+    if (route.query.email) {
+      form.username = route.query.email as string;
+    }
+  }
+  
+  // Check if user just verified email
+  if (route.query.verified === "true") {
+    successMessage.value = "Email verified successfully! Please log in with your credentials.";
+    if (route.query.email) {
+      form.username = route.query.email as string;
+    }
+  }
+  
+  // Check if password was reset
+  if (route.query.reset === "success") {
+    successMessage.value = "Password reset successful! Please log in with your new password.";
+  }
+  
+  // Initialize Turnstile
+  initTurnstile('login-turnstile');
+});
+
+// Cleanup Turnstile on unmount
+onUnmounted(() => {
+  removeTurnstile();
+});
 </script>
 
 <style scoped lang="scss">
@@ -458,6 +491,20 @@ const handleSubmit = async () => {
     &:hover {
       text-decoration: underline;
     }
+  }
+
+  .turnstile-container {
+    margin: 16px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .turnstile-error {
+    color: #ed4956;
+    font-size: 0.85em;
+    margin-top: 8px;
+    text-align: center;
   }
 }
 

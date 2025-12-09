@@ -539,11 +539,28 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		Enable2FA             bool   `json:"enable_2fa"` // ADDED for 2FA
 		ProfilePictureURL     string `json:"profile_picture_url"`
 		SubscribeToNewsletter bool   `json:"subscribe_to_newsletter"` // Newsletter subscription
+		TurnstileToken        string `json:"turnstile_token"`         // Cloudflare Turnstile
 		// OtpCode           string `json:"otp_code"` // REMOVED
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 2.5. Verify Turnstile token
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP == "" {
+		clientIP = r.Header.Get("X-Real-IP")
+	}
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+
+	isValid, err := VerifyTurnstileToken(req.TurnstileToken, clientIP)
+	if err != nil || !isValid {
+		log.Printf("Turnstile verification failed for %s: %v", clientIP, err)
+		http.Error(w, "Verification challenge failed. Please try again.", http.StatusBadRequest)
 		return
 	}
 
@@ -637,9 +654,26 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		EmailOrUsername string `json:"email_or_username"`
 		Password        string `json:"password"`
+		TurnstileToken  string `json:"turnstile_token"` // Cloudflare Turnstile
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Verify Turnstile token
+	clientIP := r.Header.Get("X-Forwarded-For")
+	if clientIP == "" {
+		clientIP = r.Header.Get("X-Real-IP")
+	}
+	if clientIP == "" {
+		clientIP = r.RemoteAddr
+	}
+
+	isValid, err := VerifyTurnstileToken(req.TurnstileToken, clientIP)
+	if err != nil || !isValid {
+		log.Printf("Turnstile verification failed for %s: %v", clientIP, err)
+		http.Error(w, "Verification challenge failed. Please try again.", http.StatusBadRequest)
 		return
 	}
 
