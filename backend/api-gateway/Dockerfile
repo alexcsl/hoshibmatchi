@@ -10,6 +10,9 @@ COPY backend/user-service/go.mod backend/user-service/go.sum ../user-service/
 COPY backend/post-service/go.mod backend/post-service/go.sum ../post-service/
 COPY backend/story-service/go.mod backend/story-service/go.sum ../story-service/
 COPY backend/media-service/go.mod backend/media-service/go.sum ../media-service/
+COPY backend/message-service/go.mod backend/message-service/go.sum ../message-service/
+COPY backend/report-service/go.mod backend/report-service/go.sum ../report-service/
+COPY backend/hashtag-service/go.mod backend/hashtag-service/go.sum ../hashtag-service/
 
 # 3. Download dependencies
 RUN go mod download

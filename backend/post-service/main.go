@@ -1420,16 +1420,22 @@ func (s *server) DeletePost(ctx context.Context, req *pb.DeletePostRequest) (*pb
 
 	// --- ADDED: Delete media from MinIO ---
 	if len(post.MediaURLs) > 0 {
-		bucketName := "hoshi-media" // As defined in media-service
+		bucketName := "media" // Standard bucket name used across all services
 		for _, url := range post.MediaURLs {
-			// Extract object name from URL
-			// Assumes URL is like "http://minio:9000/hoshi-media/object-name"
-			objectName := url[strings.LastIndex(url, "/")+1:]
+			// MediaURLs now store object paths directly (e.g., "user-123/posts/video.mp4")
+			// not full URLs, so we can use them directly as object names
+			objectName := url
+			// Handle legacy URLs if they still exist (contains http://)
+			if strings.Contains(url, "http://") || strings.Contains(url, "https://") {
+				objectName = url[strings.LastIndex(url, "/")+1:]
+			}
 			if objectName != "" {
 				err := s.minioClient.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
 				if err != nil {
 					log.Printf("Failed to delete object %s from MinIO: %v", objectName, err)
 					// Do not fail the whole request, just log it
+				} else {
+					log.Printf("Successfully deleted object %s from MinIO bucket '%s'", objectName, bucketName)
 				}
 			}
 		}

@@ -30,6 +30,9 @@ service MessageService {
   rpc RemoveParticipant (RemoveParticipantRequest) returns (RemoveParticipantResponse);
   rpc UpdateGroupInfo (UpdateGroupInfoRequest) returns (UpdateGroupInfoResponse);
   rpc LeaveGroup (LeaveGroupRequest) returns (LeaveGroupResponse);
+  
+  // Search messages in a conversation
+  rpc SearchMessages (SearchMessagesRequest) returns (SearchMessagesResponse);
 }
 
 // Represents a single chat conversation
@@ -171,4 +174,15 @@ message LeaveGroupRequest {
 
 message LeaveGroupResponse {
   string message = 1;
+}
+
+// --- SearchMessages ---
+message SearchMessagesRequest {
+  int64 user_id = 1; // From JWT (for validation)
+  string conversation_id = 2;
+  string query = 3; // Search query
+}
+
+message SearchMessagesResponse {
+  repeated Message messages = 1;
 }

@@ -526,6 +526,58 @@ func (s *server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*
 	}, nil
 }
 
+func (s *server) SearchMessages(ctx context.Context, req *pb.SearchMessagesRequest) (*pb.SearchMessagesResponse, error) {
+	log.Printf("SearchMessages request from user %d in convo %s, query: %s", req.UserId, req.ConversationId, req.Query)
+
+	// --- Step 1: Validation (Security Check) ---
+	// Check if the user is a participant in this conversation
+	var participantCount int64
+	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
+	if convoID == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
+	}
+
+	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&participantCount)
+	if participantCount == 0 {
+		return nil, status.Error(codes.PermissionDenied, "User is not a participant of this conversation")
+	}
+
+	// --- Step 2: Search Messages ---
+	var messages []Message
+	query := strings.TrimSpace(req.Query)
+	if query == "" {
+		// If empty query, return empty results
+		return &pb.SearchMessagesResponse{Messages: []*pb.Message{}}, nil
+	}
+
+	// Use case-insensitive search with ILIKE (PostgreSQL)
+	searchPattern := "%" + strings.ToLower(query) + "%"
+	if err := s.db.Where("conversation_id = ? AND LOWER(content) LIKE ?", convoID, searchPattern).
+		Order("created_at DESC").
+		Limit(100). // Limit to 100 results to avoid overwhelming the client
+		Find(&messages).Error; err != nil {
+		log.Printf("Failed to search messages in convo %d: %v", convoID, err)
+		return nil, status.Error(codes.Internal, "Failed to search messages")
+	}
+
+	// --- Step 3: Convert GORM models to gRPC responses ---
+	var grpcMessages []*pb.Message
+	for _, msg := range messages {
+		grpcMsg, err := s.gormToGrpcMessage(ctx, &msg)
+		if err != nil {
+			log.Printf("Failed to convert message %d: %v", msg.ID, err)
+			continue
+		}
+		grpcMessages = append(grpcMessages, grpcMsg)
+	}
+
+	log.Printf("Found %d messages matching query '%s' in conversation %s", len(grpcMessages), req.Query, req.ConversationId)
+
+	return &pb.SearchMessagesResponse{
+		Messages: grpcMessages,
+	}, nil
+}
+
 func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsRequest) (*pb.GetConversationsResponse, error) {
 	log.Printf("GetConversations request received for user %d", req.UserId)
 

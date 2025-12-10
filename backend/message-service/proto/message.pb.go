@@ -1342,6 +1342,111 @@ func (x *LeaveGroupResponse) GetMessage() string {
 	return ""
 }
 
+// --- SearchMessages ---
+type SearchMessagesRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserId         int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // From JWT (for validation)
+	ConversationId string                 `protobuf:"bytes,2,opt,name=conversation_id,json=conversationId,proto3" json:"conversation_id,omitempty"`
+	Query          string                 `protobuf:"bytes,3,opt,name=query,proto3" json:"query,omitempty"` // Search query
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *SearchMessagesRequest) Reset() {
+	*x = SearchMessagesRequest{}
+	mi := &file_message_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchMessagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchMessagesRequest) ProtoMessage() {}
+
+func (x *SearchMessagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchMessagesRequest.ProtoReflect.Descriptor instead.
+func (*SearchMessagesRequest) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SearchMessagesRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *SearchMessagesRequest) GetConversationId() string {
+	if x != nil {
+		return x.ConversationId
+	}
+	return ""
+}
+
+func (x *SearchMessagesRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+type SearchMessagesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchMessagesResponse) Reset() {
+	*x = SearchMessagesResponse{}
+	mi := &file_message_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchMessagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchMessagesResponse) ProtoMessage() {}
+
+func (x *SearchMessagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_message_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchMessagesResponse.ProtoReflect.Descriptor instead.
+func (*SearchMessagesResponse) Descriptor() ([]byte, []int) {
+	return file_message_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SearchMessagesResponse) GetMessages() []*Message {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
 var File_message_proto protoreflect.FileDescriptor
 
 const file_message_proto_rawDesc = "" +
@@ -1440,7 +1545,13 @@ const file_message_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\".\n" +
 	"\x12LeaveGroupResponse\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage2\xa5\a\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"o\n" +
+	"\x15SearchMessagesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12'\n" +
+	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12\x14\n" +
+	"\x05query\x18\x03 \x01(\tR\x05query\"F\n" +
+	"\x16SearchMessagesResponse\x12,\n" +
+	"\bmessages\x18\x01 \x03(\v2\x10.message.MessageR\bmessages2\xf8\a\n" +
 	"\x0eMessageService\x12W\n" +
 	"\x10GetConversations\x12 .message.GetConversationsRequest\x1a!.message.GetConversationsResponse\x12H\n" +
 	"\vGetMessages\x12\x1b.message.GetMessagesRequest\x1a\x1c.message.GetMessagesResponse\x12H\n" +
@@ -1453,7 +1564,8 @@ const file_message_proto_rawDesc = "" +
 	"\x11RemoveParticipant\x12!.message.RemoveParticipantRequest\x1a\".message.RemoveParticipantResponse\x12T\n" +
 	"\x0fUpdateGroupInfo\x12\x1f.message.UpdateGroupInfoRequest\x1a .message.UpdateGroupInfoResponse\x12E\n" +
 	"\n" +
-	"LeaveGroup\x12\x1a.message.LeaveGroupRequest\x1a\x1b.message.LeaveGroupResponseB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
+	"LeaveGroup\x12\x1a.message.LeaveGroupRequest\x1a\x1b.message.LeaveGroupResponse\x12Q\n" +
+	"\x0eSearchMessages\x12\x1e.message.SearchMessagesRequest\x1a\x1f.message.SearchMessagesResponseB/Z-github.com/hoshibmatchi/message-service/protob\x06proto3"
 
 var (
 	file_message_proto_rawDescOnce sync.Once
@@ -1467,7 +1579,7 @@ func file_message_proto_rawDescGZIP() []byte {
 	return file_message_proto_rawDescData
 }
 
-var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_message_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_message_proto_goTypes = []any{
 	(*Conversation)(nil),               // 0: message.Conversation
 	(*Message)(nil),                    // 1: message.Message
@@ -1492,41 +1604,46 @@ var file_message_proto_goTypes = []any{
 	(*UpdateGroupInfoResponse)(nil),    // 20: message.UpdateGroupInfoResponse
 	(*LeaveGroupRequest)(nil),          // 21: message.LeaveGroupRequest
 	(*LeaveGroupResponse)(nil),         // 22: message.LeaveGroupResponse
-	(*proto.GetUserDataResponse)(nil),  // 23: user.GetUserDataResponse
+	(*SearchMessagesRequest)(nil),      // 23: message.SearchMessagesRequest
+	(*SearchMessagesResponse)(nil),     // 24: message.SearchMessagesResponse
+	(*proto.GetUserDataResponse)(nil),  // 25: user.GetUserDataResponse
 }
 var file_message_proto_depIdxs = []int32{
-	23, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
+	25, // 0: message.Conversation.participants:type_name -> user.GetUserDataResponse
 	1,  // 1: message.Conversation.last_message:type_name -> message.Message
 	0,  // 2: message.GetConversationsResponse.conversations:type_name -> message.Conversation
 	1,  // 3: message.GetMessagesResponse.messages:type_name -> message.Message
 	1,  // 4: message.SendMessageResponse.message:type_name -> message.Message
-	2,  // 5: message.MessageService.GetConversations:input_type -> message.GetConversationsRequest
-	4,  // 6: message.MessageService.GetMessages:input_type -> message.GetMessagesRequest
-	6,  // 7: message.MessageService.SendMessage:input_type -> message.SendMessageRequest
-	8,  // 8: message.MessageService.CreateConversation:input_type -> message.CreateConversationRequest
-	9,  // 9: message.MessageService.UnsendMessage:input_type -> message.UnsendMessageRequest
-	11, // 10: message.MessageService.DeleteConversation:input_type -> message.DeleteConversationRequest
-	13, // 11: message.MessageService.GetVideoCallToken:input_type -> message.GetVideoCallTokenRequest
-	15, // 12: message.MessageService.AddParticipant:input_type -> message.AddParticipantRequest
-	17, // 13: message.MessageService.RemoveParticipant:input_type -> message.RemoveParticipantRequest
-	19, // 14: message.MessageService.UpdateGroupInfo:input_type -> message.UpdateGroupInfoRequest
-	21, // 15: message.MessageService.LeaveGroup:input_type -> message.LeaveGroupRequest
-	3,  // 16: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
-	5,  // 17: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
-	7,  // 18: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
-	0,  // 19: message.MessageService.CreateConversation:output_type -> message.Conversation
-	10, // 20: message.MessageService.UnsendMessage:output_type -> message.UnsendMessageResponse
-	12, // 21: message.MessageService.DeleteConversation:output_type -> message.DeleteConversationResponse
-	14, // 22: message.MessageService.GetVideoCallToken:output_type -> message.GetVideoCallTokenResponse
-	16, // 23: message.MessageService.AddParticipant:output_type -> message.AddParticipantResponse
-	18, // 24: message.MessageService.RemoveParticipant:output_type -> message.RemoveParticipantResponse
-	20, // 25: message.MessageService.UpdateGroupInfo:output_type -> message.UpdateGroupInfoResponse
-	22, // 26: message.MessageService.LeaveGroup:output_type -> message.LeaveGroupResponse
-	16, // [16:27] is the sub-list for method output_type
-	5,  // [5:16] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	1,  // 5: message.SearchMessagesResponse.messages:type_name -> message.Message
+	2,  // 6: message.MessageService.GetConversations:input_type -> message.GetConversationsRequest
+	4,  // 7: message.MessageService.GetMessages:input_type -> message.GetMessagesRequest
+	6,  // 8: message.MessageService.SendMessage:input_type -> message.SendMessageRequest
+	8,  // 9: message.MessageService.CreateConversation:input_type -> message.CreateConversationRequest
+	9,  // 10: message.MessageService.UnsendMessage:input_type -> message.UnsendMessageRequest
+	11, // 11: message.MessageService.DeleteConversation:input_type -> message.DeleteConversationRequest
+	13, // 12: message.MessageService.GetVideoCallToken:input_type -> message.GetVideoCallTokenRequest
+	15, // 13: message.MessageService.AddParticipant:input_type -> message.AddParticipantRequest
+	17, // 14: message.MessageService.RemoveParticipant:input_type -> message.RemoveParticipantRequest
+	19, // 15: message.MessageService.UpdateGroupInfo:input_type -> message.UpdateGroupInfoRequest
+	21, // 16: message.MessageService.LeaveGroup:input_type -> message.LeaveGroupRequest
+	23, // 17: message.MessageService.SearchMessages:input_type -> message.SearchMessagesRequest
+	3,  // 18: message.MessageService.GetConversations:output_type -> message.GetConversationsResponse
+	5,  // 19: message.MessageService.GetMessages:output_type -> message.GetMessagesResponse
+	7,  // 20: message.MessageService.SendMessage:output_type -> message.SendMessageResponse
+	0,  // 21: message.MessageService.CreateConversation:output_type -> message.Conversation
+	10, // 22: message.MessageService.UnsendMessage:output_type -> message.UnsendMessageResponse
+	12, // 23: message.MessageService.DeleteConversation:output_type -> message.DeleteConversationResponse
+	14, // 24: message.MessageService.GetVideoCallToken:output_type -> message.GetVideoCallTokenResponse
+	16, // 25: message.MessageService.AddParticipant:output_type -> message.AddParticipantResponse
+	18, // 26: message.MessageService.RemoveParticipant:output_type -> message.RemoveParticipantResponse
+	20, // 27: message.MessageService.UpdateGroupInfo:output_type -> message.UpdateGroupInfoResponse
+	22, // 28: message.MessageService.LeaveGroup:output_type -> message.LeaveGroupResponse
+	24, // 29: message.MessageService.SearchMessages:output_type -> message.SearchMessagesResponse
+	18, // [18:30] is the sub-list for method output_type
+	6,  // [6:18] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_message_proto_init() }
@@ -1540,7 +1657,7 @@ func file_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_message_proto_rawDesc), len(file_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

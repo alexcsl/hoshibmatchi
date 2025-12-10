@@ -275,6 +275,7 @@ func main() {
 
 		protected.GET("/conversations", handleGetConversations_Gin)
 		protected.GET("/conversations/:id/messages", handleGetMessages_Gin)
+		protected.GET("/conversations/:id/messages/search", handleSearchMessages_Gin)
 
 		// Search
 		protected.GET("/search/users", handleSearchUsers_Gin)
@@ -419,7 +420,14 @@ func AdminAuthMiddleware() gin.HandlerFunc {
 
 // --- gRPC Connection Helper ---
 func mustConnect(client interface{}, target string) {
-	conn, err := grpc.Dial(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Increase max message size to 50MB for video uploads
+	conn, err := grpc.Dial(target,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(50*1024*1024), // 50MB
+			grpc.MaxCallSendMsgSize(50*1024*1024), // 50MB
+		),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to %s: %v", target, err)
 	}
@@ -2193,6 +2201,40 @@ func handleGetMessages_Gin(c *gin.Context) {
 	if err != nil {
 		grpcErr, _ := status.FromError(err)
 		log.Printf("gRPC call to GetMessages failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes.Messages)
+}
+
+func handleSearchMessages_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	// Get conversation ID from URL param
+	convoID := c.Param("id")
+
+	// Get search query from query param
+	searchQuery := c.Query("q")
+	if searchQuery == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Search query 'q' is required"})
+		return
+	}
+
+	grpcReq := &messagePb.SearchMessagesRequest{
+		UserId:         userID,
+		ConversationId: convoID,
+		Query:          searchQuery,
+	}
+
+	grpcRes, err := messageClient.SearchMessages(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to SearchMessages failed (%s): %v", grpcErr.Code(), grpcErr.Message())
 		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
 		return
 	}

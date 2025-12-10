@@ -95,7 +95,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+
+	// Increase max message size to 50MB for video uploads
+	s := grpc.NewServer(
+		grpc.MaxRecvMsgSize(50*1024*1024), // 50MB
+		grpc.MaxSendMsgSize(50*1024*1024), // 50MB
+	)
+
 	pb.RegisterMediaServiceServer(s, &server{
 		internalClient: internalClient,
 		signingClient:  signingClient,

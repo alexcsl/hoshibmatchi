@@ -30,9 +30,10 @@ import (
 
 // --- GORM Models ---
 
-// Story is a minimal struct for story-db deletion
+// Story is a minimal struct for story-db operations
 type Story struct {
 	gorm.Model
+	MediaURL string `gorm:"type:text"`
 }
 
 // Post is a minimal struct for post-db updates
@@ -240,6 +241,15 @@ func (s *server) processVideoTranscoding(body []byte) {
 		return
 	}
 
+	// Check if this is a story or post
+	isStory, _ := job["is_story"].(bool)
+
+	if isStory {
+		// Handle story video compression (lighter, faster)
+		s.processStoryVideoCompression(job)
+		return
+	}
+
 	// GORM uses float64 for JSON numbers
 	postIDFloat, ok := job["post_id"].(float64)
 	if !ok {
@@ -294,10 +304,31 @@ func (s *server) processVideoTranscoding(body []byte) {
 
 		// 4. Download video from MinIO
 		inputPath := filepath.Join(tempDir, filename)
-		if err := s.downloadFromMinio("hoshibmatchi", mediaURL, inputPath); err != nil {
+		if err := s.downloadFromMinio("media", mediaURL, inputPath); err != nil {
 			log.Printf("Failed to download video from MinIO: %v", err)
 			transcodedURLs = append(transcodedURLs, mediaURL)
 			continue
+		}
+
+		// 4.5. Compress the original video first
+		compressedOriginalFilename := fmt.Sprintf("%s_compressed_original.mp4", filenameNoExt)
+		compressedOriginalPath := filepath.Join(tempDir, compressedOriginalFilename)
+
+		if err := compressOriginalVideo(inputPath, compressedOriginalPath); err != nil {
+			log.Printf("Failed to compress original video: %v. Will use uncompressed for transcoding.", err)
+			// Continue with original uncompressed video
+		} else {
+			// Upload compressed original to MinIO
+			compressedMinioPath := fmt.Sprintf("videos/compressed/%s", compressedOriginalFilename)
+			if err := s.uploadToMinio("media", compressedMinioPath, compressedOriginalPath); err != nil {
+				log.Printf("Failed to upload compressed original to MinIO: %v", err)
+			} else {
+				log.Printf("Uploaded compressed original to MinIO: %s", compressedMinioPath)
+				transcodedURLs = append(transcodedURLs, compressedMinioPath)
+			}
+
+			// Use compressed version as input for transcoding (smaller source = faster transcoding)
+			inputPath = compressedOriginalPath
 		}
 
 		// 5. Transcode to multiple resolutions (720p, 480p, 360p)
@@ -316,16 +347,28 @@ func (s *server) processVideoTranscoding(body []byte) {
 			outputFilename := fmt.Sprintf("%s_%s.mp4", filenameNoExt, res.name)
 			outputPath := filepath.Join(tempDir, outputFilename)
 
-			// Run FFmpeg transcoding
+			// Run FFmpeg transcoding with compression
+			// Adjusted settings for better compression:
+			// - CRF 28 for smaller files (lower resolutions can use higher CRF)
+			// - Medium preset for better compression ratio
+			// - Profile and level optimization
+			crfValue := "28" // Aggressive compression
+			if res.name == "360p" {
+				crfValue = "30" // Even more compression for lowest resolution
+			}
+
 			cmd := exec.Command("ffmpeg",
 				"-i", inputPath,
 				"-vf", fmt.Sprintf("scale=%d:%d", res.width, res.height),
 				"-c:v", "libx264",
-				"-preset", "fast",
-				"-crf", "23",
+				"-preset", "medium", // Better compression than "fast"
+				"-crf", crfValue,
+				"-profile:v", "main", // Better compatibility
+				"-level", "4.0",
 				"-c:a", "aac",
-				"-b:a", "128k",
+				"-b:a", "96k", // Lower audio bitrate
 				"-movflags", "+faststart",
+				"-max_muxing_queue_size", "9999",
 				"-y", // Overwrite output file
 				outputPath,
 			)
@@ -340,7 +383,7 @@ func (s *server) processVideoTranscoding(body []byte) {
 
 			// 6. Upload transcoded video to MinIO
 			minioPath := fmt.Sprintf("videos/transcoded/%s", outputFilename)
-			if err := s.uploadToMinio("hoshibmatchi", minioPath, outputPath); err != nil {
+			if err := s.uploadToMinio("media", minioPath, outputPath); err != nil {
 				log.Printf("Failed to upload %s to MinIO: %v", res.name, err)
 				continue
 			}
@@ -349,42 +392,8 @@ func (s *server) processVideoTranscoding(body []byte) {
 			transcodedURLs = append(transcodedURLs, minioPath)
 			successfulTranscode = true
 
-			// Generate thumbnail from the first resolution (720p)
-			if res.name == "720p" && post.ThumbnailURL == "" {
-				thumbnailFilename := fmt.Sprintf("%s_thumb.jpg", filenameNoExt)
-				thumbnailPath := filepath.Join(tempDir, thumbnailFilename)
-
-				// Extract thumbnail at 1 second mark
-				thumbCmd := exec.Command("ffmpeg",
-					"-ss", "00:00:01",
-					"-i", outputPath,
-					"-vframes", "1",
-					"-q:v", "2",
-					"-y",
-					thumbnailPath,
-				)
-
-				thumbOutput, thumbErr := thumbCmd.CombinedOutput()
-				if thumbErr != nil {
-					log.Printf("Failed to generate thumbnail: %v\nOutput: %s", thumbErr, string(thumbOutput))
-				} else {
-					// Upload thumbnail to MinIO
-					thumbnailMinioPath := fmt.Sprintf("thumbnails/%s", thumbnailFilename)
-					if err := s.uploadToMinio("media", thumbnailMinioPath, thumbnailPath); err != nil {
-						log.Printf("Failed to upload thumbnail to MinIO: %v", err)
-					} else {
-						thumbnailURL := fmt.Sprintf("http://localhost:9000/media/%s", thumbnailMinioPath)
-						log.Printf("Uploaded thumbnail to MinIO: %s", thumbnailURL)
-
-						// Update post with thumbnail URL
-						if err := s.postDB.Model(&Post{}).Where("id = ?", postID).Update("thumbnail_url", thumbnailURL).Error; err != nil {
-							log.Printf("Failed to update post thumbnail URL: %v", err)
-						} else {
-							log.Printf("Updated post %d with thumbnail URL", postID)
-						}
-					}
-				}
-			}
+			// Note: Thumbnail generation is handled by media-service when user uploads
+			// This prevents duplicate thumbnail generation and respects user's chosen timestamp
 		}
 
 		// If transcoding failed, keep the original
@@ -401,6 +410,36 @@ func (s *server) processVideoTranscoding(body []byte) {
 	}
 
 	log.Printf("--- FINISHED VIDEO TRANSCODING for Post ID: %d. New URLs: %v ---", postID, transcodedURLs)
+}
+
+// compressOriginalVideo compresses the original video with aggressive settings
+func compressOriginalVideo(inputPath, outputPath string) error {
+	log.Printf("Compressing original video: %s", inputPath)
+
+	// Use aggressive compression settings:
+	// - CRF 28 (lower quality but much smaller file)
+	// - Slower preset for better compression
+	// - Two-pass encoding for optimal quality/size ratio
+	cmd := exec.Command("ffmpeg",
+		"-i", inputPath,
+		"-c:v", "libx264",
+		"-preset", "medium", // Better compression than "fast"
+		"-crf", "28", // More aggressive compression (23 is default, 28 is smaller)
+		"-c:a", "aac",
+		"-b:a", "96k", // Lower audio bitrate (was 128k)
+		"-movflags", "+faststart",
+		"-max_muxing_queue_size", "9999", // Prevent muxing errors
+		"-y",
+		outputPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("compression failed: %v\nOutput: %s", err, string(output))
+	}
+
+	log.Printf("Successfully compressed original video")
+	return nil
 }
 
 // downloadFromMinio downloads a file from MinIO to local filesystem
@@ -455,6 +494,103 @@ func (s *server) uploadToMinio(bucketName, objectName, filePath string) error {
 	}
 
 	return nil
+}
+
+// processStoryVideoCompression - Lighter compression for temporary story videos
+func (s *server) processStoryVideoCompression(job map[string]interface{}) {
+	storyIDFloat, ok := job["story_id"].(float64)
+	if !ok {
+		log.Printf("Invalid story job payload, missing or invalid 'story_id'")
+		return
+	}
+	storyID := uint(storyIDFloat)
+
+	mediaURL, ok := job["media_url"].(string)
+	if !ok || mediaURL == "" {
+		log.Printf("Invalid story job payload, missing 'media_url'")
+		return
+	}
+
+	log.Printf("--- STARTING STORY VIDEO COMPRESSION for Story ID: %d ---", storyID)
+
+	// 1. Find the story in the story-db
+	var story Story
+	if err := s.storyDB.First(&story, storyID).Error; err != nil {
+		log.Printf("Failed to find story %d for compression: %v", storyID, err)
+		return
+	}
+
+	// 2. Create temp directory for processing
+	tempDir, err := os.MkdirTemp("", "story-compress-*")
+	if err != nil {
+		log.Printf("Failed to create temp directory: %v", err)
+		return
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 3. Extract filename
+	parts := strings.Split(mediaURL, "/")
+	if len(parts) < 2 {
+		log.Printf("Invalid media URL format: %s", mediaURL)
+		return
+	}
+	filename := parts[len(parts)-1]
+	filenameNoExt := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	// 4. Download video from MinIO
+	inputPath := filepath.Join(tempDir, filename)
+	if err := s.downloadFromMinio("media", mediaURL, inputPath); err != nil {
+		log.Printf("Failed to download story video from MinIO: %v", err)
+		return
+	}
+
+	// 5. Compress video (single 480p version for stories - lightweight & fast)
+	// Stories are temporary (24h) so we only need one optimized version
+	outputFilename := fmt.Sprintf("%s_compressed.mp4", filenameNoExt)
+	outputPath := filepath.Join(tempDir, outputFilename)
+
+	// Use faster preset and moderate compression for quick processing
+	cmd := exec.Command("ffmpeg",
+		"-i", inputPath,
+		"-vf", "scale=854:480", // 480p resolution
+		"-c:v", "libx264",
+		"-preset", "fast", // Faster encoding for stories
+		"-crf", "26", // Moderate compression
+		"-profile:v", "main",
+		"-level", "3.1",
+		"-c:a", "aac",
+		"-b:a", "128k",
+		"-movflags", "+faststart",
+		"-max_muxing_queue_size", "9999",
+		"-y",
+		outputPath,
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("FFmpeg failed for story video: %v\nOutput: %s", err, string(output))
+		return
+	}
+
+	log.Printf("Successfully compressed story video")
+
+	// 6. Upload compressed video to MinIO
+	compressedMinioPath := fmt.Sprintf("stories/compressed/%s", outputFilename)
+	if err := s.uploadToMinio("media", compressedMinioPath, outputPath); err != nil {
+		log.Printf("Failed to upload compressed story video to MinIO: %v", err)
+		return
+	}
+
+	log.Printf("Uploaded compressed story video to MinIO: %s", compressedMinioPath)
+
+	// 7. Update story with compressed video URL
+	if err := s.storyDB.Model(&Story{}).Where("id = ?", storyID).Update("media_url", compressedMinioPath).Error; err != nil {
+		log.Printf("Failed to update story media URL: %v", err)
+	} else {
+		log.Printf("Updated story %d with compressed video URL", storyID)
+	}
+
+	log.Printf("--- STORY VIDEO COMPRESSION COMPLETE for Story ID: %d ---", storyID)
 }
 
 // isVideoFile checks if a URL is a video based on extension

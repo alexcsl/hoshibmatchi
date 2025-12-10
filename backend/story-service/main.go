@@ -208,7 +208,28 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to save story to database")
 	}
 
-	// 4. Publish to the "Waiting Room" Queue
+	// 4. Trigger video compression for video stories (Optional for stories since they're temporary)
+	// Only compress if it's a video to save bandwidth during 24h lifespan
+	if req.MediaType == "video" && isVideoFile(req.MediaUrl) {
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		msgBody, _ := json.Marshal(map[string]interface{}{
+			"story_id":  newStory.ID,
+			"media_url": req.MediaUrl,
+			"is_story":  true, // Flag to indicate this is a story, not a post
+		})
+
+		err = s.publishToQueue(ctxTimeout, "video_transcoding_queue", msgBody)
+		if err != nil {
+			log.Printf("Failed to publish video transcoding job for story %d: %v", newStory.ID, err)
+			// Don't fail the story creation, just log the error
+		} else {
+			log.Printf("Published video transcoding job for story %d", newStory.ID)
+		}
+	}
+
+	// 5. Publish to the "Waiting Room" Queue for 24h deletion
 	// The worker will pick this up from 'story_deletion_queue' after 24h
 	msgBody, _ := json.Marshal(map[string]interface{}{
 		"type":     "story.delete",
@@ -376,5 +397,20 @@ func (s *server) GetUserArchive(ctx context.Context, req *pb.GetUserArchiveReque
 		})
 	}
 
-	return &pb.GetUserArchiveResponse{Stories: pbStories}, nil
+	return &pb.GetUserArchiveResponse{Stories: protoStories}, nil
+}
+
+// --- Helper Function: Check if URL is a video file ---
+func isVideoFile(url string) bool {
+	if url == "" {
+		return false
+	}
+	videoExtensions := []string{".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv", ".wmv"}
+	urlLower := strings.ToLower(url)
+	for _, ext := range videoExtensions {
+		if strings.HasSuffix(urlLower, ext) || strings.Contains(urlLower, ext) {
+			return true
+		}
+	}
+	return false
 }

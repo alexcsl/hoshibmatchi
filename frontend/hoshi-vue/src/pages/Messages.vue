@@ -530,6 +530,52 @@
           </button>
         </div>
 
+        <!-- GIF Picker Modal -->
+        <div 
+          v-if="showGifPicker" 
+          class="gif-picker-modal"
+          @click.self="closeGifPicker"
+        >
+          <div class="gif-picker-content">
+            <div class="gif-picker-header">
+              <h3>Choose a GIF</h3>
+              <button class="close-btn" @click="closeGifPicker">✕</button>
+            </div>
+            <div class="gif-search-bar">
+              <input
+                v-model="gifSearchQuery"
+                type="text"
+                placeholder="Search GIPHY..."
+                @keyup.enter="searchGifs"
+                class="gif-search-input"
+              />
+              <button @click="searchGifs" class="search-btn">
+                {{ searchingGifs ? '...' : '🔍' }}
+              </button>
+            </div>
+            <div class="gif-results">
+              <div
+                v-for="gif in gifResults"
+                :key="gif.id"
+                class="gif-item"
+                @click="selectGif(gif)"
+              >
+                <img
+                  :src="gif.images.fixed_height.url"
+                  :alt="gif.title"
+                  class="gif-thumbnail"
+                />
+              </div>
+              <div v-if="!gifResults.length && gifSearchQuery" class="no-results">
+                {{ searchingGifs ? 'Searching...' : 'No GIFs found' }}
+              </div>
+              <div v-if="!gifSearchQuery" class="gif-placeholder">
+                Search for GIFs using GIPHY
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="message-input-area">
           <input 
             ref="mediaFileInput" 
@@ -540,10 +586,17 @@
           />
           <button
             class="media-btn"
-            title="Add Image/GIF/Video"
+            title="Add Image/Video"
             @click="openMediaUpload"
           >
             📷
+          </button>
+          <button
+            class="gif-btn"
+            title="Add GIF"
+            @click="openGifPicker"
+          >
+            GIF
           </button>
           <button
             class="emoji-btn"
@@ -607,7 +660,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import { messageAPI, userAPI } from "@/services/api";
+import { messageAPI, userAPI, mediaAPI } from "@/services/api";
 
 interface Participant {
   id?: number
@@ -684,10 +737,19 @@ const currentParticipants = ref<Participant[]>([]);
 const mediaFileInput = ref<HTMLInputElement | null>(null);
 const selectedMedia = ref<{ file: File; preview: string; name: string } | null>(null);
 
+// GIF picker states
+const showGifPicker = ref(false);
+const gifSearchQuery = ref("");
+const gifResults = ref<any[]>([]);
+const searchingGifs = ref(false);
+
 // Conversation search states
 const showConversationSearch = ref(false);
 const conversationSearchQuery = ref("");
 const filteredMessagesIndices = ref<number[]>([]);
+
+// Media URL cache for pre-signed URLs
+const mediaURLCache = ref<Record<string, string>>({});
 
 // WebSocket connection
 let ws: WebSocket | null = null;
@@ -948,6 +1010,78 @@ const clearMediaSelection = () => {
   }
 };
 
+// GIF picker functions
+const openGifPicker = () => {
+  showGifPicker.value = true;
+  gifSearchQuery.value = "";
+  gifResults.value = [];
+};
+
+const closeGifPicker = () => {
+  showGifPicker.value = false;
+  gifSearchQuery.value = "";
+  gifResults.value = [];
+};
+
+const searchGifs = async () => {
+  searchingGifs.value = true;
+  try {
+    // Using GIPHY API - Same public key as comments section
+    const apiKey = 'sXpGFDGZs0Dv1mmNFvYaGUvYwKX0PWIh';
+    
+    if (!gifSearchQuery.value.trim()) {
+      // Load trending GIFs when no search query
+      const response = await fetch(
+        `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=20`
+      );
+      const data = await response.json();
+      gifResults.value = data.data || [];
+      return;
+    }
+    
+    // Search GIFs
+    const response = await fetch(
+      `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(gifSearchQuery.value)}&limit=20`
+    );
+    const data = await response.json();
+    gifResults.value = data.data || [];
+  } catch (error) {
+    console.error("Failed to search GIFs:", error);
+    gifResults.value = [];
+  } finally {
+    searchingGifs.value = false;
+  }
+};
+
+const selectGif = async (gif: any) => {
+  closeGifPicker();
+  
+  // Get the GIF URL
+  const gifUrl = gif.images?.fixed_height?.url || gif.images?.original?.url;
+  if (!gifUrl) return;
+  
+  try {
+    // Download the GIF as a blob
+    const response = await fetch(gifUrl);
+    const blob = await response.blob();
+    const file = new File([blob], `giphy-${gif.id}.gif`, { type: 'image/gif' });
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedMedia.value = {
+        file: file,
+        preview: e.target?.result as string,
+        name: file.name
+      };
+    };
+    reader.readAsDataURL(file);
+  } catch (error) {
+    console.error("Failed to load GIF:", error);
+    alert("Failed to load GIF. Please try again.");
+  }
+};
+
 const isConversationUserVerified = (conversation: Conversation): boolean => {
   if (conversation.is_group) return false;
   
@@ -958,7 +1092,7 @@ const isConversationUserVerified = (conversation: Conversation): boolean => {
     return participantId && participantId !== currentUserId.value;
   });
   
-  return otherUser?.is_verified || otherUser?.isVerified || false;
+  return otherUser?.is_verified || false;
 };
 
 const isSenderVerified = (message: Message): boolean => {
@@ -975,7 +1109,7 @@ const isSenderVerified = (message: Message): boolean => {
     }
   );
   
-  return sender?.is_verified || sender?.isVerified || false;
+  return sender?.is_verified || false;
 };
 
 const isImage = (filename: string): boolean => {
@@ -995,17 +1129,58 @@ const toggleConversationSearch = () => {
   }
 };
 
-const filterMessages = () => {
+const filterMessages = async () => {
   if (!conversationSearchQuery.value.trim()) {
     filteredMessagesIndices.value = [];
     return;
   }
-  
-  const query = conversationSearchQuery.value.toLowerCase();
-  filteredMessagesIndices.value = messages.value
-    .map((msg, index) => ({ msg, index }))
-    .filter(({ msg }) => msg.content.toLowerCase().includes(query))
-    .map(({ index }) => index);
+
+  if (!activeConversation.value) {
+    return;
+  }
+
+  try {
+    // Call backend search API to get all matching messages from database
+    const searchResults = await messageAPI.searchMessages(
+      activeConversation.value.id,
+      conversationSearchQuery.value
+    );
+
+    // Map the search results to indices in the current messages array
+    // This allows highlighting to work with existing logic
+    const resultIds = new Set(searchResults.map((msg: Message) => msg.id));
+    filteredMessagesIndices.value = messages.value
+      .map((msg, index) => ({ msg, index }))
+      .filter(({ msg }) => resultIds.has(msg.id))
+      .map(({ index }) => index);
+
+    // If we found results that aren't in the current messages array,
+    // we should add them to the messages array for display
+    const currentMessageIds = new Set(messages.value.map(m => m.id));
+    const newMessages = searchResults.filter((msg: Message) => !currentMessageIds.has(msg.id));
+    
+    if (newMessages.length > 0) {
+      // Prepend new messages and re-sort
+      messages.value = [...messages.value, ...newMessages].sort((a, b) => {
+        return new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime();
+      });
+      
+      // Recalculate indices after adding new messages
+      const allResultIds = new Set(searchResults.map((msg: Message) => msg.id));
+      filteredMessagesIndices.value = messages.value
+        .map((msg, index) => ({ msg, index }))
+        .filter(({ msg }) => allResultIds.has(msg.id))
+        .map(({ index }) => index);
+    }
+  } catch (error) {
+    console.error("Failed to search messages:", error);
+    // Fallback to local search if backend fails
+    const query = conversationSearchQuery.value.toLowerCase();
+    filteredMessagesIndices.value = messages.value
+      .map((msg, index) => ({ msg, index }))
+      .filter(({ msg }) => msg.content.toLowerCase().includes(query))
+      .map(({ index }) => index);
+  }
 };
 
 const isMessageHighlighted = (message: Message): boolean => {
@@ -1102,10 +1277,13 @@ const sendMessage = async () => {
     
     await nextTick();
     scrollToBottom();
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to send message:", error);
     messageText.value = content; // Restore message on error
-    alert("Failed to send message. Media upload may require backend support.");
+    
+    // Show appropriate error message
+    const errorMessage = error?.response?.data?.error || error?.message || "Failed to send message";
+    alert(errorMessage);
   } finally {
     sending.value = false;
   }
@@ -1286,6 +1464,7 @@ const getConversationAvatar = (conversation: Conversation): string => {
   
   // For 1-on-1, show the other person's avatar
   if (!conversation.participants || conversation.participants.length === 0) {
+    console.warn("No participants in conversation", conversation.id);
     return "/placeholder.svg";
   }
   
@@ -1300,16 +1479,19 @@ const getConversationAvatar = (conversation: Conversation): string => {
     const firstId = firstParticipant?.id || firstParticipant?.user_id;
     if (firstParticipant && firstId !== currentUserId.value) {
       const avatar = firstParticipant.profile_picture_url || firstParticipant.profilePictureUrl || firstParticipant.profile_url || "";
+      console.log("Using first participant avatar:", avatar);
       return getMediaUrl(avatar);
     }
     if (conversation.participants[1]) {
       const avatar = conversation.participants[1].profile_picture_url || conversation.participants[1].profilePictureUrl || conversation.participants[1].profile_url || "";
+      console.log("Using second participant avatar:", avatar);
       return getMediaUrl(avatar);
     }
     return "/placeholder.svg";
   }
   
   const avatar = otherUser.profile_picture_url || otherUser.profilePictureUrl || otherUser.profile_url || "";
+  console.log("Other user avatar URL:", avatar, "for user:", otherUser);
   return getMediaUrl(avatar);
 };
 
@@ -1319,17 +1501,52 @@ const getOnlineStatus = (): string => {
 };
 
 const getMediaUrl = (url: string): string => {
-  if (!url) return "/placeholder.svg";
-  if (url.startsWith("http")) return url;
+  console.log("🔍 getMediaUrl input:", url);
   
-  // If it's a relative path from MinIO, construct the full URL
-  // MinIO paths are stored as "user-X/..." in the database
-  if (url.includes("/")) {
-    return `http://localhost:9000/media/${url}`;
+  if (!url || url === "null" || url === "undefined") {
+    console.log("❌ Returning placeholder - empty/null URL");
+    return "/placeholder.svg";
   }
   
-  // Fallback to api-gateway proxy
-  return `http://localhost:8000${url}`;
+  // If already a full URL (like GIPHY URLs), return as-is
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    console.log("✅ Already full URL:", url);
+    return url;
+  }
+  
+  // Check cache (reactive object will trigger updates)
+  if (mediaURLCache.value[url]) {
+    console.log("💾 Using cached URL for:", url, "->", mediaURLCache.value[url]);
+    return mediaURLCache.value[url];
+  }
+  
+  // Start async fetch for pre-signed URL (only if not already loading)
+  if (mediaURLCache.value[url] === undefined) {
+    // Mark as loading to prevent duplicate requests
+    mediaURLCache.value[url] = "/placeholder.svg";
+    fetchSecureMediaURL(url);
+  }
+  
+  // Return placeholder while loading
+  console.log("⏳ Fetching secure URL for:", url);
+  return "/placeholder.svg";
+};
+
+// Fetch pre-signed URL asynchronously
+const fetchSecureMediaURL = async (objectName: string) => {
+  try {
+    const cleanUrl = objectName.startsWith("/") ? objectName.substring(1) : objectName;
+    console.log("🔐 Fetching secure URL for:", cleanUrl);
+    
+    const secureUrl = await mediaAPI.getSecureMediaURL(cleanUrl);
+    console.log("✅ Got secure URL:", secureUrl);
+    
+    // Update the cache - Vue reactivity will trigger re-render
+    mediaURLCache.value[objectName] = secureUrl;
+  } catch (error) {
+    console.error("❌ Failed to get secure URL for", objectName, error);
+    // Keep the placeholder in cache
+  }
 };
 
 const getSenderAvatar = (message: Message): string => {
@@ -2354,6 +2571,8 @@ const toggleVideo = () => {
     border-top: 1px solid #262626;
     align-items: center;
 
+    .media-btn,
+    .gif-btn,
     .emoji-btn {
       background: none;
       border: none;
@@ -2361,6 +2580,29 @@ const toggleVideo = () => {
       font-size: 20px;
       cursor: pointer;
       padding: 0;
+      transition: color 0.2s;
+
+      &:hover {
+        color: #0a66c2;
+      }
+    }
+
+    .gif-btn {
+      font-size: 14px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #ff6b9d, #c239b3, #7928ca, #4e5cff, #00d4ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      
+      &:hover {
+        background: linear-gradient(90deg, #ff8bb4, #d050ca, #9040e0, #6575ff, #20e4ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
     }
 
     .message-input {
@@ -2385,6 +2627,142 @@ const toggleVideo = () => {
       font-size: 18px;
       cursor: pointer;
       padding: 0;
+    }
+  }
+}
+
+// GIF Picker Modal
+.gif-picker-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+
+  .gif-picker-content {
+    background-color: #1a1a1a;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .gif-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #262626;
+
+    h3 {
+      margin: 0;
+      color: #fff;
+      font-size: 18px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #262626;
+      }
+    }
+  }
+
+  .gif-search-bar {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #262626;
+
+    .gif-search-input {
+      flex: 1;
+      background-color: #262626;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 10px 16px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+
+      &::placeholder {
+        color: #a8a8a8;
+      }
+
+      &:focus {
+        border-color: #0a66c2;
+      }
+    }
+
+    .search-btn {
+      background-color: #0a66c2;
+      border: none;
+      border-radius: 20px;
+      padding: 10px 20px;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #094e96;
+      }
+    }
+  }
+
+  .gif-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    align-content: start;
+
+    .gif-item {
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: scale(1.05);
+      }
+
+      .gif-thumbnail {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+    }
+
+    .no-results,
+    .gif-placeholder {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #a8a8a8;
+      padding: 40px 20px;
+      font-size: 16px;
     }
   }
 }

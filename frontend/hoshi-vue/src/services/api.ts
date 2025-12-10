@@ -354,6 +354,16 @@ export const mediaAPI = {
     // 3. Return the final URL for our database
     return { media_url: final_media_url };
   },
+
+  // Get pre-signed URL for viewing/downloading media
+  getSecureMediaURL: async (objectName: string): Promise<string> => {
+    const response = await apiClient.get<{media_url: string}>("/media/secure-url", {
+      params: {
+        object_name: objectName,
+      }
+    });
+    return response.data.media_url;
+  },
 };
 
 // Feed APIs
@@ -569,6 +579,11 @@ export const messageAPI = {
 
   getMessages: async (conversationId: string, page: number = 1, limit: number = 50) => {
     const response = await apiClient.get(`/conversations/${conversationId}/messages?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
+  searchMessages: async (conversationId: string, query: string) => {
+    const response = await apiClient.get(`/conversations/${conversationId}/messages/search?q=${encodeURIComponent(query)}`);
     return response.data;
   },
 
