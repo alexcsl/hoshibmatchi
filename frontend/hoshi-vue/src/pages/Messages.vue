@@ -75,10 +75,44 @@
           </button>
         </div>
         <div class="modal-body">
+          <!-- Selected participants chips -->
+          <div
+            v-if="selectedParticipants.length > 0"
+            class="selected-participants"
+          >
+            <div
+              v-for="participant in selectedParticipants"
+              :key="participant.user_id"
+              class="participant-chip"
+            >
+              <img
+                :src="getMediaUrl(participant.profile_picture_url)"
+                :alt="participant.username"
+                class="chip-avatar"
+              />
+              <span class="chip-username">{{ participant.username }}</span>
+              <button
+                class="chip-remove"
+                @click="removeSelectedParticipant(participant.user_id)"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <!-- Group name input (show if multiple participants selected) -->
+          <input
+            v-if="selectedParticipants.length > 1"
+            v-model="newGroupName"
+            type="text"
+            placeholder="Group name (optional)"
+            class="search-input group-name-input"
+          />
+
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="Search users..." 
+            placeholder="Search users to add..." 
             class="search-input"
             @input="searchUsers"
           />
@@ -90,7 +124,8 @@
               v-for="user in searchResults" 
               :key="user.user_id" 
               class="search-result-item"
-              @click="createConversationWithUser(user.user_id)"
+              :class="{ selected: isParticipantSelected(user.user_id) }"
+              @click="toggleParticipantSelection(user)"
             >
               <img
                 :src="getMediaUrl(user.profile_picture_url)"
@@ -105,8 +140,23 @@
                   {{ user.name }}
                 </div>
               </div>
+              <span
+                v-if="isParticipantSelected(user.user_id)"
+                class="selected-indicator"
+              >
+                ✓
+              </span>
             </div>
           </div>
+
+          <!-- Create button -->
+          <button
+            v-if="selectedParticipants.length > 0"
+            class="create-conversation-btn"
+            @click="createConversationWithSelectedUsers"
+          >
+            Create {{ selectedParticipants.length > 1 ? 'Group' : 'Chat' }}
+          </button>
         </div>
       </div>
     </div>
@@ -606,6 +656,8 @@ const sending = ref(false);
 const showNewConversation = ref(false);
 const searchQuery = ref("");
 const searchResults = ref<any[]>([]);
+const selectedParticipants = ref<any[]>([]);
+const newGroupName = ref("");
 const messagesContainer = ref<HTMLElement | null>(null);
 const messageInputRef = ref<HTMLInputElement | null>(null);
 
@@ -1083,6 +1135,61 @@ const searchUserByUsername = async (username: string) => {
   } catch (error) {
     console.error("Failed to search user:", error);
     return null;
+  }
+};
+
+const toggleParticipantSelection = (user: any) => {
+  const index = selectedParticipants.value.findIndex(p => p.user_id === user.user_id);
+  if (index > -1) {
+    selectedParticipants.value.splice(index, 1);
+  } else {
+    selectedParticipants.value.push(user);
+  }
+};
+
+const isParticipantSelected = (userId: number): boolean => {
+  return selectedParticipants.value.some(p => p.user_id === userId);
+};
+
+const removeSelectedParticipant = (userId: number) => {
+  selectedParticipants.value = selectedParticipants.value.filter(p => p.user_id !== userId);
+};
+
+const createConversationWithSelectedUsers = async () => {
+  if (selectedParticipants.value.length === 0) return;
+  
+  try {
+    const participantIds = selectedParticipants.value.map(p => p.user_id);
+    const isGroup = participantIds.length > 1;
+    
+    const payload: any = { participant_ids: participantIds };
+    if (isGroup && newGroupName.value.trim()) {
+      payload.group_name = newGroupName.value.trim();
+    }
+    
+    const newConv = await messageAPI.createConversation(payload);
+    console.log("Created conversation:", newConv);
+    
+    // Refresh conversations list
+    await loadConversations();
+    
+    // Find and select the newly created conversation
+    const createdConv = conversations.value.find(c => c.id === newConv.id);
+    if (createdConv) {
+      activeConversation.value = createdConv;
+    } else {
+      activeConversation.value = newConv;
+    }
+    
+    // Reset modal state
+    showNewConversation.value = false;
+    selectedParticipants.value = [];
+    newGroupName.value = "";
+    searchQuery.value = "";
+    searchResults.value = [];
+  } catch (error) {
+    console.error("Failed to create conversation:", error);
+    alert("Failed to create conversation");
   }
 };
 
@@ -1711,6 +1818,57 @@ const toggleVideo = () => {
     padding: 20px;
     overflow-y: auto;
 
+    .selected-participants {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background-color: #1a1a1a;
+      border-radius: 8px;
+      min-height: 60px;
+
+      .participant-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background-color: #0a66c2;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+
+        .chip-avatar {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          object-fit: cover;
+        }
+
+        .chip-username {
+          color: #fff;
+          font-weight: 500;
+        }
+
+        .chip-remove {
+          background: none;
+          border: none;
+          color: #fff;
+          cursor: pointer;
+          font-size: 16px;
+          padding: 0 0 0 4px;
+          line-height: 1;
+
+          &:hover {
+            opacity: 0.8;
+          }
+        }
+      }
+    }
+
+    .group-name-input {
+      margin-bottom: 16px;
+    }
+
     .search-input {
       width: 100%;
       background-color: #262626;
@@ -1731,6 +1889,7 @@ const toggleVideo = () => {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-bottom: 16px;
 
       .search-result-item {
         display: flex;
@@ -1740,9 +1899,15 @@ const toggleVideo = () => {
         border-radius: 8px;
         cursor: pointer;
         transition: background-color 0.2s;
+        position: relative;
 
         &:hover {
           background-color: #262626;
+        }
+
+        &.selected {
+          background-color: rgba(10, 102, 194, 0.2);
+          border: 1px solid #0a66c2;
         }
 
         .avatar {
@@ -1765,6 +1930,35 @@ const toggleVideo = () => {
             color: #a8a8a8;
           }
         }
+
+        .selected-indicator {
+          color: #0a66c2;
+          font-size: 20px;
+          font-weight: bold;
+        }
+      }
+    }
+
+    .create-conversation-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #0a66c2;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #0958a8;
+      }
+
+      &:disabled {
+        background-color: #333;
+        cursor: not-allowed;
+        opacity: 0.5;
       }
     }
   }

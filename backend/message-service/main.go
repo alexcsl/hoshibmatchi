@@ -900,7 +900,7 @@ func (s *server) GetVideoCallToken(ctx context.Context, req *pb.GetVideoCallToke
 	}, nil
 }
 
-// AddParticipant adds a user to a group conversation
+// AddParticipant adds a user to a conversation (converts 1-on-1 to group if needed)
 func (s *server) AddParticipant(ctx context.Context, req *pb.AddParticipantRequest) (*pb.AddParticipantResponse, error) {
 	log.Printf("AddParticipant: User %d adding %d to conversation %s", req.UserId, req.ParticipantId, req.ConversationId)
 
@@ -909,20 +909,17 @@ func (s *server) AddParticipant(ctx context.Context, req *pb.AddParticipantReque
 		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID")
 	}
 
-	// Validate conversation is a group
+	// Get conversation
 	var convo Conversation
 	if err := s.db.First(&convo, convoID).Error; err != nil {
 		return nil, status.Error(codes.NotFound, "Conversation not found")
-	}
-	if !convo.IsGroup {
-		return nil, status.Error(codes.InvalidArgument, "Cannot add participants to non-group conversations")
 	}
 
 	// Validate requester is a member
 	var requesterCount int64
 	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.UserId).Count(&requesterCount)
 	if requesterCount == 0 {
-		return nil, status.Error(codes.PermissionDenied, "Only group members can add participants")
+		return nil, status.Error(codes.PermissionDenied, "Only conversation members can add participants")
 	}
 
 	// Check if user is already a participant
@@ -930,6 +927,16 @@ func (s *server) AddParticipant(ctx context.Context, req *pb.AddParticipantReque
 	s.db.Model(&Participant{}).Where("conversation_id = ? AND user_id = ?", convoID, req.ParticipantId).Count(&existingCount)
 	if existingCount > 0 {
 		return nil, status.Error(codes.AlreadyExists, "User is already a participant")
+	}
+
+	// If this is a 1-on-1 chat, convert it to a group
+	if !convo.IsGroup {
+		convo.IsGroup = true
+		if err := s.db.Model(&convo).Update("is_group", true).Error; err != nil {
+			log.Printf("Failed to convert conversation to group: %v", err)
+			return nil, status.Error(codes.Internal, "Failed to convert to group")
+		}
+		log.Printf("Converted conversation %d to group chat", convoID)
 	}
 
 	// Add participant
@@ -944,7 +951,7 @@ func (s *server) AddParticipant(ctx context.Context, req *pb.AddParticipantReque
 	}
 
 	// Create system message
-	systemMessage := fmt.Sprintf("User %d added user %d to the group", req.UserId, req.ParticipantId)
+	systemMessage := fmt.Sprintf("User %d added user %d to the conversation", req.UserId, req.ParticipantId)
 	msg := Message{
 		ConversationID: uint(convoID),
 		SenderID:       req.UserId,
