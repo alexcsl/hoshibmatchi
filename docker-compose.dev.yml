@@ -6,6 +6,7 @@ services:
       dockerfile: ./backend/api-gateway/Dockerfile.dev
     environment:
       - JWT_SECRET=${JWT_SECRET}
+      - VITE_TURNSTILE_SECRET_KEY=${VITE_TURNSTILE_SECRET_KEY}
     volumes:
       - ./backend:/app/backend # Mount local backend code
       - ./uploads:/app/backend/api-gateway/uploads # Mount uploads directory for serving media

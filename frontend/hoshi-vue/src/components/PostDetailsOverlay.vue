@@ -493,7 +493,7 @@ onMounted(async () => {
       loadingMedia.value = true;
       try {
         secureMediaUrls.value = await Promise.all(
-          postData.value.media_urls.map(url => getSecureMediaURL(url))
+          postData.value.media_urls.map((url: string) => getSecureMediaURL(url))
         );
       } catch (error) {
         console.error('Failed to load secure media URLs:', error);

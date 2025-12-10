@@ -8,6 +8,7 @@ interface User {
   email?: string
   name?: string
   profile_picture_url?: string
+  role?: string
 }
 
 interface AuthState {
@@ -58,7 +59,8 @@ export const useAuthStore = defineStore("auth", {
       gender: string
       date_of_birth: string
       enable_2fa?: boolean
-      profile_picture_url?: string;
+      profile_picture_url?: string
+      turnstile_token?: string
     }) {
       this.loading = true;
       this.error = null;

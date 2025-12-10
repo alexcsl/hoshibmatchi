@@ -1047,6 +1047,7 @@ func (s *server) GetUserReels(ctx context.Context, req *pb.GetUserContentRequest
 	for _, post := range posts {
 		grpcPosts = append(grpcPosts, &pb.Post{
 			Id:               strconv.FormatUint(uint64(post.ID), 10),
+			AuthorId:         post.AuthorID, // FIXED: Include author_id
 			Caption:          post.Caption,
 			AuthorUsername:   post.AuthorUsername,
 			AuthorProfileUrl: post.AuthorProfileURL,
@@ -1636,6 +1637,7 @@ func (s *server) enrichPostProto(ctx context.Context, post *Post, viewerID int64
 
 	return &pb.Post{
 		Id:               strconv.FormatUint(uint64(post.ID), 10),
+		AuthorId:         post.AuthorID, // FIXED: Include author_id
 		Caption:          post.Caption,
 		AuthorUsername:   post.AuthorUsername,
 		AuthorProfileUrl: post.AuthorProfileURL,

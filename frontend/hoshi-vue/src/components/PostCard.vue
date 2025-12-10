@@ -474,7 +474,13 @@ const secureMediaUrls = ref<string[]>([]);
 const loadingMedia = ref(true);
 
 const isOwnPost = computed(() => {
-  return authStore.user?.user_id === props.post.author_id;
+  const currentUserId = authStore.user?.user_id;
+  
+  // The gRPC response uses camelCase (authorId), TypeScript interface expects snake_case (author_id)
+  // Check both to be safe
+  const authorId = (props.post as any).authorId || props.post.author_id;
+  
+  return currentUserId === authorId;
 });
 
 // Load secure URLs for all media
