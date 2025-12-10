@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"gorm.io/gorm/clause"
-
 	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
@@ -260,9 +258,6 @@ func (s *server) CreateConversation(ctx context.Context, req *pb.CreateConversat
 		if err == nil && existingConversationID > 0 {
 			// A 1-on-1 chat already exists. Find it and return it.
 			log.Printf("Found existing 1-on-1 chat (ID: %d) for users %v", existingConversationID, allParticipantIDs)
-
-			// Remove any hidden entries for this conversation (unhide it)
-			s.db.Where("user_id = ? AND conversation_id = ?", req.CreatorId, existingConversationID).Delete(&HiddenConversation{})
 
 			var existingConversation Conversation
 			if s.db.First(&existingConversation, existingConversationID).Error == nil {
@@ -534,13 +529,7 @@ func (s *server) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*
 func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsRequest) (*pb.GetConversationsResponse, error) {
 	log.Printf("GetConversations request received for user %d", req.UserId)
 
-	// --- THIS IS THE FIX ---
-	// 1. Get list of conversations user has "hidden" (soft-deleted)
-	var hiddenConvoIDs []uint
-	s.db.Model(&HiddenConversation{}).Where("user_id = ?", req.UserId).Pluck("conversation_id", &hiddenConvoIDs)
-	// --- END FIX ---
-
-	// --- Step 2: Find all Conversation IDs the user is a part of ---
+	// Find all Conversation IDs the user is a part of
 	var conversationIDs []uint
 	if err := s.db.Model(&Participant{}).
 		Where("user_id = ?", req.UserId).
@@ -553,17 +542,12 @@ func (s *server) GetConversations(ctx context.Context, req *pb.GetConversationsR
 		return &pb.GetConversationsResponse{Conversations: []*pb.Conversation{}}, nil
 	}
 
-	// --- Step 3: Fetch those conversations, sorted by most recent activity
-	// --- AND FILTERING OUT THE HIDDEN ONES ---
+	// Fetch those conversations, sorted by most recent activity
 	var conversations []Conversation
 	query := s.db.Where("id IN ?", conversationIDs).
 		Order("updated_at DESC").
 		Limit(int(req.PageSize)).
 		Offset(int(req.PageOffset))
-
-	if len(hiddenConvoIDs) > 0 {
-		query = query.Where("id NOT IN ?", hiddenConvoIDs) // <-- ADD THIS
-	}
 
 	if err := query.Find(&conversations).Error; err != nil {
 		log.Printf("Failed to get conversations for user %d: %v", req.UserId, err)
@@ -824,27 +808,42 @@ func (s *server) UnsendMessage(ctx context.Context, req *pb.UnsendMessageRequest
 }
 
 func (s *server) DeleteConversation(ctx context.Context, req *pb.DeleteConversationRequest) (*pb.DeleteConversationResponse, error) {
-	log.Printf("DeleteConversation (soft) request from user %d for convo %s", req.UserId, req.ConversationId)
+	log.Printf("DeleteConversation (TRUE DELETE) request from user %d for convo %s", req.UserId, req.ConversationId)
 
 	convoID, _ := strconv.ParseUint(req.ConversationId, 10, 64)
 	if convoID == 0 {
 		return nil, status.Error(codes.InvalidArgument, "Invalid conversation ID format")
 	}
 
-	// This is a soft delete. We just add an entry to the HiddenConversation table.
-	// Our GetConversations RPC will now filter this out.
-	hiddenEntry := HiddenConversation{
-		UserID:         req.UserId,
-		ConversationID: uint(convoID),
+	// TRUE DELETE: Actually delete all messages and the conversation from database
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Delete all messages in this conversation
+		if err := tx.Where("conversation_id = ?", convoID).Delete(&Message{}).Error; err != nil {
+			log.Printf("Failed to delete messages for conversation %d: %v", convoID, err)
+			return err
+		}
+
+		// 2. Delete all participants
+		if err := tx.Where("conversation_id = ?", convoID).Delete(&Participant{}).Error; err != nil {
+			log.Printf("Failed to delete participants for conversation %d: %v", convoID, err)
+			return err
+		}
+
+		// 3. Delete the conversation itself
+		if err := tx.Delete(&Conversation{}, convoID).Error; err != nil {
+			log.Printf("Failed to delete conversation %d: %v", convoID, err)
+			return err
+		}
+
+		log.Printf("Successfully deleted conversation %d and all its messages", convoID)
+		return nil
+	})
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to delete conversation")
 	}
 
-	// Use 'clause.OnConflict{DoNothing: true}' in case they try to delete it twice
-	if err := s.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&hiddenEntry).Error; err != nil {
-		log.Printf("Failed to soft-delete conversation %d for user %d: %v", convoID, req.UserId, err)
-		return nil, status.Error(codes.Internal, "Failed to hide conversation")
-	}
-
-	return &pb.DeleteConversationResponse{Message: "Conversation hidden"}, nil
+	return &pb.DeleteConversationResponse{Message: "Conversation deleted permanently"}, nil
 }
 
 func (s *server) GetVideoCallToken(ctx context.Context, req *pb.GetVideoCallTokenRequest) (*pb.GetVideoCallTokenResponse, error) {

@@ -310,6 +310,7 @@
             <div>
               <div class="username">
                 {{ getConversationName(activeConversation) }}
+                <span v-if="isConversationUserVerified(activeConversation)" class="verified-badge" title="Verified">✓</span>
               </div>
               <div class="status">
                 {{ getOnlineStatus() }}
@@ -408,6 +409,7 @@
                 class="sender-name"
               >
                 {{ message.sender_username || 'User' }}
+                <span v-if="isSenderVerified(message)" class="verified-badge" title="Verified">✓</span>
               </div>
               <div class="message-content">
                 <!-- Display media if present -->
@@ -439,8 +441,10 @@
                   <span
                     v-if="Number(message.sender_id) === currentUserId"
                     class="message-status"
+                    :class="getMessageStatusClass(message)"
+                    :title="getMessageStatusTitle(message)"
                   >
-                    {{ getMessageStatus(message) }}
+                    {{ getMessageStatusIcon(message) }}
                   </span>
                 </div>
               </div>
@@ -892,6 +896,36 @@ const clearMediaSelection = () => {
   }
 };
 
+const isConversationUserVerified = (conversation: Conversation): boolean => {
+  if (conversation.is_group) return false;
+  
+  if (!conversation.participants || conversation.participants.length === 0) return false;
+  
+  const otherUser = conversation.participants.find(p => {
+    const participantId = p?.id || p?.user_id;
+    return participantId && participantId !== currentUserId.value;
+  });
+  
+  return otherUser?.is_verified || otherUser?.isVerified || false;
+};
+
+const isSenderVerified = (message: Message): boolean => {
+  if (!activeConversation.value) return false;
+  
+  if (!activeConversation.value.participants || activeConversation.value.participants.length === 0) return false;
+  
+  const sender = activeConversation.value.participants.find(
+    p => {
+      if (!p) return false;
+      const participantId = p.id || p.user_id;
+      if (!participantId) return false;
+      return participantId.toString() === message.sender_id;
+    }
+  );
+  
+  return sender?.is_verified || sender?.isVerified || false;
+};
+
 const isImage = (filename: string): boolean => {
   return /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
 };
@@ -930,12 +964,33 @@ const isMessageHighlighted = (message: Message): boolean => {
 // Message status functions
 const getMessageStatus = (message: Message): string => {
   // Check if message has explicit status
-  if (message.status === "seen") return "✓✓";
-  if (message.status === "delivered") return "✓✓";
-  if (message.status === "sent") return "✓";
+  if (message.status === "seen") return "seen";
+  if (message.status === "delivered") return "delivered";
+  if (message.status === "sent") return "sent";
   
   // Default to sent status
-  return "✓";
+  return "sent";
+};
+
+const getMessageStatusIcon = (message: Message): string => {
+  const status = getMessageStatus(message);
+  if (status === "seen") return "✓✓";      // Double check for read
+  if (status === "delivered") return "✓✓";  // Double check for delivered
+  return "✓";                               // Single check for sent
+};
+
+const getMessageStatusClass = (message: Message): string => {
+  const status = getMessageStatus(message);
+  if (status === "seen") return "status-seen";
+  if (status === "delivered") return "status-delivered";
+  return "status-sent";
+};
+
+const getMessageStatusTitle = (message: Message): string => {
+  const status = getMessageStatus(message);
+  if (status === "seen") return "Seen";
+  if (status === "delivered") return "Delivered";
+  return "Sent";
 };
 
 const sendMessage = async () => {
@@ -970,8 +1025,19 @@ const sendMessage = async () => {
     
     console.log("Message sent successfully:", newMessage);
     
-    // Add message immediately for instant feedback
-    messages.value.push(newMessage);
+    // Add message immediately for instant feedback, but check for duplicates
+    const exists = messages.value.some(m => m.id === newMessage.id);
+    if (!exists) {
+      messages.value.push(newMessage);
+      
+      // Sort messages by time to maintain chronological order
+      messages.value.sort((a, b) => 
+        new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime()
+      );
+      
+      await nextTick();
+      scrollToBottom();
+    }
     
     // Update last message in conversation
     const convIndex = conversations.value.findIndex(c => c.id === activeConversation.value?.id);
@@ -1148,6 +1214,14 @@ const getOnlineStatus = (): string => {
 const getMediaUrl = (url: string): string => {
   if (!url) return "/placeholder.svg";
   if (url.startsWith("http")) return url;
+  
+  // If it's a relative path from MinIO, construct the full URL
+  // MinIO paths are stored as "user-X/..." in the database
+  if (url.includes("/")) {
+    return `http://localhost:9000/media/${url}`;
+  }
+  
+  // Fallback to api-gateway proxy
   return `http://localhost:8000${url}`;
 };
 
@@ -1280,12 +1354,18 @@ const deleteConversation = async () => {
   try {
     await messageAPI.deleteConversation(activeConversation.value.id);
     
-    // Remove conversation from list
-    conversations.value = conversations.value.filter(c => c.id !== activeConversation.value?.id);
-    
-    // Clear active conversation
-    activeConversation.value = conversations.value[0] || null;
+    // Clear active conversation first
+    activeConversation.value = null;
     messages.value = [];
+    
+    // Reload conversations from backend to ensure it's removed
+    await loadConversations();
+    
+    // Auto-select first conversation if available
+    if (conversations.value.length > 0) {
+      activeConversation.value = conversations.value[0];
+      await loadMessages(conversations.value[0].id);
+    }
   } catch (error) {
     console.error("Failed to delete conversation:", error);
     alert("Failed to delete conversation");
@@ -1895,6 +1975,22 @@ const toggleVideo = () => {
       .username {
         font-weight: 600;
         font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        
+        .verified-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #0a66c2;
+          color: white;
+          border-radius: 50%;
+          width: 16px;
+          height: 16px;
+          font-size: 10px;
+          font-weight: bold;
+        }
       }
 
       .status {
@@ -1977,6 +2073,22 @@ const toggleVideo = () => {
         color: #a8a8a8;
         margin-bottom: 4px;
         padding-left: 12px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        
+        .verified-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #0a66c2;
+          color: white;
+          border-radius: 50%;
+          width: 14px;
+          height: 14px;
+          font-size: 9px;
+          font-weight: bold;
+        }
       }
 
       .message-content {
@@ -2003,6 +2115,26 @@ const toggleVideo = () => {
         .message-content {
           background-color: #0a66c2;
           color: #fff;
+        }
+        
+        .message-footer {
+          .message-time {
+            color: rgba(255, 255, 255, 0.8);
+          }
+          
+          .message-status {
+            &.status-sent {
+              color: rgba(255, 255, 255, 0.8);
+            }
+            
+            &.status-delivered {
+              color: rgba(255, 255, 255, 0.9);
+            }
+            
+            &.status-seen {
+              color: #80d8ff;
+            }
+          }
         }
       }
 
@@ -2334,12 +2466,33 @@ const toggleVideo = () => {
 .message-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+
+  .message-time {
+    color: rgba(255, 255, 255, 0.6);
+  }
 
   .message-status {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1;
+    transition: color 0.3s ease;
+    margin-left: 2px;
+    
+    &.status-sent {
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    &.status-delivered {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    
+    &.status-seen {
+      color: #4fc3f7;
+    }
   }
 }
 
