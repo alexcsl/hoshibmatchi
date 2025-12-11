@@ -105,7 +105,7 @@
       <button 
         class="icon-btn" 
         :class="{ saved: post.is_saved }" 
-        :aria-label="post.is_saved ? 'Unsave' : 'Save'"
+        :aria-label="post.is_saved ? 'Manage saves' : 'Save'"
         @click.stop="handleSave"
       >
         {{ post.is_saved ? '🔖' : '🏷️' }}
@@ -419,16 +419,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Save to Collection Modal -->
+    <SaveToCollectionModal
+      v-if="showSaveModal"
+      :post-id="post.id"
+      :saved-collection-ids="savedCollectionIds"
+      @close="showSaveModal = false"
+      @saved="handleCollectionSaved"
+      @unsaved="handleCollectionUnsaved"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { postAPI } from "@/services/api";
+import { postAPI, collectionAPI } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import { useRichText } from "@/composables/useRichText";
 import { getSecureMediaURL } from "@/services/media";
 import SecureImage from "@/components/SecureImage.vue";
+import SaveToCollectionModal from "@/components/SaveToCollectionModal.vue";
 
 interface Post {
   id: string
@@ -601,7 +612,46 @@ const handleLike = () => {
   emit("like", props.post.id);
 };
 
-const handleSave = () => {
+// Save Modal State
+const showSaveModal = ref(false);
+const savedCollectionIds = ref<string[]>([]);
+
+const handleSave = async () => {
+  // Use the new efficient endpoint to get which collections contain this post
+  try {
+    const response = await collectionAPI.getCollectionsForPost(props.post.id);
+    savedCollectionIds.value = response.collection_ids || [];
+    showSaveModal.value = true;
+  } catch (error) {
+    console.error("Failed to load saved collections:", error);
+    // On error, show modal anyway with empty saved state
+    savedCollectionIds.value = [];
+    showSaveModal.value = true;
+  }
+};
+
+const handleCollectionSaved = (collectionId: string) => {
+  console.warn(`PostCard: Collection saved - ${collectionId}`);
+  console.warn("Before update:", savedCollectionIds.value);
+  // Update local saved collections list - CREATE NEW ARRAY for reactivity
+  if (!savedCollectionIds.value.includes(collectionId)) {
+    savedCollectionIds.value = [...savedCollectionIds.value, collectionId];
+  }
+  console.warn("After update:", savedCollectionIds.value);
+  // Update post saved state
+  props.post.is_saved = true;
+  emit("save", props.post.id);
+};
+
+const handleCollectionUnsaved = async (collectionId: string) => {
+  console.log(`PostCard: Collection unsaved - ${collectionId}`);
+  console.log("Before update:", savedCollectionIds.value);
+  // Remove from local saved collections list
+  savedCollectionIds.value = savedCollectionIds.value.filter(id => id !== collectionId);
+  console.log("After update:", savedCollectionIds.value);
+  
+  // Check if post is still in any other collection
+  props.post.is_saved = savedCollectionIds.value.length > 0;
   emit("save", props.post.id);
 };
 
@@ -640,31 +690,45 @@ const handleShowLikes = async () => {
 };
 
 const copyLink = async () => {
-  const url = `${window.location.origin}/post/${props.post.id}`;
+  const url = `${window.location.origin}/p/${props.post.id}`;
   try {
-    await navigator.clipboard.writeText(url);
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      // Fallback for browsers without clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
     alert("Link copied to clipboard!");
     showShareModal.value = false;
   } catch (err) {
     console.error("Failed to copy", err);
+    alert("Failed to copy link. Please try again.");
   }
 };
 
 const shareToFacebook = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`;
+  const url = `${window.location.origin}/p/${props.post.id}`;
   window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank");
   showShareModal.value = false;
 };
 
 const shareToTwitter = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`;
+  const url = `${window.location.origin}/p/${props.post.id}`;
   const text = props.post.caption ? props.post.caption.substring(0, 200) : "Check out this post!";
   window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, "_blank");
   showShareModal.value = false;
 };
 
 const shareViaEmail = () => {
-  const url = `${window.location.origin}/post/${props.post.id}`;
+  const url = `${window.location.origin}/p/${props.post.id}`;
   const subject = "Check out this post!";
   const body = `I thought you might like this: ${url}`;
   window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

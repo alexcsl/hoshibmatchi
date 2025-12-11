@@ -36,6 +36,7 @@ const (
 	PostService_CreateCollection_FullMethodName         = "/post.PostService/CreateCollection"
 	PostService_GetUserCollections_FullMethodName       = "/post.PostService/GetUserCollections"
 	PostService_GetPostsInCollection_FullMethodName     = "/post.PostService/GetPostsInCollection"
+	PostService_GetCollectionsForPost_FullMethodName    = "/post.PostService/GetCollectionsForPost"
 	PostService_SavePostToCollection_FullMethodName     = "/post.PostService/SavePostToCollection"
 	PostService_UnsavePostFromCollection_FullMethodName = "/post.PostService/UnsavePostFromCollection"
 	PostService_DeleteCollection_FullMethodName         = "/post.PostService/DeleteCollection"
@@ -70,6 +71,7 @@ type PostServiceClient interface {
 	CreateCollection(ctx context.Context, in *CreateCollectionRequest, opts ...grpc.CallOption) (*Collection, error)
 	GetUserCollections(ctx context.Context, in *GetUserCollectionsRequest, opts ...grpc.CallOption) (*GetUserCollectionsResponse, error)
 	GetPostsInCollection(ctx context.Context, in *GetPostsInCollectionRequest, opts ...grpc.CallOption) (*GetHomeFeedResponse, error)
+	GetCollectionsForPost(ctx context.Context, in *GetCollectionsForPostRequest, opts ...grpc.CallOption) (*GetCollectionsForPostResponse, error)
 	SavePostToCollection(ctx context.Context, in *SavePostToCollectionRequest, opts ...grpc.CallOption) (*SavePostToCollectionResponse, error)
 	UnsavePostFromCollection(ctx context.Context, in *UnsavePostFromCollectionRequest, opts ...grpc.CallOption) (*UnsavePostFromCollectionResponse, error)
 	DeleteCollection(ctx context.Context, in *DeleteCollectionRequest, opts ...grpc.CallOption) (*DeleteCollectionResponse, error)
@@ -261,6 +263,16 @@ func (c *postServiceClient) GetPostsInCollection(ctx context.Context, in *GetPos
 	return out, nil
 }
 
+func (c *postServiceClient) GetCollectionsForPost(ctx context.Context, in *GetCollectionsForPostRequest, opts ...grpc.CallOption) (*GetCollectionsForPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCollectionsForPostResponse)
+	err := c.cc.Invoke(ctx, PostService_GetCollectionsForPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) SavePostToCollection(ctx context.Context, in *SavePostToCollectionRequest, opts ...grpc.CallOption) (*SavePostToCollectionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SavePostToCollectionResponse)
@@ -392,6 +404,7 @@ type PostServiceServer interface {
 	CreateCollection(context.Context, *CreateCollectionRequest) (*Collection, error)
 	GetUserCollections(context.Context, *GetUserCollectionsRequest) (*GetUserCollectionsResponse, error)
 	GetPostsInCollection(context.Context, *GetPostsInCollectionRequest) (*GetHomeFeedResponse, error)
+	GetCollectionsForPost(context.Context, *GetCollectionsForPostRequest) (*GetCollectionsForPostResponse, error)
 	SavePostToCollection(context.Context, *SavePostToCollectionRequest) (*SavePostToCollectionResponse, error)
 	UnsavePostFromCollection(context.Context, *UnsavePostFromCollectionRequest) (*UnsavePostFromCollectionResponse, error)
 	DeleteCollection(context.Context, *DeleteCollectionRequest) (*DeleteCollectionResponse, error)
@@ -463,6 +476,9 @@ func (UnimplementedPostServiceServer) GetUserCollections(context.Context, *GetUs
 }
 func (UnimplementedPostServiceServer) GetPostsInCollection(context.Context, *GetPostsInCollectionRequest) (*GetHomeFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPostsInCollection not implemented")
+}
+func (UnimplementedPostServiceServer) GetCollectionsForPost(context.Context, *GetCollectionsForPostRequest) (*GetCollectionsForPostResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCollectionsForPost not implemented")
 }
 func (UnimplementedPostServiceServer) SavePostToCollection(context.Context, *SavePostToCollectionRequest) (*SavePostToCollectionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SavePostToCollection not implemented")
@@ -824,6 +840,24 @@ func _PostService_GetPostsInCollection_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetCollectionsForPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCollectionsForPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetCollectionsForPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetCollectionsForPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetCollectionsForPost(ctx, req.(*GetCollectionsForPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_SavePostToCollection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SavePostToCollectionRequest)
 	if err := dec(in); err != nil {
@@ -1096,6 +1130,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPostsInCollection",
 			Handler:    _PostService_GetPostsInCollection_Handler,
+		},
+		{
+			MethodName: "GetCollectionsForPost",
+			Handler:    _PostService_GetCollectionsForPost_Handler,
 		},
 		{
 			MethodName: "SavePostToCollection",

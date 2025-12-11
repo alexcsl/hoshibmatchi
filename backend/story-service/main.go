@@ -397,7 +397,7 @@ func (s *server) GetUserArchive(ctx context.Context, req *pb.GetUserArchiveReque
 		})
 	}
 
-	return &pb.GetUserArchiveResponse{Stories: protoStories}, nil
+	return &pb.GetUserArchiveResponse{Stories: pbStories}, nil
 }
 
 // --- Helper Function: Check if URL is a video file ---

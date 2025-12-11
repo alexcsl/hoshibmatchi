@@ -24,6 +24,7 @@ import GoogleCompleteProfile from "../pages/GoogleCompleteProfile.vue";
 import VerifyOTP from "../pages/VerifyOTP.vue";
 import CreateStory from "../pages/CreateStory.vue";
 import Admin from "../pages/Admin.vue";
+import PostDetails from "../pages/PostDetails.vue";
 
 const routes = [
   // Auth Routes (no sidebar layout)
@@ -102,6 +103,11 @@ const routes = [
         component: HashtagExplore 
       },
       { 
+        path: "p/:id", 
+        name: "PostDetails", 
+        component: PostDetails 
+      },
+      { 
         path: "reels", 
         name: "Reels", 
         component: Reels 
@@ -130,6 +136,16 @@ const routes = [
         path: "archive", 
         name: "Archive", 
         component: () => import("../pages/Archive.vue")
+      },
+      { 
+        path: "collections", 
+        name: "Collections", 
+        component: () => import("../pages/Collections.vue")
+      },
+      { 
+        path: "collections/:id", 
+        name: "CollectionDetail", 
+        component: () => import("../pages/Collections.vue")
       },
       { 
         path: "edit-profile", 

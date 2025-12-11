@@ -234,6 +234,7 @@ func main() {
 		// Comments
 		protected.POST("/comments", handleCreateComment_Gin)
 		protected.GET("/posts/:id/comments", handleGetCommentsByPost_Gin)
+		protected.GET("/posts/:id", handleGetPost_Gin)
 		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
 		protected.POST("/comments/:id/like", handleLikeComment_Gin)
 		protected.DELETE("/comments/:id/like", handleUnlikeComment_Gin)
@@ -267,6 +268,9 @@ func main() {
 		protected.DELETE("/collections/:id/posts/:post_id", handleUnsavePostFromCollection_Gin)
 		protected.DELETE("/collections/:id", handleDeleteCollection_Gin)
 		protected.PUT("/collections/:id", handleRenameCollection_Gin)
+
+		// Get collections for a specific post
+		protected.GET("/posts/:id/collections", handleGetCollectionsForPost_Gin)
 
 		// Messsage
 		protected.POST("/conversations", handleCreateConversation_Gin)
@@ -1192,6 +1196,37 @@ func handleDeletePost_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
+// --- GIN-NATIVE HANDLER: handleGetPost ---
+func handleGetPost_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	grpcReq := &postPb.GetPostRequest{
+		PostId:   postID,
+		ViewerId: userID,
+	}
+
+	grpcRes, err := postClient.GetPost(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetPost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
 // --- GIN-NATIVE HANDLER: handleGetCommentsByPost ---
 func handleGetCommentsByPost_Gin(c *gin.Context) {
 	postIDStr := c.Param("id")
@@ -1808,6 +1843,32 @@ func handleGetPostsInCollection_Gin(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, grpcRes.Posts)
+}
+
+// --- GIN-NATIVE HANDLER: handleGetCollectionsForPost ---
+func handleGetCollectionsForPost_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	grpcReq := &postPb.GetCollectionsForPostRequest{
+		UserId: userID,
+		PostId: postID,
+	}
+	grpcRes, err := postClient.GetCollectionsForPost(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"collection_ids": grpcRes.CollectionIds})
 }
 
 // --- GIN-NATIVE HANDLER: handleSavePostToCollection ---

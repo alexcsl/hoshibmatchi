@@ -182,6 +182,81 @@
         Loading posts...
       </div>
       
+      <!-- Collections Grid for Saved Tab -->
+      <div
+        v-else-if="activeTab === 'saved'"
+        class="collections-section"
+      >
+        <div class="collections-header">
+          <h3>My Collections</h3>
+          <button
+            class="create-collection-btn"
+            @click="showCreateCollectionModal = true"
+          >
+            ➕ New
+          </button>
+        </div>
+
+        <div
+          v-if="collections.length === 0"
+          class="empty-state"
+        >
+          <div class="empty-icon">
+            🔖
+          </div>
+          <h3>No collections yet</h3>
+          <p>Create a collection to organize your saved posts</p>
+        </div>
+
+        <div
+          v-else
+          class="collections-grid"
+        >
+          <div
+            v-for="collection in collections"
+            :key="collection.id"
+            class="collection-card"
+            :class="{ default: collection.is_default }"
+            @click="openCollection(collection)"
+          >
+            <div class="collection-cover">
+              <div
+                v-if="collectionPosts[collection.id]?.length > 0"
+                class="cover-grid"
+              >
+                <SecureImage
+                  v-for="(post, idx) in collectionPosts[collection.id].slice(0, 4)"
+                  :key="post.id"
+                  :src="post.media_urls?.[0]"
+                  :alt="`Saved post ${idx + 1}`"
+                  loading-placeholder="/placeholder.svg"
+                  error-placeholder="/placeholder.svg"
+                />
+              </div>
+              <div
+                v-else
+                class="empty-cover"
+              >
+                <span>{{ collection.is_default ? '🔖' : '📁' }}</span>
+              </div>
+            </div>
+            <div class="collection-info">
+              <div class="collection-name">
+                {{ collection.name }}
+                <span
+                  v-if="collection.is_default"
+                  class="default-badge"
+                >Default</span>
+              </div>
+              <p class="collection-count">
+                {{ collectionPosts[collection.id]?.length || 0 }} posts
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Posts Grid for other tabs -->
       <div
         v-else-if="posts.length === 0"
         class="empty-state"
@@ -443,13 +518,57 @@
       </div>
     </div>
   </div>
+
+  <!-- Create Collection Modal -->
+  <div
+    v-if="showCreateCollectionModal"
+    class="modal-overlay"
+    @click.self="showCreateCollectionModal = false"
+  >
+    <div class="modal-content small-modal">
+      <div class="modal-header">
+        <h2>New Collection</h2>
+        <button
+          class="close-btn"
+          @click="showCreateCollectionModal = false"
+        >
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <input
+          v-model="newCollectionName"
+          type="text"
+          placeholder="Collection name"
+          class="collection-name-input"
+          @keyup.enter="createCollection"
+          autofocus
+        />
+      </div>
+      <div class="modal-footer">
+        <button
+          class="cancel-btn"
+          @click="showCreateCollectionModal = false"
+        >
+          Cancel
+        </button>
+        <button
+          class="submit-btn"
+          :disabled="!newCollectionName.trim()"
+          @click="createCollection"
+        >
+          Create
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
-import apiClient, { userAPI } from "@/services/api";
+import apiClient, { userAPI, collectionAPI } from "@/services/api";
 import PostDetailsOverlay from "@/components/PostDetailsOverlay.vue";
 import SecureImage from "@/components/SecureImage.vue";
 import MediaThumbnail from "@/components/MediaThumbnail.vue";
@@ -460,6 +579,8 @@ const authStore = useAuthStore();
 
 const profile = ref<any>({});
 const posts = ref<any[]>([]);
+const collections = ref<any[]>([]);
+const collectionPosts = ref<Record<string, any[]>>({});
 const loading = ref(true);
 const postsLoading = ref(false);
 const error = ref("");
@@ -467,6 +588,8 @@ const activeTab = ref("posts");
 const followLoading = ref(false);
 const showPostDetails = ref(false);
 const selectedPost = ref<any>(null);
+const showCreateCollectionModal = ref(false);
+const newCollectionName = ref("");
 
 // Verification
 const showVerificationForm = ref(false);
@@ -501,6 +624,33 @@ const emptyStateMessage = computed(() => {
   if (activeTab.value === "saved") return "No saved posts";
   return "No tagged posts";
 });
+
+const openCollection = (collection: any) => {
+  // Navigate to the Collections page with the collection ID
+  router.push(`/collections/${collection.id}`);
+};
+
+const createCollection = async () => {
+  if (!newCollectionName.value.trim()) {
+    return;
+  }
+
+  try {
+    await collectionAPI.create(newCollectionName.value.trim());
+    newCollectionName.value = "";
+    showCreateCollectionModal.value = false;
+    
+    // Refresh collections
+    if (activeTab.value === "saved") {
+      const username = getTargetUsername();
+      if (username) {
+        fetchPosts(username);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to create collection:", error);
+  }
+};
 
 const getTargetUsername = (): string | null => {
   const routeParam = route.params.username as string;
@@ -555,31 +705,29 @@ const fetchPosts = async (tab: string) => {
     }
 
     if (tab === "saved") {
-        // --- Fetch Saved Posts (Collections) ---
-        // Get all collections
-        const collectionsRes = await apiClient.get("/collections");
-        const collections = Array.isArray(collectionsRes.data) ? collectionsRes.data : (collectionsRes.data.collections || []);
+        // --- Fetch Collections ---
+        const collectionsRes = await collectionAPI.getAll();
+        collections.value = Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.collections || []);
+        console.log("Profile: Loaded collections:", collections.value);
         
-        // Fetch posts from all collections and combine them
-        const allSavedPosts: any[] = [];
-        
-        for (const collection of collections) {
+        // Load all posts for each collection to get accurate count and show preview
+        for (const collection of collections.value) {
             try {
-                const savedPostsRes = await apiClient.get(`/collections/${collection.id}`);
-                // Backend returns posts array directly, not wrapped in {posts: [...]}
-                const collectionPosts = Array.isArray(savedPostsRes.data) ? savedPostsRes.data : (savedPostsRes.data.posts || []);
-                allSavedPosts.push(...collectionPosts);
+                const postsResponse = await collectionAPI.getPosts(collection.id, 1, 100);
+                const posts = Array.isArray(postsResponse) 
+                    ? postsResponse 
+                    : (postsResponse?.posts || []);
+                collectionPosts.value[collection.id] = posts;
+                console.log(`Profile: Collection ${collection.id} (${collection.name}) has ${posts.length} posts`);
             } catch (err) {
-                console.error(`Failed to fetch posts from collection ${collection.id}:`, err);
+                console.error(`Failed to load posts for collection ${collection.id}:`, err);
+                collectionPosts.value[collection.id] = [];
             }
         }
         
-        // Remove duplicates based on post ID
-        const uniquePosts = Array.from(
-            new Map(allSavedPosts.map(post => [post.id, post])).values()
-        );
-        
-        posts.value = uniquePosts;
+        console.log("Profile: All collection posts:", collectionPosts.value);
+        // No need to set posts.value for saved tab
+        posts.value = [];
     } else {
         // Standard endpoints
         let endpoint = `/users/${username}/posts`;
@@ -1269,6 +1417,204 @@ watch(() => route.params.username, () => {
         }
       }
     }
+  }
+}
+
+/* Collections Section Styles */
+.collections-section {
+  width: 100%;
+}
+
+.collections-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 12px;
+
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+  }
+
+  .create-collection-btn {
+    background: #4a9eff;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #3a8eef;
+    }
+  }
+}
+
+.collections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 0 12px;
+}
+
+.collection-card {
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #262626;
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  &.default {
+    border: 2px solid #4a9eff;
+  }
+
+  .collection-cover {
+    aspect-ratio: 1;
+    background: #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    .cover-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      width: 100%;
+      height: 100%;
+      gap: 2px;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .empty-cover {
+      font-size: 48px;
+    }
+  }
+
+  .collection-info {
+    padding: 12px;
+
+    .collection-name {
+      font-weight: 700;
+      font-size: 16px;
+      color: #fff;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .default-badge {
+        background: #4a9eff;
+        color: #fff;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+      }
+    }
+
+    .collection-count {
+      font-size: 14px;
+      color: #999;
+      margin: 0;
+    }
+  }
+}
+
+/* Small Modal for Create Collection */
+.small-modal {
+  max-width: 400px !important;
+}
+
+.collection-name-input {
+  width: 100%;
+  padding: 12px;
+  background: #262626;
+  border: 1px solid #363636;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: #4a9eff;
+  }
+
+  &::placeholder {
+    color: #999;
+  }
+}
+
+/* Collection Details Overlay */
+.collection-details-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.collection-details-content {
+  background: #000;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 935px;
+  margin: auto;
+
+  .details-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    border-bottom: 1px solid #262626;
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: #4a9eff;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #1a1a1a;
+      }
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+    }
+  }
+
+  .details-body {
+    padding: 20px;
+    min-height: 400px;
   }
 }
 </style>
