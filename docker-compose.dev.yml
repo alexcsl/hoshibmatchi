@@ -98,7 +98,9 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.message-ws.rule=Host(`api.hoshi.local`) && PathPrefix(`/ws`)"
-      - "traefik.http.routers.message-ws.entrypoints=web"
+      - "traefik.http.routers.message-ws.entrypoints=websecure"
+      - "traefik.http.routers.message-ws.tls=true"
+      - "traefik.http.routers.message-ws.tls.certresolver=myresolver"
       - "traefik.http.routers.message-ws.priority=100"
       - "traefik.http.services.message-ws.loadbalancer.server.port=9004"
 
@@ -193,10 +195,12 @@ services:
     ports:
       - "5173:5173"  # Vite dev server port
     environment:
-      - VITE_API_URL=http://api.hoshi.local
+      - VITE_API_URL=https://api.hoshi.local
     networks: [hoshi-net]
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.hoshi-vue-dev.rule=Host(`hoshi.local`)"
-      - "traefik.http.routers.hoshi-vue-dev.entrypoints=web"
+      - "traefik.http.routers.hoshi-vue-dev.entrypoints=websecure"
+      - "traefik.http.routers.hoshi-vue-dev.tls=true"
+      - "traefik.http.routers.hoshi-vue-dev.tls.certresolver=myresolver"
       - "traefik.http.services.hoshi-vue-dev.loadbalancer.server.port=5173"
