@@ -472,6 +472,11 @@ export const storyAPI = {
     return response.data;
   },
 
+  viewStory: async (storyId: string) => {
+    const response = await apiClient.post(`/stories/${storyId}/view`);
+    return response.data;
+  },
+
   getArchive: async () => {
     const response = await apiClient.get("/stories/archive");
     return response.data; // Returns Story[]

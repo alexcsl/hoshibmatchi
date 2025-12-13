@@ -12,6 +12,7 @@ service StoryService {
 
   rpc LikeStory (LikeStoryRequest) returns (LikeStoryResponse);
   rpc UnlikeStory (UnlikeStoryRequest) returns (UnlikeStoryResponse);
+  rpc ViewStory (ViewStoryRequest) returns (ViewStoryResponse);
   // NEW: Get the story feed
   rpc GetStoryFeed (GetStoryFeedRequest) returns (GetStoryFeedResponse);
   // NEW: Delete story (for worker or user)
@@ -80,6 +81,15 @@ message UnlikeStoryRequest {
 }
 message UnlikeStoryResponse {
   string message = 1; // "Story unliked"
+}
+
+message ViewStoryRequest {
+  int64 user_id = 1; // From JWT
+  int64 story_id = 2; // From URL
+}
+
+message ViewStoryResponse {
+  string message = 1; // "Story viewed"
 }
 
 message DeleteStoryRequest {

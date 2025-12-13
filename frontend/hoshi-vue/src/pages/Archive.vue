@@ -33,15 +33,28 @@
           class="archive-item"
           @click="openStory(story)"
         >
-          <img 
-            :src="getMediaUrl(story.media_url)" 
+          <SecureImage
+            v-if="!isVideo(story.media_type)"
+            :src="story.media_url" 
             :alt="'Archived story ' + story.id" 
+            class-name="archive-media"
             :style="{ filter: getFilterStyle(story.filter_name) }"
+            loading-placeholder="/placeholder.svg"
+            error-placeholder="/placeholder.svg"
+          />
+          <video
+            v-else
+            :src="story.media_url"
+            class="archive-media"
+            :style="{ filter: getFilterStyle(story.filter_name) }"
+            muted
+            playsinline
           />
           <div class="archive-overlay">
             <div class="story-date">
               {{ formatDate(story.created_at) }}
             </div>
+            <div v-if="isVideo(story.media_type)" class="video-indicator">▶</div>
           </div>
         </div>
       </div>
@@ -58,9 +71,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { storyAPI, type Story } from "@/services/api";
 import ArchiveStoryViewer from "@/components/ArchiveStoryViewer.vue";
+import SecureImage from "@/components/SecureImage.vue";
 
 const stories = ref<Story[]>([]);
 const loading = ref(true);
@@ -68,13 +82,8 @@ const showStoryViewer = ref(false);
 const selectedStory = ref<Story | null>(null);
 const selectedStoryIndex = ref(0);
 
-const getMediaUrl = (url: string) => {
-  if (!url) return "/placeholder.svg";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
-    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
-  }
-  return url;
+const isVideo = (mediaType: string) => {
+  return mediaType && (mediaType.includes('video') || mediaType === 'mp4' || mediaType === 'webm');
 };
 
 const getFilterStyle = (filterName?: string) => {
@@ -183,11 +192,12 @@ onMounted(() => {
   border-radius: 4px;
   background-color: #262626;
 
-  img {
+  .archive-media {
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: transform 0.2s;
+    display: block;
   }
 
   .archive-overlay {
@@ -210,10 +220,19 @@ onMounted(() => {
       font-weight: 600;
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
     }
+
+    .video-indicator {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      color: #fff;
+      font-size: 20px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
   }
 
   &:hover {
-    img {
+    .archive-media {
       transform: scale(1.05);
     }
 

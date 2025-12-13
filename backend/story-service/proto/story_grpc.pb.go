@@ -22,6 +22,7 @@ const (
 	StoryService_CreateStory_FullMethodName    = "/story.StoryService/CreateStory"
 	StoryService_LikeStory_FullMethodName      = "/story.StoryService/LikeStory"
 	StoryService_UnlikeStory_FullMethodName    = "/story.StoryService/UnlikeStory"
+	StoryService_ViewStory_FullMethodName      = "/story.StoryService/ViewStory"
 	StoryService_GetStoryFeed_FullMethodName   = "/story.StoryService/GetStoryFeed"
 	StoryService_DeleteStory_FullMethodName    = "/story.StoryService/DeleteStory"
 	StoryService_GetUserArchive_FullMethodName = "/story.StoryService/GetUserArchive"
@@ -34,6 +35,7 @@ type StoryServiceClient interface {
 	CreateStory(ctx context.Context, in *CreateStoryRequest, opts ...grpc.CallOption) (*CreateStoryResponse, error)
 	LikeStory(ctx context.Context, in *LikeStoryRequest, opts ...grpc.CallOption) (*LikeStoryResponse, error)
 	UnlikeStory(ctx context.Context, in *UnlikeStoryRequest, opts ...grpc.CallOption) (*UnlikeStoryResponse, error)
+	ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*ViewStoryResponse, error)
 	// NEW: Get the story feed
 	GetStoryFeed(ctx context.Context, in *GetStoryFeedRequest, opts ...grpc.CallOption) (*GetStoryFeedResponse, error)
 	// NEW: Delete story (for worker or user)
@@ -80,6 +82,16 @@ func (c *storyServiceClient) UnlikeStory(ctx context.Context, in *UnlikeStoryReq
 	return out, nil
 }
 
+func (c *storyServiceClient) ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*ViewStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ViewStoryResponse)
+	err := c.cc.Invoke(ctx, StoryService_ViewStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *storyServiceClient) GetStoryFeed(ctx context.Context, in *GetStoryFeedRequest, opts ...grpc.CallOption) (*GetStoryFeedResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStoryFeedResponse)
@@ -117,6 +129,7 @@ type StoryServiceServer interface {
 	CreateStory(context.Context, *CreateStoryRequest) (*CreateStoryResponse, error)
 	LikeStory(context.Context, *LikeStoryRequest) (*LikeStoryResponse, error)
 	UnlikeStory(context.Context, *UnlikeStoryRequest) (*UnlikeStoryResponse, error)
+	ViewStory(context.Context, *ViewStoryRequest) (*ViewStoryResponse, error)
 	// NEW: Get the story feed
 	GetStoryFeed(context.Context, *GetStoryFeedRequest) (*GetStoryFeedResponse, error)
 	// NEW: Delete story (for worker or user)
@@ -141,6 +154,9 @@ func (UnimplementedStoryServiceServer) LikeStory(context.Context, *LikeStoryRequ
 }
 func (UnimplementedStoryServiceServer) UnlikeStory(context.Context, *UnlikeStoryRequest) (*UnlikeStoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnlikeStory not implemented")
+}
+func (UnimplementedStoryServiceServer) ViewStory(context.Context, *ViewStoryRequest) (*ViewStoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ViewStory not implemented")
 }
 func (UnimplementedStoryServiceServer) GetStoryFeed(context.Context, *GetStoryFeedRequest) (*GetStoryFeedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStoryFeed not implemented")
@@ -226,6 +242,24 @@ func _StoryService_UnlikeStory_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StoryService_ViewStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ViewStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StoryServiceServer).ViewStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StoryService_ViewStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StoryServiceServer).ViewStory(ctx, req.(*ViewStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _StoryService_GetStoryFeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetStoryFeedRequest)
 	if err := dec(in); err != nil {
@@ -298,6 +332,10 @@ var StoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnlikeStory",
 			Handler:    _StoryService_UnlikeStory_Handler,
+		},
+		{
+			MethodName: "ViewStory",
+			Handler:    _StoryService_ViewStory_Handler,
 		},
 		{
 			MethodName: "GetStoryFeed",

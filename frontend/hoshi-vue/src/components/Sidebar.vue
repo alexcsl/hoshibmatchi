@@ -94,8 +94,8 @@
             class="dropdown-item"
             @click="handleSaved"
           >
-            <span class="icon">🔖</span>
-            <span>Saved</span>
+            <span class="icon">📦</span>
+            <span>Archive</span>
           </button>
           <button
             v-if="isAdmin"

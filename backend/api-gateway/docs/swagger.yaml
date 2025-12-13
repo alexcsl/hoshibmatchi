@@ -13,11 +13,1774 @@ info:
   title: Hoshibmatchi API
   version: "1.0"
 paths:
-  /feed/home:
+  /admin/newsletters:
+    post:
+      consumes:
+      - application/json
+      description: Send newsletter email to all subscribed users (admin only)
+      parameters:
+      - description: Newsletter content
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            body:
+              type: string
+            subject:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Newsletter sent successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing subject or body
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send newsletter (Admin)
+      tags:
+      - Admin
+  /admin/reports/posts:
     get:
       consumes:
       - application/json
-      description: Get personalized home feed for the authenticated user
+      description: Get list of post reports (admin only)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: true
+        description: Show only unresolved reports
+        in: query
+        name: unresolved_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of post reports
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post reports (Admin)
+      tags:
+      - Admin
+  /admin/reports/posts/{id}/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Accept or reject a post report (admin only)
+      parameters:
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Action: ACCEPT or REJECT'
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            action:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Report resolved successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid action
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Report not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resolve post report (Admin)
+      tags:
+      - Admin
+  /admin/reports/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of user reports (admin only)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: true
+        description: Show only unresolved reports
+        in: query
+        name: unresolved_only
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user reports
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user reports (Admin)
+      tags:
+      - Admin
+  /admin/reports/users/{id}/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Accept or reject a user report (admin only)
+      parameters:
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Action: ACCEPT or REJECT'
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            action:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Report resolved successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid action
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Report not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resolve user report (Admin)
+      tags:
+      - Admin
+  /admin/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all users in the system (admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of all users
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all users (Admin)
+      tags:
+      - Admin
+  /admin/users/{id}/ban:
+    post:
+      consumes:
+      - application/json
+      description: Ban a user from the platform (admin only)
+      parameters:
+      - description: User ID to ban
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User banned successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Ban a user (Admin)
+      tags:
+      - Admin
+  /admin/users/{id}/unban:
+    post:
+      consumes:
+      - application/json
+      description: Remove ban from a user (admin only)
+      parameters:
+      - description: User ID to unban
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User unbanned successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unban a user (Admin)
+      tags:
+      - Admin
+  /admin/verifications:
+    get:
+      consumes:
+      - application/json
+      description: Get list of user verification requests (admin only)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: '"pending"'
+        description: 'Filter by status: pending, approved, rejected'
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of verification requests
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get verification requests (Admin)
+      tags:
+      - Admin
+  /admin/verifications/{id}/resolve:
+    post:
+      consumes:
+      - application/json
+      description: Approve or reject a user verification request (admin only)
+      parameters:
+      - description: Verification request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Action: APPROVE or REJECT'
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            action:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification request resolved
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid action
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Admin access required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Verification request not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resolve verification request (Admin)
+      tags:
+      - Admin
+  /auth/check-username/{username}:
+    get:
+      consumes:
+      - application/json
+      description: Check if a username is available for registration
+      parameters:
+      - description: Username to check
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Username availability status
+          schema:
+            properties:
+              available:
+                type: boolean
+              exists:
+                type: boolean
+            type: object
+        "400":
+          description: Bad request - Username required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Check username availability
+      tags:
+      - Auth
+  /auth/google/callback:
+    post:
+      consumes:
+      - application/json
+      description: Handle Google OAuth authentication callback
+      parameters:
+      - description: Google OAuth authorization code
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            auth_code:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Authentication successful
+          schema:
+            properties:
+              access_token:
+                type: string
+              message:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing auth_code
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid auth code
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Google OAuth callback
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email/username and password. Returns JWT
+        tokens or indicates 2FA is required.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email_or_username:
+              type: string
+            password:
+              type: string
+            turnstile_token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful or 2FA required
+          schema:
+            properties:
+              access_token:
+                type: string
+              is_2fa_required:
+                type: boolean
+              message:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input or Turnstile verification failed
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid credentials
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "429":
+          description: Too many requests
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: User login
+      tags:
+      - Auth
+  /auth/login/verify-2fa:
+    post:
+      consumes:
+      - application/json
+      description: Verify two-factor authentication OTP code to complete login
+      parameters:
+      - description: 2FA verification data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            otp_code:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 2FA verification successful
+          schema:
+            properties:
+              access_token:
+                type: string
+              is_2fa_required:
+                type: boolean
+              message:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid OTP code
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Verify 2FA code
+      tags:
+      - Auth
+  /auth/password-reset/request:
+    post:
+      consumes:
+      - application/json
+      description: Send a password reset OTP to the provided email address
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset OTP sent successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid email
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "429":
+          description: Too many requests
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Request password reset
+      tags:
+      - Auth
+  /auth/password-reset/submit:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using OTP code sent via email
+      parameters:
+      - description: Password reset data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            new_password:
+              type: string
+            otp_code:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid OTP code
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Submit password reset
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user account with email, username, and password.
+        Requires Cloudflare Turnstile verification.
+      parameters:
+      - description: Registration data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            confirm_password:
+              type: string
+            date_of_birth:
+              type: string
+            email:
+              type: string
+            enable_2fa:
+              type: boolean
+            gender:
+              type: string
+            name:
+              type: string
+            password:
+              type: string
+            profile_picture_url:
+              type: string
+            subscribe_to_newsletter:
+              type: boolean
+            turnstile_token:
+              type: string
+            username:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input or Turnstile verification failed
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Conflict - Username or email already exists
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "429":
+          description: Too many requests
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+  /auth/send-otp:
+    post:
+      consumes:
+      - application/json
+      description: Send an OTP code to the provided email address for registration
+        verification
+      parameters:
+      - description: Email address
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OTP sent successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid email
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "429":
+          description: Too many requests - Rate limit exceeded
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Send OTP for registration
+      tags:
+      - Auth
+  /auth/verify-otp:
+    post:
+      consumes:
+      - application/json
+      description: Verify OTP code sent to email during registration and complete
+        signup
+      parameters:
+      - description: OTP verification data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            otp_code:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Registration verified successfully
+          schema:
+            properties:
+              access_token:
+                type: string
+              message:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid OTP code
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Verify registration OTP
+      tags:
+      - Auth
+  /collections:
+    get:
+      consumes:
+      - application/json
+      description: Get all collections created by the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user's collections
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's collections
+      tags:
+      - Collections
+    post:
+      consumes:
+      - application/json
+      description: Create a new collection to organize saved posts
+      parameters:
+      - description: Collection name
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Collection created successfully
+          schema:
+            properties:
+              collection_id:
+                format: int64
+                type: integer
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing name
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a collection
+      tags:
+      - Collections
+  /collections/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a collection (all saved posts will be removed from it)
+      parameters:
+      - description: Collection ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collection deleted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid collection ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not your collection
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Collection not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a collection
+      tags:
+      - Collections
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of posts saved in a specific collection
+      parameters:
+      - description: Collection ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 12
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of posts in the collection
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid collection ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not your collection
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Collection not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get posts in a collection
+      tags:
+      - Collections
+    put:
+      consumes:
+      - application/json
+      description: Change the name of an existing collection
+      parameters:
+      - description: Collection ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New collection name
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            new_name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Collection renamed successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing new_name
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not your collection
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Collection not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Rename a collection
+      tags:
+      - Collections
+  /collections/{id}/posts:
+    post:
+      consumes:
+      - application/json
+      description: Save a post to a specific collection
+      parameters:
+      - description: Collection ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Post ID to save
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            post_id:
+              format: int64
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post saved to collection
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing post_id
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not your collection
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Collection or post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Save post to collection
+      tags:
+      - Collections
+  /collections/{id}/posts/{post_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Remove a saved post from a collection
+      parameters:
+      - description: Collection ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Post ID to remove
+        in: path
+        name: post_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post removed from collection
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid IDs
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not your collection
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Collection or post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove post from collection
+      tags:
+      - Collections
+  /comments:
+    post:
+      consumes:
+      - application/json
+      description: Create a new comment or reply on a post
+      parameters:
+      - description: Comment data (parent_comment_id is optional for replies)
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            content:
+              type: string
+            parent_comment_id:
+              format: int64
+              type: integer
+            post_id:
+              format: int64
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Comment created successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a comment on a post
+      tags:
+      - Comments
+  /comments/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a comment (only owner or post author can delete)
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment deleted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid comment ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not allowed to delete this comment
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
+      tags:
+      - Comments
+  /comments/{id}/like:
+    delete:
+      consumes:
+      - application/json
+      description: Remove like from a comment
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment unliked successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid comment ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unlike a comment
+      tags:
+      - Comments
+    post:
+      consumes:
+      - application/json
+      description: Like a comment on a post
+      parameters:
+      - description: Comment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment liked successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid comment ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Like a comment
+      tags:
+      - Comments
+  /conversations:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of conversations for the authenticated user
       parameters:
       - default: 1
         description: Page number
@@ -33,7 +1796,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of posts
+          description: List of conversations with last message
           schema:
             items:
               type: object
@@ -41,45 +1804,1300 @@ paths:
         "401":
           description: Unauthorized
           schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
             type: object
       security:
       - BearerAuth: []
-      summary: Get home feed
+      summary: Get user's conversations
       tags:
-      - feed
-  /posts:
+      - Messages
     post:
       consumes:
       - application/json
-      description: Create a new post with caption and media
+      description: Create a new conversation (DM or group chat) with one or more participants
       parameters:
-      - description: Post data
+      - description: Conversation data (group_name optional for DMs)
         in: body
         name: request
         required: true
         schema:
+          properties:
+            group_name:
+              type: string
+            participant_ids:
+              items:
+                format: int64
+                type: integer
+              type: array
           type: object
       produces:
       - application/json
       responses:
         "201":
-          description: Created post
+          description: Conversation created successfully
           schema:
+            properties:
+              conversation_id:
+                type: string
+              message:
+                type: string
             type: object
         "400":
-          description: Bad request
+          description: Bad request - participant_ids must not be empty
           schema:
+            properties:
+              error:
+                type: string
             type: object
         "401":
           description: Unauthorized
           schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a conversation
+      tags:
+      - Messages
+  /conversations/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a conversation for the current user (only removes it from
+        their view)
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Conversation deleted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid conversation ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a conversation
+      tags:
+      - Messages
+  /conversations/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of messages in a specific conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of messages
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid conversation ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get messages in a conversation
+      tags:
+      - Messages
+    post:
+      consumes:
+      - application/json
+      description: Send a text message in a conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message content
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            content:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Sent message details
+          schema:
+            type: object
+        "400":
+          description: Bad request - Missing content
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send a text message
+      tags:
+      - Messages
+  /conversations/{id}/messages/media:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Send a message with an image, video, or GIF attachment
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Media file (image/video/gif)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Optional text content
+        in: formData
+        name: content
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Sent message with media details
+          schema:
+            type: object
+        "400":
+          description: Bad request - Missing file or unsupported media type
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send a message with media
+      tags:
+      - Messages
+  /conversations/{id}/messages/search:
+    get:
+      consumes:
+      - application/json
+      description: Search for messages containing specific text in a conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of matching messages
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Search query required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Search messages in a conversation
+      tags:
+      - Messages
+  /conversations/{id}/video_token:
+    get:
+      consumes:
+      - application/json
+      description: Get a token for initiating a video call in a conversation
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Video call token and room name
+          schema:
+            properties:
+              room_name:
+                type: string
+              token:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid conversation ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not a participant
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get video call token
+      tags:
+      - Messages
+  /feed/explore:
+    get:
+      consumes:
+      - application/json
+      description: Get explore feed with trending and recommended posts from all users
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of trending and recommended posts
+          schema:
+            properties:
+              posts:
+                items:
+                  type: object
+                type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get explore feed
+      tags:
+      - Feed
+  /feed/home:
+    get:
+      consumes:
+      - application/json
+      description: Get personalized home feed with posts from followed users
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of posts from followed users
+          schema:
+            properties:
+              posts:
+                items:
+                  type: object
+                type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get home feed
+      tags:
+      - Feed
+  /feed/reels:
+    get:
+      consumes:
+      - application/json
+      description: Get feed of video reels (short-form videos)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page (max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of video reels
+          schema:
+            properties:
+              posts:
+                items:
+                  type: object
+                type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get reels feed
+      tags:
+      - Feed
+  /media/generate-thumbnail:
+    post:
+      consumes:
+      - application/json
+      description: Generate a thumbnail image from a video at a specific timestamp
+      parameters:
+      - description: Thumbnail generation data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            object_name:
+              type: string
+            timestamp_seconds:
+              format: float64
+              type: number
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Generated thumbnail URL
+          schema:
+            properties:
+              thumbnail_url:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing object_name
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Generate video thumbnail
+      tags:
+      - Media
+  /media/secure-url:
+    get:
+      consumes:
+      - application/json
+      description: Get a pre-signed URL for accessing private media files
+      parameters:
+      - description: Object name in storage
+        in: query
+        name: object_name
+        required: true
+        type: string
+      - default: 3600
+        description: URL expiry in seconds
+        in: query
+        name: expiry_seconds
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pre-signed access URL
+          schema:
+            properties:
+              url:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing object_name
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Get pre-signed media URL
+      tags:
+      - Media
+  /media/upload-url:
+    get:
+      consumes:
+      - application/json
+      description: Get a pre-signed URL for uploading media files to cloud storage
+      parameters:
+      - description: Filename
+        in: query
+        name: filename
+        required: true
+        type: string
+      - description: Content type (e.g., image/jpeg, video/mp4)
+        in: query
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pre-signed upload URL and final media URL
+          schema:
+            properties:
+              media_url:
+                type: string
+              upload_url:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing filename or type
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Get pre-signed upload URL
+      tags:
+      - Media
+  /messages/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a sent message (only sender can unsend)
+      parameters:
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message unsent successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid message ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not the message sender
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Message not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unsend a message
+      tags:
+      - Messages
+  /notifications:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of notifications for the authenticated user
+        with actor details
+      parameters:
+      - default: 50
+        description: Number of notifications to return
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of notifications with unread count
+          schema:
+            properties:
+              notifications:
+                items:
+                  type: object
+                type: array
+              unread_count:
+                type: integer
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "503":
+          description: Notification service unavailable
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get notifications
+      tags:
+      - Notifications
+  /notifications/{id}/read:
+    put:
+      consumes:
+      - application/json
+      description: Mark a specific notification as read
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification marked as read
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Notification not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "503":
+          description: Notification service unavailable
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - Notifications
+  /notifications/read-all:
+    put:
+      consumes:
+      - application/json
+      description: Mark all notifications as read for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All notifications marked as read with count
+          schema:
+            properties:
+              count:
+                format: int64
+                type: integer
+              message:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "503":
+          description: Notification service unavailable
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - Notifications
+  /posts:
+    post:
+      consumes:
+      - application/json
+      description: Create a new post with caption, media URLs, and optional settings.
+        Supports both regular posts and reels.
+      parameters:
+      - description: Post creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            caption:
+              type: string
+            collaborator_ids:
+              items:
+                format: int64
+                type: integer
+              type: array
+            comments_disabled:
+              type: boolean
+            is_reel:
+              type: boolean
+            media_urls:
+              items:
+                type: string
+              type: array
+            thumbnail_url:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created post with all details
+          schema:
+            type: object
+        "400":
+          description: Bad request - At least one media URL is required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
             type: object
       security:
       - BearerAuth: []
       summary: Create a new post
       tags:
-      - posts
+      - Posts
+  /posts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a post (only owner can delete)
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post deleted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Forbidden - Not allowed to delete this post
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a post
+      tags:
+      - Posts
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific post including media,
+        likes, comments count
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Post details with author info and engagement stats
+          schema:
+            type: object
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post by ID
+      tags:
+      - Posts
+  /posts/{id}/collections:
+    get:
+      consumes:
+      - application/json
+      description: Get list of collection IDs that contain a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of collection IDs
+          schema:
+            properties:
+              collection_ids:
+                items:
+                  format: int64
+                  type: integer
+                type: array
+            type: object
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get collections containing a post
+      tags:
+      - Collections
+  /posts/{id}/comments:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of comments for a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of comments with user information
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Get comments for a post
+      tags:
+      - Comments
   /posts/{id}/like:
+    delete:
+      consumes:
+      - application/json
+      description: Like a post (POST) or unlike a post (DELETE)
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Like/unlike successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Like or unlike a post
+      tags:
+      - Posts
     post:
       consumes:
       - application/json
@@ -89,34 +3107,881 @@ paths:
         in: path
         name: id
         required: true
-        type: string
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Success message
+          description: Like/unlike successful
           schema:
+            properties:
+              message:
+                type: string
             type: object
         "400":
-          description: Bad request
+          description: Bad request - Invalid post ID
           schema:
+            properties:
+              error:
+                type: string
             type: object
         "401":
           description: Unauthorized
           schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
             type: object
       security:
       - BearerAuth: []
       summary: Like or unlike a post
       tags:
-      - posts
+      - Posts
+  /posts/{id}/likes:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users who liked a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users who liked the post
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get post likes
+      tags:
+      - Posts
+  /posts/{id}/summarize:
+    post:
+      consumes:
+      - application/json
+      description: Generate AI-powered summary of a post's caption
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Caption summary
+          schema:
+            properties:
+              summary:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid post ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "503":
+          description: AI service unavailable
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Summarize post caption (BapTion)
+      tags:
+      - Posts
+  /profile/edit:
+    put:
+      consumes:
+      - application/json
+      description: Update user profile information (name, bio, gender, profile picture)
+      parameters:
+      - description: Profile update data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            bio:
+              type: string
+            gender:
+              type: string
+            name:
+              type: string
+            profile_picture_url:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated profile information
+          schema:
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user profile
+      tags:
+      - Users
+  /profile/verify:
+    post:
+      consumes:
+      - application/json
+      description: Submit a request for account verification (blue checkmark)
+      parameters:
+      - description: Verification request data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            face_picture_url:
+              type: string
+            id_card_number:
+              type: string
+            reason:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Verification request details
+          schema:
+            type: object
+        "400":
+          description: Bad request - Missing required fields
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Conflict - Already verified or pending request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Submit verification request
+      tags:
+      - Users
+  /reports/post:
+    post:
+      consumes:
+      - application/json
+      description: Report a post for violating community guidelines
+      parameters:
+      - description: Report data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            post_id:
+              format: int64
+              type: integer
+            reason:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Report submitted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing post_id or reason
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Report a post
+      tags:
+      - Reports
+  /reports/user:
+    post:
+      consumes:
+      - application/json
+      description: Report a user for violating community guidelines
+      parameters:
+      - description: Report data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            reason:
+              type: string
+            reported_user_id:
+              format: int64
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Report submitted successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Missing reported_user_id or reason
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Report a user
+      tags:
+      - Reports
+  /search/hashtags/{name}:
+    get:
+      consumes:
+      - application/json
+      description: Search for posts containing a specific hashtag
+      parameters:
+      - description: 'Hashtag name (without #)'
+        in: path
+        name: name
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Posts with the hashtag
+          schema:
+            properties:
+              posts:
+                items:
+                  type: object
+                type: array
+              total_post_count:
+                format: int64
+                type: integer
+            type: object
+        "400":
+          description: Bad request - Hashtag name required
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Search posts by hashtag
+      tags:
+      - Hashtags
+  /search/users:
+    get:
+      consumes:
+      - application/json
+      description: Search for users by username or name
+      parameters:
+      - description: Search query (username or name)
+        in: query
+        name: q
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of matching users
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Missing search query
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Search users
+      tags:
+      - Users
+  /settings/privacy:
+    put:
+      consumes:
+      - application/json
+      description: Set account to private or public
+      parameters:
+      - description: Privacy setting
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            is_private:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Privacy setting updated
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set account privacy
+      tags:
+      - Users
+  /stories:
+    post:
+      consumes:
+      - application/json
+      description: Create a new story with media, caption, filters, and stickers
+      parameters:
+      - description: Story creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            caption:
+              type: string
+            filter_name:
+              type: string
+            media_type:
+              type: string
+            media_url:
+              type: string
+            stickers_json:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created story with details
+          schema:
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new story
+      tags:
+      - Stories
+  /stories/{id}/like:
+    delete:
+      consumes:
+      - application/json
+      description: Like a story (POST) or unlike a story (DELETE)
+      parameters:
+      - description: Story ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Like/unlike successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid story ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Story not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Like or unlike a story
+      tags:
+      - Stories
+    post:
+      consumes:
+      - application/json
+      description: Like a story (POST) or unlike a story (DELETE)
+      parameters:
+      - description: Story ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Like/unlike successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid story ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Story not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Like or unlike a story
+      tags:
+      - Stories
+  /stories/{id}/view:
+    post:
+      consumes:
+      - application/json
+      description: Record a view on a story
+      parameters:
+      - description: Story ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Story marked as viewed
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid story ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Story not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark story as viewed
+      tags:
+      - Stories
+  /stories/archive:
+    get:
+      consumes:
+      - application/json
+      description: Get authenticated user's expired stories (24h+)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of archived stories
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get story archive
+      tags:
+      - Stories
+  /stories/feed:
+    get:
+      consumes:
+      - application/json
+      description: Get stories from followed users grouped by author
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of story groups from followed users
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get story feed
+      tags:
+      - Stories
+  /trending/hashtags:
+    get:
+      consumes:
+      - application/json
+      description: Get list of currently trending hashtags
+      parameters:
+      - default: 10
+        description: Number of hashtags to return (max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of trending hashtags with post counts
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get trending hashtags
+      tags:
+      - Hashtags
   /users/{id}:
     get:
       consumes:
       - application/json
-      description: Get user profile by user ID or username
+      description: Get complete user profile by username including bio, stats, and
+        relationship status
       parameters:
-      - description: User ID or username
+      - description: Username
         in: path
         name: id
         required: true
@@ -125,18 +3990,625 @@ paths:
       - application/json
       responses:
         "200":
-          description: User profile
+          description: User profile with post/reel counts
           schema:
+            properties:
+              post_count:
+                format: int64
+                type: integer
+              reel_count:
+                format: int64
+                type: integer
+              user:
+                type: object
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
             type: object
         "404":
           description: User not found
           schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
             type: object
       security:
       - BearerAuth: []
       summary: Get user profile
       tags:
-      - users
+      - Users
+  /users/{id}/block:
+    delete:
+      consumes:
+      - application/json
+      description: Block a user (POST) to prevent them from seeing your content, or
+        unblock them (DELETE)
+      parameters:
+      - description: User ID to block/unblock
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User blocked/unblocked successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Block or unblock a user
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Block a user (POST) to prevent them from seeing your content, or
+        unblock them (DELETE)
+      parameters:
+      - description: User ID to block/unblock
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User blocked/unblocked successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Block or unblock a user
+      tags:
+      - Users
+  /users/{id}/follow:
+    delete:
+      consumes:
+      - application/json
+      description: Follow a user (POST) or unfollow a user (DELETE)
+      parameters:
+      - description: User ID to follow/unfollow
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operation successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Follow or unfollow a user
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Follow a user (POST) or unfollow a user (DELETE)
+      parameters:
+      - description: User ID to follow/unfollow
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Operation successful
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Follow or unfollow a user
+      tags:
+      - Users
+  /users/{id}/followers:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users who follow a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of followers with user details
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's followers
+      tags:
+      - Users
+  /users/{id}/following:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users that a specific user follows
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of followed users with details
+          schema:
+            items:
+              type: object
+            type: array
+        "400":
+          description: Bad request - Invalid user ID
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's following
+      tags:
+      - Users
+  /users/{id}/posts:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of posts created by a specific user
+      parameters:
+      - description: Username
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 12
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user's posts
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's posts
+      tags:
+      - Users
+  /users/{id}/reels:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of video reels created by a specific user
+      parameters:
+      - description: Username
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 12
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of user's reels
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's reels
+      tags:
+      - Users
+  /users/{id}/tagged:
+    get:
+      consumes:
+      - application/json
+      description: Get posts where the user is tagged
+      parameters:
+      - description: Username
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of posts where user is tagged
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user's tagged posts
+      tags:
+      - Users
+  /users/complete-profile:
+    put:
+      consumes:
+      - application/json
+      description: Complete user profile after registration (username, DOB, gender)
+      parameters:
+      - description: Profile completion data
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            date_of_birth:
+              type: string
+            gender:
+              type: string
+            username:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile completed successfully
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Bad request - Invalid input
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Conflict - Username already taken
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Complete user profile
+      tags:
+      - Users
+  /users/top:
+    get:
+      consumes:
+      - application/json
+      description: Get list of top users sorted by follower count
+      parameters:
+      - default: 10
+        description: Number of users to return (max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of top users with follower counts
+          schema:
+            items:
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get top users
+      tags:
+      - Users
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.
