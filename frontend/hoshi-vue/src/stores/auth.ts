@@ -184,7 +184,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    setAuth(token: string, userData: any) {
+    async setAuth(token: string, userData: any) {
       this.token = token;
       this.user = {
         user_id: userData.user_id,
@@ -195,6 +195,51 @@ export const useAuthStore = defineStore("auth", {
       };
       this.isAuthenticated = true;
       saveAuthData(token, this.user);
+      
+      // Fetch full profile to get profile_picture_url if not already present
+      if (!userData.profile_picture_url && userData.username) {
+        try {
+          const { userAPI } = await import('@/services/api');
+          const response = await userAPI.getProfile(userData.username);
+          
+          // API returns { user: {...}, post_count, reel_count }
+          const profile = response.user || response;
+          
+          if (profile.profile_picture_url) {
+            this.user.profile_picture_url = profile.profile_picture_url;
+            saveAuthData(token, this.user);
+          }
+        } catch (error) {
+          console.error('Failed to fetch full profile:', error);
+        }
+      }
+    },
+
+    async refreshUserProfile() {
+      if (!this.user?.username) return;
+      
+      try {
+        const { userAPI } = await import('@/services/api');
+        const response = await userAPI.getProfile(this.user.username);
+        
+        // API returns { user: {...}, post_count, reel_count }
+        const profile = response.user || response;
+        
+        // Update user data with fresh profile info
+        this.user = {
+          ...this.user,
+          name: profile.name || this.user.name,
+          email: profile.email || this.user.email,
+          profile_picture_url: profile.profile_picture_url
+        };
+        
+        // Persist updated user data
+        if (this.token) {
+          saveAuthData(this.token, this.user);
+        }
+      } catch (error) {
+        console.error('Failed to refresh user profile:', error);
+      }
     },
 
     logout() {

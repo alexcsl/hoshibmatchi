@@ -35,4 +35,29 @@ import LeftSidebar from "../components/LeftSidebar.vue";
   
   padding: 2rem; /* Example padding */
 }
+
+/* Responsive adjustments for sidebar width changes */
+@media (max-width: 1264px) {
+  .main-content {
+    margin-left: 244px;
+    width: calc(100% - 244px);
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 72px;
+    width: calc(100% - 72px);
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 60px;
+    width: calc(100% - 60px);
+    padding: 0.5rem;
+  }
+}
 </style>

@@ -15,6 +15,17 @@
         <div v-if="loadingMedia" class="media-loading">
           <div class="loading-spinner">Loading story...</div>
         </div>
+        <video
+          v-else-if="isVideoStory && secureMediaUrl"
+          ref="videoElement"
+          :src="secureMediaUrl"
+          class="story-video"
+          :style="{ filter: getFilterStyle(story.filter_name) }"
+          @loadedmetadata="onVideoLoaded"
+          @ended="onVideoEnded"
+          playsinline
+          muted
+        />
         <img 
           v-else-if="secureMediaUrl"
           :src="secureMediaUrl" 
@@ -104,7 +115,8 @@ export interface Story {
   id: string
   author_username: string
   author_profile_url: string 
-  media_url: string         
+  media_url: string
+  media_type: string
   created_at: string
   caption?: string
   filter_name?: string
@@ -124,14 +136,16 @@ const emit = defineEmits<{
 
 const currentIndex = ref(props.initialIndex || 0);
 const progress = ref(0);
-const storyDuration = 5000; 
+const storyDuration = ref(5000);
+const videoElement = ref<HTMLVideoElement | null>(null);
+const isVideoStory = ref(false); 
 
 // Secure media URL
 const secureMediaUrl = ref<string>("");
 const loadingMedia = ref(true);
 
 const story = computed(() => props.stories[currentIndex.value]);
-const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100));
+const progressPercentage = computed(() => Math.min((progress.value / storyDuration.value) * 100, 100));
 const canGoPrev = computed(() => currentIndex.value > 0);
 const canGoNext = computed(() => currentIndex.value < props.stories.length - 1);
 
@@ -147,6 +161,12 @@ const parsedStickers = computed(() => {
   return [];
 });
 
+// Check if media is video
+const checkIfVideo = () => {
+  const mediaType = story.value.media_type || '';
+  return mediaType.includes('video') || mediaType === 'mp4' || mediaType === 'webm';
+};
+
 // Get filter CSS
 const getFilterStyle = (filterName?: string) => {
   if (!filterName || filterName === "None") return "none";
@@ -160,14 +180,23 @@ const getFilterStyle = (filterName?: string) => {
   return filters[filterName] || "none";
 };
 
-// Helper for media URLs
-const getMediaUrl = (url: string) => {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
-    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
+// Video handlers
+const onVideoLoaded = () => {
+  if (videoElement.value) {
+    const duration = videoElement.value.duration;
+    if (duration && !isNaN(duration)) {
+      storyDuration.value = duration * 1000;
+    }
+    videoElement.value.play();
   }
-  return url;
+};
+
+const onVideoEnded = () => {
+  if (canGoNext.value) {
+    goToNext();
+  } else {
+    emit('close');
+  }
 };
 
 // Format full date for archive (e.g., "Jan 15, 2024 at 3:45 PM")
@@ -195,7 +224,7 @@ const startProgress = () => {
   progress.value = 0;
   interval = setInterval(() => {
     progress.value += 100;
-    if (progress.value >= storyDuration) {
+    if (progress.value >= storyDuration.value) {
       if (canGoNext.value) {
         goToNext();
       } else {
@@ -213,6 +242,11 @@ const stopProgress = () => {
 };
 
 const goToNext = () => {
+  if (videoElement.value && isVideoStory.value) {
+    videoElement.value.pause();
+    videoElement.value.currentTime = 0;
+  }
+  
   if (canGoNext.value) {
     currentIndex.value++;
     emit("next");
@@ -223,6 +257,11 @@ const goToNext = () => {
 };
 
 const goToPrev = () => {
+  if (videoElement.value && isVideoStory.value) {
+    videoElement.value.pause();
+    videoElement.value.currentTime = 0;
+  }
+  
   if (canGoPrev.value) {
     currentIndex.value--;
     emit("prev");
@@ -249,6 +288,14 @@ const handleClick = (event: MouseEvent) => {
 const loadSecureMedia = async () => {
   loadingMedia.value = true;
   secureMediaUrl.value = "";
+  
+  // Check if current story is video
+  isVideoStory.value = checkIfVideo();
+  
+  // Reset duration for images
+  if (!isVideoStory.value) {
+    storyDuration.value = 5000;
+  }
   
   try {
     if (story.value.media_url) {
@@ -335,6 +382,22 @@ onUnmounted(() => {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  .story-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    
+    &::-webkit-media-controls {
+      display: none !important;
+    }
+    
+    &::-webkit-media-controls-enclosure {
+      display: none !important;
+    }
+    
+    pointer-events: none;
   }
 
   .text-overlay {

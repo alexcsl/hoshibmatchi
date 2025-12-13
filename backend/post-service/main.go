@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -82,6 +83,7 @@ type Comment struct {
 	// Denormalized data from user-service
 	AuthorUsername   string
 	AuthorProfileURL string
+	AuthorIsVerified bool
 }
 
 // CommentLike defines the GORM model for a like on a comment
@@ -104,8 +106,9 @@ type server struct {
 // Collection defines a user's named collection of posts
 type Collection struct {
 	gorm.Model
-	UserID int64  `gorm:"index"`
-	Name   string `gorm:"type:varchar(100)"`
+	UserID    int64  `gorm:"index"`
+	Name      string `gorm:"type:varchar(100)"`
+	IsDefault bool   `gorm:"default:false"`
 }
 
 type PostCollaborator struct {
@@ -646,6 +649,7 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		ParentCommentID:  uint(req.ParentCommentId), // 0 is fine
 		AuthorUsername:   userData.Username,
 		AuthorProfileURL: userData.ProfilePictureUrl,
+		AuthorIsVerified: userData.IsVerified,
 	}
 	// Note: Do NOT set ID manually - let GORM auto-generate it
 
@@ -708,6 +712,11 @@ func (s *server) CommentOnPost(ctx context.Context, req *pb.CommentOnPostRequest
 		CreatedAt:        newComment.CreatedAt.Format(time.RFC3339),
 		PostId:           newComment.PostID,
 		ParentCommentId:  int64(newComment.ParentCommentID),
+		UserId:           newComment.UserID,
+		LikeCount:        0,
+		IsLiked:          false,
+		ReplyCount:       0,
+		AuthorIsVerified: newComment.AuthorIsVerified,
 	}, nil
 }
 
@@ -802,19 +811,19 @@ func (s *server) UnlikeComment(ctx context.Context, req *pb.LikeCommentRequest) 
 
 // --- GRPC: GetCommentsByPost ---
 func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPostRequest) (*pb.GetCommentsByPostResponse, error) {
-	var comments []Comment
-
-	// Fetch comments for the post with pagination
-	offset := int(req.PageOffset)
-	limit := int(req.PageSize)
-	if limit == 0 {
-		limit = 20 // Default limit
+	// Get requesting user ID from context (if available)
+	var requestingUserID int64
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if userIDs := md.Get("user_id"); len(userIDs) > 0 {
+			requestingUserID, _ = strconv.ParseInt(userIDs[0], 10, 64)
+		}
 	}
 
-	err := s.db.Where("post_id = ? AND parent_comment_id = 0", req.PostId).
-		Order("created_at DESC").
-		Offset(offset).
-		Limit(limit).
+	var comments []Comment
+
+	// Fetch ALL comments for the post (both top-level and replies)
+	err := s.db.Where("post_id = ?", req.PostId).
+		Order("created_at ASC").
 		Find(&comments).Error
 
 	if err != nil {
@@ -822,9 +831,25 @@ func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPos
 		return nil, status.Error(codes.Internal, "Failed to fetch comments")
 	}
 
-	// Convert to proto response
+	// Convert to proto response with additional fields
 	var commentResponses []*pb.CommentResponse
 	for _, comment := range comments {
+		// Count likes for this comment
+		var likeCount int64
+		s.db.Model(&CommentLike{}).Where("comment_id = ?", comment.ID).Count(&likeCount)
+
+		// Check if requesting user liked this comment
+		var isLiked bool
+		if requestingUserID > 0 {
+			var like CommentLike
+			err := s.db.Where("user_id = ? AND comment_id = ?", requestingUserID, comment.ID).First(&like).Error
+			isLiked = err == nil
+		}
+
+		// Count replies for this comment
+		var replyCount int64
+		s.db.Model(&Comment{}).Where("parent_comment_id = ?", comment.ID).Count(&replyCount)
+
 		commentResponses = append(commentResponses, &pb.CommentResponse{
 			Id:               strconv.FormatUint(uint64(comment.ID), 10),
 			Content:          comment.Content,
@@ -833,6 +858,11 @@ func (s *server) GetCommentsByPost(ctx context.Context, req *pb.GetCommentsByPos
 			CreatedAt:        comment.CreatedAt.Format(time.RFC3339),
 			PostId:           comment.PostID,
 			ParentCommentId:  int64(comment.ParentCommentID),
+			UserId:           comment.UserID,
+			LikeCount:        likeCount,
+			IsLiked:          isLiked,
+			ReplyCount:       replyCount,
+			AuthorIsVerified: comment.AuthorIsVerified,
 		})
 	}
 
@@ -1085,9 +1115,10 @@ func (s *server) GetUserContentCount(ctx context.Context, req *pb.GetUserContent
 func (s *server) gormToGrpcCollection(collection *Collection) *pb.Collection {
 	// TODO: Get 4 cover image URLs
 	return &pb.Collection{
-		Id:     strconv.FormatUint(uint64(collection.ID), 10),
-		UserId: strconv.FormatInt(collection.UserID, 10),
-		Name:   collection.Name,
+		Id:        strconv.FormatUint(uint64(collection.ID), 10),
+		UserId:    strconv.FormatInt(collection.UserID, 10),
+		Name:      collection.Name,
+		IsDefault: collection.IsDefault,
 	}
 }
 
@@ -1131,7 +1162,20 @@ func (s *server) GetPostsInCollection(ctx context.Context, req *pb.GetPostsInCol
 
 	// 2. Get all Post IDs from the join table
 	var postIDs []uint
-	s.db.Model(&SavedPost{}).Where("collection_id = ?", req.CollectionId).Order("created_at DESC").Pluck("post_id", &postIDs)
+	result := s.db.Model(&SavedPost{}).Where("collection_id = ?", req.CollectionId).Order("created_at DESC").Pluck("post_id", &postIDs)
+	if result.Error != nil {
+		log.Printf("Error querying SavedPost: %v", result.Error)
+	}
+	log.Printf("GetPostsInCollection: collection_id=%d, found %d post IDs: %v (rows affected: %d)", req.CollectionId, len(postIDs), postIDs, result.RowsAffected)
+
+	// Debug: Let's also count total records in SavedPost
+	var totalCount int64
+	s.db.Model(&SavedPost{}).Where("collection_id = ?", req.CollectionId).Count(&totalCount)
+	log.Printf("Total SavedPost records for collection %d: %d", req.CollectionId, totalCount)
+
+	if len(postIDs) == 0 {
+		return &pb.GetHomeFeedResponse{Posts: []*pb.Post{}}, nil
+	}
 
 	// 3. Get all posts matching those IDs
 	var posts []Post
@@ -1150,17 +1194,40 @@ func (s *server) GetPostsInCollection(ctx context.Context, req *pb.GetPostsInCol
 	return &pb.GetHomeFeedResponse{Posts: grpcPosts}, nil
 }
 
+// --- GPRC: GetCollectionsForPost ---
+func (s *server) GetCollectionsForPost(ctx context.Context, req *pb.GetCollectionsForPostRequest) (*pb.GetCollectionsForPostResponse, error) {
+	// Get all collection IDs that contain this post for this user
+	var savedPosts []SavedPost
+	if err := s.db.
+		Joins("JOIN collections ON saved_posts.collection_id = collections.id").
+		Where("saved_posts.post_id = ? AND collections.user_id = ?", req.PostId, req.UserId).
+		Find(&savedPosts).Error; err != nil {
+		log.Printf("Error getting collections for post %d: %v", req.PostId, err)
+		return nil, status.Error(codes.Internal, "Failed to get collections for post")
+	}
+
+	// Convert collection IDs to strings
+	collectionIds := make([]string, len(savedPosts))
+	for i, sp := range savedPosts {
+		collectionIds[i] = strconv.FormatUint(uint64(sp.CollectionID), 10)
+	}
+
+	log.Printf("GetCollectionsForPost: post_id=%d, user_id=%d, found %d collections: %v", req.PostId, req.UserId, len(collectionIds), collectionIds)
+	return &pb.GetCollectionsForPostResponse{CollectionIds: collectionIds}, nil
+}
+
 // --- Helper: Get or create default collection for user ---
 func (s *server) getOrCreateDefaultCollection(userID int64) (*Collection, error) {
-	// Try to find existing collection for this user
+	// Try to find existing default collection for this user
 	var collection Collection
-	err := s.db.Where("user_id = ?", userID).First(&collection).Error
+	err := s.db.Where("user_id = ? AND is_default = ?", userID, true).First(&collection).Error
 
 	if err == gorm.ErrRecordNotFound {
-		// No collection exists, create default "Saved" collection
+		// No default collection exists, create "All Posts" collection
 		collection = Collection{
-			UserID: userID,
-			Name:   "Saved",
+			UserID:    userID,
+			Name:      "All Posts",
+			IsDefault: true,
 		}
 		if createErr := s.db.Create(&collection).Error; createErr != nil {
 			log.Printf("Failed to create default collection for user %d: %v", userID, createErr)
@@ -1210,18 +1277,30 @@ func (s *server) SavePostToCollection(ctx context.Context, req *pb.SavePostToCol
 		CollectionID: uint(collection.ID),
 		PostID:       uint(req.PostId),
 	}
-	if result := s.db.Create(&savedPost); result.Error != nil {
+	log.Printf("Attempting to save post %d to collection %d", req.PostId, collection.ID)
+	result := s.db.Create(&savedPost)
+	if result.Error != nil {
 		if strings.Contains(result.Error.Error(), "unique constraint") {
+			log.Printf("Post %d already exists in collection %d", req.PostId, collection.ID)
 			return nil, status.Error(codes.AlreadyExists, "Post already saved to this collection")
 		}
+		log.Printf("Failed to save post %d to collection %d: %v", req.PostId, collection.ID, result.Error)
 		return nil, status.Error(codes.Internal, "Failed to save post")
 	}
+	log.Printf("Successfully saved post %d to collection %d (Rows affected: %d)", req.PostId, collection.ID, result.RowsAffected)
+
+	// Verify the save by immediately querying
+	var count int64
+	s.db.Model(&SavedPost{}).Where("collection_id = ? AND post_id = ?", collection.ID, req.PostId).Count(&count)
+	log.Printf("Verification: Found %d records for collection %d, post %d", count, collection.ID, req.PostId)
 
 	return &pb.SavePostToCollectionResponse{Message: "Post saved successfully"}, nil
 }
 
 // --- GPRC: UnsavePostFromCollection ---
 func (s *server) UnsavePostFromCollection(ctx context.Context, req *pb.UnsavePostFromCollectionRequest) (*pb.UnsavePostFromCollectionResponse, error) {
+	log.Printf("UnsavePostFromCollection: collection_id=%d, post_id=%d, user_id=%d", req.CollectionId, req.PostId, req.UserId)
+
 	// 1. Verify this user owns this collection
 	var collection Collection
 	if err := s.db.First(&collection, req.CollectionId).Error; err != nil {
@@ -1231,12 +1310,11 @@ func (s *server) UnsavePostFromCollection(ctx context.Context, req *pb.UnsavePos
 		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
 	}
 
-	// 2. Unsave the post
-	savedPost := SavedPost{
-		CollectionID: uint(req.CollectionId),
-		PostID:       uint(req.PostId),
-	}
-	if result := s.db.Delete(&savedPost); result.RowsAffected == 0 {
+	// 2. Unsave the post - use explicit WHERE to ensure we only delete from the specified collection
+	result := s.db.Where("collection_id = ? AND post_id = ?", req.CollectionId, req.PostId).Delete(&SavedPost{})
+	log.Printf("UnsavePostFromCollection: Deleted %d rows from collection %d, post %d", result.RowsAffected, req.CollectionId, req.PostId)
+
+	if result.RowsAffected == 0 {
 		return nil, status.Error(codes.NotFound, "Post was not saved in this collection")
 	}
 
@@ -1251,6 +1329,9 @@ func (s *server) DeleteCollection(ctx context.Context, req *pb.DeleteCollectionR
 	}
 	if collection.UserID != req.UserId {
 		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+	if collection.IsDefault {
+		return nil, status.Error(codes.PermissionDenied, "Cannot delete default collection")
 	}
 
 	// Delete from collections table (GORM will handle cascade deletes if set up)
@@ -1273,6 +1354,9 @@ func (s *server) RenameCollection(ctx context.Context, req *pb.RenameCollectionR
 	}
 	if collection.UserID != req.UserId {
 		return nil, status.Error(codes.PermissionDenied, "You do not own this collection")
+	}
+	if collection.IsDefault {
+		return nil, status.Error(codes.PermissionDenied, "Cannot rename default collection")
 	}
 
 	collection.Name = req.NewName
@@ -1314,19 +1398,9 @@ func (s *server) gormToGrpcPost(post *Post) *pb.Post {
 
 // --- GPRC: GetPost ---
 func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post, error) {
-	// Try cache first
-	cacheKey := fmt.Sprintf("post:%d", req.PostId)
-	cachedData, err := s.rdb.Get(ctx, cacheKey).Result()
-	if err == nil {
-		// Cache hit
-		var cachedPost pb.Post
-		if json.Unmarshal([]byte(cachedData), &cachedPost) == nil {
-			log.Printf("Cache hit for post %d", req.PostId)
-			return &cachedPost, nil
-		}
-	}
+	// Note: We can't use cache here because is_liked and is_saved are viewer-specific
 
-	// Cache miss - query database
+	// Query database
 	var post Post
 	if err := s.db.First(&post, req.PostId).Error; err == gorm.ErrRecordNotFound {
 		return nil, status.Error(codes.NotFound, "Post not found")
@@ -1334,13 +1408,8 @@ func (s *server) GetPost(ctx context.Context, req *pb.GetPostRequest) (*pb.Post,
 		return nil, status.Error(codes.Internal, "Database error")
 	}
 
-	// Use our existing helper
-	grpcPost := s.gormToGrpcPost(&post)
-
-	// Cache with 5 minute TTL
-	if responseJSON, err := json.Marshal(grpcPost); err == nil {
-		s.rdb.Set(ctx, cacheKey, responseJSON, 5*time.Minute)
-	}
+	// Use enrichPostProto to get viewer-specific data (is_liked, is_saved)
+	grpcPost := s.enrichPostProto(ctx, &post, req.ViewerId)
 
 	return grpcPost, nil
 }

@@ -18,6 +18,18 @@
         <div v-if="loadingMedia" class="media-loading">
           <div class="loading-spinner">Loading story...</div>
         </div>
+        <video 
+          v-else-if="isVideoStory && secureMediaUrl"
+          ref="videoElement"
+          :src="secureMediaUrl"
+          class="story-video"
+          :style="{ filter: getFilterStyle(story.filter_name) }"
+          @ended="onVideoEnded"
+          @loadedmetadata="onVideoLoaded"
+          playsinline
+          autoplay
+          muted
+        />
         <img 
           v-else-if="secureMediaUrl"
           :src="secureMediaUrl" 
@@ -121,8 +133,7 @@
         </button>
       </div>
 
-      <div
-        class="story-reply"
+      <div        v-if="!isOwnStory"        class="story-reply"
         @click.stop
       >
         <input 
@@ -179,8 +190,10 @@ import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { storyAPI } from "@/services/api";
 import { getSecureMediaURL } from "@/services/media";
+import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
+const authStore = useAuthStore();
 
 // Interface matching Backend Protobuf/JSON
 export interface Story {
@@ -208,7 +221,7 @@ const emit = defineEmits<{
 
 const currentIndex = ref(props.initialIndex || 0);
 const progress = ref(0);
-const storyDuration = 5000; 
+const storyDuration = ref(5000); 
 const isPaused = ref(false);
 const isLiked = ref(false);
 const replyMessage = ref("");
@@ -217,11 +230,18 @@ const showShareModal = ref(false);
 // Secure media URL
 const secureMediaUrl = ref<string>("");
 const loadingMedia = ref(true);
+const videoElement = ref<HTMLVideoElement | null>(null);
+const isVideoStory = ref(false);
 
 const story = computed(() => props.stories[currentIndex.value]);
-const progressPercentage = computed(() => Math.min((progress.value / storyDuration) * 100, 100));
+const progressPercentage = computed(() => Math.min((progress.value / storyDuration.value) * 100, 100));
 const canGoPrev = computed(() => currentIndex.value > 0);
 const canGoNext = computed(() => currentIndex.value < props.stories.length - 1);
+const isOwnStory = computed(() => {
+  const currentUser = authStore.user;
+  if (!currentUser) return false;
+  return story.value.author_username === currentUser.username;
+});
 
 // Update liked status when story changes
 const updateLikedStatus = () => {
@@ -281,18 +301,30 @@ const startProgress = () => {
   if (isPaused.value) return;
   stopProgress(); // Ensure no duplicate intervals
   progress.value = 0;
-  interval = setInterval(() => {
-    if (!isPaused.value) {
-      progress.value += 100;
-      if (progress.value >= storyDuration) {
-        if (canGoNext.value) {
-          goToNext();
-        } else {
-          emit("close");
+  
+  // For videos, use video currentTime for progress
+  if (isVideoStory.value) {
+    interval = setInterval(() => {
+      if (!isPaused.value && videoElement.value) {
+        const currentTime = videoElement.value.currentTime * 1000;
+        progress.value = currentTime;
+      }
+    }, 100);
+  } else {
+    // For images, use fixed duration
+    interval = setInterval(() => {
+      if (!isPaused.value) {
+        progress.value += 100;
+        if (progress.value >= storyDuration.value) {
+          if (canGoNext.value) {
+            goToNext();
+          } else {
+            emit("close");
+          }
         }
       }
-    }
-  }, 100);
+    }, 100);
+  }
 };
 
 const stopProgress = () => {
@@ -304,31 +336,49 @@ const stopProgress = () => {
 
 const handlePauseStart = () => {
   isPaused.value = true;
+  if (isVideoStory.value && videoElement.value) {
+    videoElement.value.pause();
+  }
 };
 
 const handlePauseEnd = () => {
   isPaused.value = false;
+  if (isVideoStory.value && videoElement.value) {
+    videoElement.value.play();
+  }
 };
 
 const goToNext = () => {
+  if (isVideoStory.value && videoElement.value) {
+    videoElement.value.pause();
+    videoElement.value.currentTime = 0;
+  }
+  
   if (canGoNext.value) {
     currentIndex.value++;
     emit("next");
     updateLikedStatus();
-    startProgress();
   } else {
     emit("close");
   }
 };
 
 const goToPrev = () => {
+  if (isVideoStory.value && videoElement.value) {
+    videoElement.value.pause();
+    videoElement.value.currentTime = 0;
+  }
+  
   if (canGoPrev.value) {
     currentIndex.value--;
     emit("prev");
     updateLikedStatus();
-    startProgress();
   } else {
       // Restart current story if at beginning
+      if (isVideoStory.value && videoElement.value) {
+        videoElement.value.currentTime = 0;
+        videoElement.value.play();
+      }
       startProgress();
   }
 };
@@ -370,12 +420,13 @@ const toggleLike = async () => {
 const sendReply = () => {
   if (!replyMessage.value.trim()) return;
   
-  // Navigate to messages with the story author
+  // Navigate to messages with the story author and story preview
   router.push({
     name: "Messages",
     query: {
       user: story.value.author_username,
-      message: `Story reply: ${replyMessage.value}`
+      replyToStory: story.value.media_url,
+      message: replyMessage.value
     }
   });
   
@@ -406,14 +457,45 @@ const shareToMessages = () => {
   emit("close");
 };
 
+// Check if story is video
+const checkIfVideo = (url: string) => {
+  const videoExtensions = ['.mp4', '.mov', '.avi', '.webm', '.mkv'];
+  return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+};
+
+// Video event handlers
+const onVideoLoaded = () => {
+  if (videoElement.value) {
+    const videoDuration = videoElement.value.duration * 1000;
+    storyDuration.value = videoDuration;
+    videoElement.value.play();
+    startProgress();
+  }
+};
+
+const onVideoEnded = () => {
+  if (canGoNext.value) {
+    goToNext();
+  } else {
+    emit("close");
+  }
+};
+
 // Load secure media URL when story changes
 const loadSecureMedia = async () => {
   loadingMedia.value = true;
   secureMediaUrl.value = "";
+  stopProgress();
   
   try {
     if (story.value.media_url) {
+      isVideoStory.value = checkIfVideo(story.value.media_url);
       secureMediaUrl.value = await getSecureMediaURL(story.value.media_url);
+      
+      // Reset duration for images
+      if (!isVideoStory.value) {
+        storyDuration.value = 5000;
+      }
     }
   } catch (error) {
     console.error("Failed to load story media:", error);
@@ -422,16 +504,30 @@ const loadSecureMedia = async () => {
   }
 };
 
+// Mark story as viewed
+const markStoryAsViewed = async () => {
+  try {
+    await storyAPI.viewStory(story.value.id);
+  } catch (error) {
+    console.error('Failed to mark story as viewed:', error);
+  }
+};
+
 // Watch for story changes
-watch(story, () => {
-  loadSecureMedia();
+watch(story, async () => {
+  await loadSecureMedia();
   updateLikedStatus();
-  startProgress();
+  markStoryAsViewed(); // Mark as viewed when story loads
+  
+  // Start progress after media loads (for images only, videos handle it in onVideoLoaded)
+  if (!isVideoStory.value) {
+    startProgress();
+  }
 }, { immediate: true });
 
 onMounted(() => {
   updateLikedStatus();
-  startProgress();
+  // Progress will be started after media loads
 });
 
 onUnmounted(() => {
@@ -494,10 +590,31 @@ onUnmounted(() => {
     }
   }
 
-  .story-image {
+  .story-image,
+  .story-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  .story-video {
+    pointer-events: none; // Disable video controls
+    
+    &::-webkit-media-controls {
+      display: none !important;
+    }
+    
+    &::-webkit-media-controls-panel {
+      display: none !important;
+    }
+    
+    &::-webkit-media-controls-play-button {
+      display: none !important;
+    }
+    
+    &::-webkit-media-controls-start-playback-button {
+      display: none !important;
+    }
   }
 
   .text-overlay {

@@ -228,12 +228,14 @@ func main() {
 		protected.POST("/stories", handleCreateStory_Gin)
 		protected.POST("/stories/:id/like", handleStoryLike_Gin)
 		protected.DELETE("/stories/:id/like", handleStoryLike_Gin)
+		protected.POST("/stories/:id/view", handleStoryView_Gin)
 		protected.GET("/stories/feed", handleGetStoryFeed_Gin)
 		protected.GET("/stories/archive", handleGetUserArchive_Gin)
 
 		// Comments
 		protected.POST("/comments", handleCreateComment_Gin)
 		protected.GET("/posts/:id/comments", handleGetCommentsByPost_Gin)
+		protected.GET("/posts/:id", handleGetPost_Gin)
 		protected.DELETE("/comments/:id", handleDeleteComment_Gin)
 		protected.POST("/comments/:id/like", handleLikeComment_Gin)
 		protected.DELETE("/comments/:id/like", handleUnlikeComment_Gin)
@@ -267,6 +269,9 @@ func main() {
 		protected.DELETE("/collections/:id/posts/:post_id", handleUnsavePostFromCollection_Gin)
 		protected.DELETE("/collections/:id", handleDeleteCollection_Gin)
 		protected.PUT("/collections/:id", handleRenameCollection_Gin)
+
+		// Get collections for a specific post
+		protected.GET("/posts/:id/collections", handleGetCollectionsForPost_Gin)
 
 		// Messsage
 		protected.POST("/conversations", handleCreateConversation_Gin)
@@ -527,7 +532,19 @@ func SensitiveEndpointLimiter() gin.HandlerFunc {
 	return RateLimitMiddleware(sensitiveLimit)
 }
 
-// handleRegister translates the HTTP request to a gRPC call
+// handleRegister godoc
+// @Summary Register a new user
+// @Description Register a new user account with email, username, and password. Requires Cloudflare Turnstile verification.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{name=string,username=string,email=string,password=string,confirm_password=string,date_of_birth=string,gender=string,enable_2fa=bool,profile_picture_url=string,subscribe_to_newsletter=bool,turnstile_token=string} true "Registration data"
+// @Success 201 {object} object{message=string} "User registered successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input or Turnstile verification failed"
+// @Failure 409 {object} object{error=string} "Conflict - Username or email already exists"
+// @Failure 429 {object} object{error=string} "Too many requests"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/register [post]
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	// 1. We only accept POST methods
 	if r.Method != http.MethodPost {
@@ -603,6 +620,18 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
+// handleSendOtp godoc
+// @Summary Send OTP for registration
+// @Description Send an OTP code to the provided email address for registration verification
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string} true "Email address"
+// @Success 200 {object} object{message=string} "OTP sent successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid email"
+// @Failure 429 {object} object{error=string} "Too many requests - Rate limit exceeded"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/send-otp [post]
 func handleSendOtp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -652,7 +681,19 @@ func gRPCToHTTPStatusCode(code codes.Code) int {
 	}
 }
 
-// handleLogin translates the HTTP request to a gRPC call
+// handleLogin godoc
+// @Summary User login
+// @Description Authenticate user with email/username and password. Returns JWT tokens or indicates 2FA is required.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email_or_username=string,password=string,turnstile_token=string} true "Login credentials"
+// @Success 200 {object} object{message=string,access_token=string,refresh_token=string,is_2fa_required=bool} "Login successful or 2FA required"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input or Turnstile verification failed"
+// @Failure 401 {object} object{error=string} "Unauthorized - Invalid credentials"
+// @Failure 429 {object} object{error=string} "Too many requests"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/login [post]
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -722,6 +763,18 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res) // Encode our custom struct
 }
 
+// handleVerify2FA godoc
+// @Summary Verify 2FA code
+// @Description Verify two-factor authentication OTP code to complete login
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string,otp_code=string} true "2FA verification data"
+// @Success 200 {object} object{message=string,access_token=string,refresh_token=string,is_2fa_required=bool} "2FA verification successful"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized - Invalid OTP code"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/login/verify-2fa [post]
 func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -772,7 +825,19 @@ func handleVerify2FA(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-// --- HANDLER 1: handleSendPasswordReset ---
+// handleSendPasswordReset godoc
+// @Summary Request password reset
+// @Description Send a password reset OTP to the provided email address
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string} true "Email address"
+// @Success 200 {object} object{message=string} "Password reset OTP sent successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid email"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 429 {object} object{error=string} "Too many requests"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/password-reset/request [post]
 func handleSendPasswordReset(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -797,7 +862,18 @@ func handleSendPasswordReset(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- HANDLER 2: handleResetPassword ---
+// handleResetPassword godoc
+// @Summary Submit password reset
+// @Description Reset password using OTP code sent via email
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string,otp_code=string,new_password=string} true "Password reset data"
+// @Success 200 {object} object{message=string} "Password reset successful"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized - Invalid OTP code"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/password-reset/submit [post]
 func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -828,17 +904,17 @@ func handleResetPassword(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleCreatePost ---
 // handleCreatePost_Gin godoc
 // @Summary Create a new post
-// @Description Create a new post with caption and media
-// @Tags posts
+// @Description Create a new post with caption, media URLs, and optional settings. Supports both regular posts and reels.
+// @Tags Posts
 // @Accept json
 // @Produce json
-// @Param request body object true "Post data"
-// @Success 201 {object} object "Created post"
-// @Failure 400 {object} object "Bad request"
-// @Failure 401 {object} object "Unauthorized"
+// @Param request body object{caption=string,media_urls=[]string,comments_disabled=bool,is_reel=bool,collaborator_ids=[]int64,thumbnail_url=string} true "Post creation data"
+// @Success 201 {object} object "Created post with all details"
+// @Failure 400 {object} object{error=string} "Bad request - At least one media URL is required"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
 // @Security BearerAuth
 // @Router /posts [post]
 func handleCreatePost_Gin(c *gin.Context) {
@@ -887,7 +963,19 @@ func handleCreatePost_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Post) // Return the Post object inside the response
 }
 
-// --- GIN-NATIVE HANDLER: handleCreateStory ---
+// handleCreateStory_Gin godoc
+// @Summary Create a new story
+// @Description Create a new story with media, caption, filters, and stickers
+// @Tags Stories
+// @Accept json
+// @Produce json
+// @Param request body object{media_url=string,media_type=string,caption=string,filter_name=string,stickers_json=string} true "Story creation data"
+// @Success 201 {object} object "Created story with details"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /stories [post]
 func handleCreateStory_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -926,7 +1014,20 @@ func handleCreateStory_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Story)
 }
 
-// --- GIN-NATIVE HANDLER: handleCreateComment ---
+// handleCreateComment_Gin godoc
+// @Summary Create a comment on a post
+// @Description Create a new comment or reply on a post
+// @Tags Comments
+// @Accept json
+// @Produce json
+// @Param request body object{post_id=int64,content=string,parent_comment_id=int64} true "Comment data (parent_comment_id is optional for replies)"
+// @Success 201 {object} object{message=string} "Comment created successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /comments [post]
 func handleCreateComment_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -962,6 +1063,21 @@ func handleCreateComment_Gin(c *gin.Context) {
 
 // --- GIN-NATIVE HANDLERS (FOR URL PARAMS) ---
 
+// handleFollowUser_Gin godoc
+// @Summary Follow or unfollow a user
+// @Description Follow a user (POST) or unfollow a user (DELETE)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID to follow/unfollow"
+// @Success 200 {object} object{message=string} "Operation successful"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/follow [post]
+// @Router /users/{id}/follow [delete]
 func handleFollowUser_Gin(c *gin.Context) {
 	// --- THIS IS THE FIX ---
 	// Read from the request's context, not Gin's context
@@ -1006,15 +1122,18 @@ func handleFollowUser_Gin(c *gin.Context) {
 // handlePostLike_Gin godoc
 // @Summary Like or unlike a post
 // @Description Like a post (POST) or unlike a post (DELETE)
-// @Tags posts
+// @Tags Posts
 // @Accept json
 // @Produce json
-// @Param id path string true "Post ID"
-// @Success 200 {object} object "Success message"
-// @Failure 400 {object} object "Bad request"
-// @Failure 401 {object} object "Unauthorized"
+// @Param id path int true "Post ID"
+// @Success 200 {object} object{message=string} "Like/unlike successful"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
 // @Security BearerAuth
 // @Router /posts/{id}/like [post]
+// @Router /posts/{id}/like [delete]
 func handlePostLike_Gin(c *gin.Context) {
 	// --- THIS IS THE FIX ---
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -1053,6 +1172,61 @@ func handlePostLike_Gin(c *gin.Context) {
 	}
 }
 
+// handleStoryView_Gin godoc
+// @Summary Mark story as viewed
+// @Description Record a view on a story
+// @Tags Stories
+// @Accept json
+// @Produce json
+// @Param id path int true "Story ID"
+// @Success 200 {object} object{message=string} "Story marked as viewed"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid story ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Story not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /stories/{id}/view [post]
+func handleStoryView_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	storyIDStr := c.Param("id")
+	storyID, err := strconv.ParseInt(storyIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid story ID"})
+		return
+	}
+
+	res, err := storyClient.ViewStory(c.Request.Context(), &storyPb.ViewStoryRequest{
+		UserId:  userID,
+		StoryId: storyID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark story as viewed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": res.Message})
+}
+
+// handleStoryLike_Gin godoc
+// @Summary Like or unlike a story
+// @Description Like a story (POST) or unlike a story (DELETE)
+// @Tags Stories
+// @Accept json
+// @Produce json
+// @Param id path int true "Story ID"
+// @Success 200 {object} object{message=string} "Like/unlike successful"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid story ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Story not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /stories/{id}/like [post]
+// @Router /stories/{id}/like [delete]
 func handleStoryLike_Gin(c *gin.Context) {
 	// --- THIS IS THE FIX ---
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -1091,6 +1265,21 @@ func handleStoryLike_Gin(c *gin.Context) {
 	}
 }
 
+// handleDeleteComment_Gin godoc
+// @Summary Delete a comment
+// @Description Delete a comment (only owner or post author can delete)
+// @Tags Comments
+// @Accept json
+// @Produce json
+// @Param id path int true "Comment ID"
+// @Success 200 {object} object{message=string} "Comment deleted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid comment ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not allowed to delete this comment"
+// @Failure 404 {object} object{error=string} "Comment not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /comments/{id} [delete]
 func handleDeleteComment_Gin(c *gin.Context) {
 	// --- THIS IS THE FIX ---
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -1117,7 +1306,20 @@ func handleDeleteComment_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleLikeComment ---
+// handleLikeComment_Gin godoc
+// @Summary Like a comment
+// @Description Like a comment on a post
+// @Tags Comments
+// @Accept json
+// @Produce json
+// @Param id path int true "Comment ID"
+// @Success 200 {object} object{message=string} "Comment liked successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid comment ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Comment not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /comments/{id}/like [post]
 func handleLikeComment_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1142,7 +1344,20 @@ func handleLikeComment_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleUnlikeComment ---
+// handleUnlikeComment_Gin godoc
+// @Summary Unlike a comment
+// @Description Remove like from a comment
+// @Tags Comments
+// @Accept json
+// @Produce json
+// @Param id path int true "Comment ID"
+// @Success 200 {object} object{message=string} "Comment unliked successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid comment ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Comment not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /comments/{id}/like [delete]
 func handleUnlikeComment_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1167,7 +1382,21 @@ func handleUnlikeComment_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleDeletePost ---
+// handleDeletePost_Gin godoc
+// @Summary Delete a post
+// @Description Delete a post (only owner can delete)
+// @Tags Posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} object{message=string} "Post deleted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not allowed to delete this post"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /posts/{id} [delete]
 func handleDeletePost_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1192,7 +1421,64 @@ func handleDeletePost_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetCommentsByPost ---
+// handleGetPost_Gin godoc
+// @Summary Get post by ID
+// @Description Get detailed information about a specific post including media, likes, comments count
+// @Tags Posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} object "Post details with author info and engagement stats"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /posts/{id} [get]
+func handleGetPost_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	postIDStr := c.Param("id")
+	postID, err := strconv.ParseInt(postIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	grpcReq := &postPb.GetPostRequest{
+		PostId:   postID,
+		ViewerId: userID,
+	}
+
+	grpcRes, err := postClient.GetPost(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		log.Printf("gRPC call to GetPost failed (%s): %v", grpcErr.Code(), grpcErr.Message())
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleGetCommentsByPost_Gin godoc
+// @Summary Get comments for a post
+// @Description Get paginated list of comments for a specific post
+// @Tags Comments
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {array} object "List of comments with user information"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /posts/{id}/comments [get]
 func handleGetCommentsByPost_Gin(c *gin.Context) {
 	postIDStr := c.Param("id")
 	postID, err := strconv.ParseInt(postIDStr, 10, 64)
@@ -1225,7 +1511,18 @@ func handleGetCommentsByPost_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Comments)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUploadURL ---
+// handleGetUploadURL_Gin godoc
+// @Summary Get pre-signed upload URL
+// @Description Get a pre-signed URL for uploading media files to cloud storage
+// @Tags Media
+// @Accept json
+// @Produce json
+// @Param filename query string true "Filename"
+// @Param type query string true "Content type (e.g., image/jpeg, video/mp4)"
+// @Success 200 {object} object{upload_url=string,media_url=string} "Pre-signed upload URL and final media URL"
+// @Failure 400 {object} object{error=string} "Bad request - Missing filename or type"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /media/upload-url [get]
 func handleGetUploadURL_Gin(c *gin.Context) {
 	var userID int64 = 0
 	if val, ok := c.Request.Context().Value(userIDKey).(int64); ok {
@@ -1256,7 +1553,18 @@ func handleGetUploadURL_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetMediaURL ---
+// handleGetMediaURL_Gin godoc
+// @Summary Get pre-signed media URL
+// @Description Get a pre-signed URL for accessing private media files
+// @Tags Media
+// @Accept json
+// @Produce json
+// @Param object_name query string true "Object name in storage"
+// @Param expiry_seconds query int false "URL expiry in seconds" default(3600)
+// @Success 200 {object} object{url=string} "Pre-signed access URL"
+// @Failure 400 {object} object{error=string} "Bad request - Missing object_name"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /media/secure-url [get]
 func handleGetMediaURL_Gin(c *gin.Context) {
 	// Get query param, e.g., /media/secure-url?object_name=user-123/posts/abc.jpg
 	objectName := c.Query("object_name")
@@ -1283,7 +1591,19 @@ func handleGetMediaURL_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGenerateThumbnail ---
+// handleGenerateThumbnail_Gin godoc
+// @Summary Generate video thumbnail
+// @Description Generate a thumbnail image from a video at a specific timestamp
+// @Tags Media
+// @Accept json
+// @Produce json
+// @Param request body object{object_name=string,timestamp_seconds=float64} true "Thumbnail generation data"
+// @Success 200 {object} object{thumbnail_url=string} "Generated thumbnail URL"
+// @Failure 400 {object} object{error=string} "Bad request - Missing object_name"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /media/generate-thumbnail [post]
 func handleGenerateThumbnail_Gin(c *gin.Context) {
 	log.Println("=== THUMBNAIL GENERATION REQUEST ===")
 
@@ -1333,17 +1653,17 @@ func handleGenerateThumbnail_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetHomeFeed ---
 // handleGetHomeFeed_Gin godoc
 // @Summary Get home feed
-// @Description Get personalized home feed for the authenticated user
-// @Tags feed
+// @Description Get personalized home feed with posts from followed users
+// @Tags Feed
 // @Accept json
 // @Produce json
 // @Param page query int false "Page number" default(1)
-// @Param limit query int false "Items per page" default(20)
-// @Success 200 {array} object "List of posts"
-// @Failure 401 {object} object "Unauthorized"
+// @Param limit query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} object{posts=[]object} "List of posts from followed users"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
 // @Security BearerAuth
 // @Router /feed/home [get]
 func handleGetHomeFeed_Gin(c *gin.Context) {
@@ -1384,7 +1704,19 @@ func handleGetHomeFeed_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
-// --- GIN-NATIVE HANDLER: handleGetExploreFeed ---
+// handleGetExploreFeed_Gin godoc
+// @Summary Get explore feed
+// @Description Get explore feed with trending and recommended posts from all users
+// @Tags Feed
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} object{posts=[]object} "List of trending and recommended posts"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /feed/explore [get]
 func handleGetExploreFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1418,7 +1750,19 @@ func handleGetExploreFeed_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
-// --- GIN-NATIVE HANDLER: handleGetReelsFeed ---
+// handleGetReelsFeed_Gin godoc
+// @Summary Get reels feed
+// @Description Get feed of video reels (short-form videos)
+// @Tags Feed
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page (max 100)" default(20)
+// @Success 200 {object} object{posts=[]object} "List of video reels"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /feed/reels [get]
 func handleGetReelsFeed_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1452,17 +1796,17 @@ func handleGetReelsFeed_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"posts": grpcRes.Posts})
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUserProfile ---
-// This is a complex aggregator handler
 // handleGetUserProfile_Gin godoc
 // @Summary Get user profile
-// @Description Get user profile by user ID or username
-// @Tags users
+// @Description Get complete user profile by username including bio, stats, and relationship status
+// @Tags Users
 // @Accept json
 // @Produce json
-// @Param id path string true "User ID or username"
-// @Success 200 {object} object "User profile"
-// @Failure 404 {object} object "User not found"
+// @Param id path string true "Username"
+// @Success 200 {object} object{user=object,post_count=int64,reel_count=int64} "User profile with post/reel counts"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
 // @Security BearerAuth
 // @Router /users/{id} [get]
 func handleGetUserProfile_Gin(c *gin.Context) {
@@ -1516,7 +1860,21 @@ func handleGetUserProfile_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUserPosts ---
+// handleGetUserPosts_Gin godoc
+// @Summary Get user's posts
+// @Description Get paginated list of posts created by a specific user
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path string true "Username"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(12)
+// @Success 200 {array} object "List of user's posts"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/posts [get]
 func handleGetUserPosts_Gin(c *gin.Context) {
 	usernameToFind := c.Param("id")
 
@@ -1548,7 +1906,21 @@ func handleGetUserPosts_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Posts)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUserReels ---
+// handleGetUserReels_Gin godoc
+// @Summary Get user's reels
+// @Description Get paginated list of video reels created by a specific user
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path string true "Username"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(12)
+// @Success 200 {array} object "List of user's reels"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/reels [get]
 func handleGetUserReels_Gin(c *gin.Context) {
 	usernameToFind := c.Param("id")
 
@@ -1580,7 +1952,20 @@ func handleGetUserReels_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Posts)
 }
 
-// --- GIN-NATIVE HANDLER: handleCompleteProfile ---
+// handleCompleteProfile_Gin godoc
+// @Summary Complete user profile
+// @Description Complete user profile after registration (username, DOB, gender)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param request body object{username=string,date_of_birth=string,gender=string} true "Profile completion data"
+// @Success 200 {object} object{message=string} "Profile completed successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 409 {object} object{error=string} "Conflict - Username already taken"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/complete-profile [put]
 func handleCompleteProfile_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1616,7 +2001,19 @@ func handleCompleteProfile_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": grpcRes.Message})
 }
 
-// --- GIN-NATIVE HANDLER: handleUpdateProfile ---
+// handleUpdateProfile_Gin godoc
+// @Summary Update user profile
+// @Description Update user profile information (name, bio, gender, profile picture)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param request body object{name=string,bio=string,gender=string,profile_picture_url=string} true "Profile update data"
+// @Success 200 {object} object "Updated profile information"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /profile/edit [put]
 func handleUpdateProfile_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1654,7 +2051,19 @@ func handleUpdateProfile_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes) // Return the full updated profile
 }
 
-// --- GIN-NATIVE HANDLER: handleSetPrivacy ---
+// handleSetPrivacy_Gin godoc
+// @Summary Set account privacy
+// @Description Set account to private or public
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param request body object{is_private=bool} true "Privacy setting"
+// @Success 200 {object} object{message=string} "Privacy setting updated"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /settings/privacy [put]
 func handleSetPrivacy_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1686,7 +2095,21 @@ func handleSetPrivacy_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleBlockUser (Handles POST for Block, DELETE for Unblock) ---
+// handleBlockUser_Gin godoc
+// @Summary Block or unblock a user
+// @Description Block a user (POST) to prevent them from seeing your content, or unblock them (DELETE)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID to block/unblock"
+// @Success 200 {object} object{message=string} "User blocked/unblocked successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/block [post]
+// @Router /users/{id}/block [delete]
 func handleBlockUser_Gin(c *gin.Context) {
 	// 1. Get the current user's ID from the JWT
 	blockerID, ok := c.Request.Context().Value(userIDKey).(int64)
@@ -1736,7 +2159,19 @@ func handleBlockUser_Gin(c *gin.Context) {
 	}
 }
 
-// --- GIN-NATIVE HANDLER: handleCreateCollection ---
+// handleCreateCollection_Gin godoc
+// @Summary Create a collection
+// @Description Create a new collection to organize saved posts
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param request body object{name=string} true "Collection name"
+// @Success 201 {object} object{collection_id=int64,message=string} "Collection created successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Missing name"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections [post]
 func handleCreateCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1761,7 +2196,17 @@ func handleCreateCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUserCollections ---
+// handleGetUserCollections_Gin godoc
+// @Summary Get user's collections
+// @Description Get all collections created by the authenticated user
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Success 200 {array} object "List of user's collections"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections [get]
 func handleGetUserCollections_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1778,7 +2223,23 @@ func handleGetUserCollections_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Collections)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetPostsInCollection ---
+// handleGetPostsInCollection_Gin godoc
+// @Summary Get posts in a collection
+// @Description Get paginated list of posts saved in a specific collection
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Collection ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(12)
+// @Success 200 {array} object "List of posts in the collection"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid collection ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not your collection"
+// @Failure 404 {object} object{error=string} "Collection not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections/{id} [get]
 func handleGetPostsInCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1810,7 +2271,60 @@ func handleGetPostsInCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Posts)
 }
 
-// --- GIN-NATIVE HANDLER: handleSavePostToCollection ---
+// handleGetCollectionsForPost_Gin godoc
+// @Summary Get collections containing a post
+// @Description Get list of collection IDs that contain a specific post
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} object{collection_ids=[]int64} "List of collection IDs"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /posts/{id}/collections [get]
+func handleGetCollectionsForPost_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+	postID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
+
+	grpcReq := &postPb.GetCollectionsForPostRequest{
+		UserId: userID,
+		PostId: postID,
+	}
+	grpcRes, err := postClient.GetCollectionsForPost(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"collection_ids": grpcRes.CollectionIds})
+}
+
+// handleSavePostToCollection_Gin godoc
+// @Summary Save post to collection
+// @Description Save a post to a specific collection
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Collection ID"
+// @Param request body object{post_id=int64} true "Post ID to save"
+// @Success 200 {object} object{message=string} "Post saved to collection"
+// @Failure 400 {object} object{error=string} "Bad request - Missing post_id"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not your collection"
+// @Failure 404 {object} object{error=string} "Collection or post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections/{id}/posts [post]
 func handleSavePostToCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1845,7 +2359,22 @@ func handleSavePostToCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleUnsavePostFromCollection ---
+// handleUnsavePostFromCollection_Gin godoc
+// @Summary Remove post from collection
+// @Description Remove a saved post from a collection
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Collection ID"
+// @Param post_id path int true "Post ID to remove"
+// @Success 200 {object} object{message=string} "Post removed from collection"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid IDs"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not your collection"
+// @Failure 404 {object} object{error=string} "Collection or post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections/{id}/posts/{post_id} [delete]
 func handleUnsavePostFromCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1877,7 +2406,21 @@ func handleUnsavePostFromCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleDeleteCollection ---
+// handleDeleteCollection_Gin godoc
+// @Summary Delete a collection
+// @Description Delete a collection (all saved posts will be removed from it)
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Collection ID"
+// @Success 200 {object} object{message=string} "Collection deleted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid collection ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not your collection"
+// @Failure 404 {object} object{error=string} "Collection not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections/{id} [delete]
 func handleDeleteCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1900,7 +2443,22 @@ func handleDeleteCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleRenameCollection ---
+// handleRenameCollection_Gin godoc
+// @Summary Rename a collection
+// @Description Change the name of an existing collection
+// @Tags Collections
+// @Accept json
+// @Produce json
+// @Param id path int true "Collection ID"
+// @Param request body object{new_name=string} true "New collection name"
+// @Success 200 {object} object{message=string} "Collection renamed successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Missing new_name"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not your collection"
+// @Failure 404 {object} object{error=string} "Collection not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /collections/{id} [put]
 func handleRenameCollection_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -1935,6 +2493,18 @@ func handleRenameCollection_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
+// handleVerifyRegistrationOtp godoc
+// @Summary Verify registration OTP
+// @Description Verify OTP code sent to email during registration and complete signup
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string,otp_code=string} true "OTP verification data"
+// @Success 200 {object} object{message=string,access_token=string,refresh_token=string} "Registration verified successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid input"
+// @Failure 401 {object} object{error=string} "Unauthorized - Invalid OTP code"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/verify-otp [post]
 func handleVerifyRegistrationOtp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -1969,7 +2539,19 @@ func handleVerifyRegistrationOtp(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleCreateConversation ---
+// handleCreateConversation_Gin godoc
+// @Summary Create a conversation
+// @Description Create a new conversation (DM or group chat) with one or more participants
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param request body object{participant_ids=[]int64,group_name=string} true "Conversation data (group_name optional for DMs)"
+// @Success 201 {object} object{conversation_id=string,message=string} "Conversation created successfully"
+// @Failure 400 {object} object{error=string} "Bad request - participant_ids must not be empty"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations [post]
 func handleCreateConversation_Gin(c *gin.Context) {
 	creatorID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2009,7 +2591,22 @@ func handleCreateConversation_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleSendMessage ---
+// handleSendMessage_Gin godoc
+// @Summary Send a text message
+// @Description Send a text message in a conversation
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Param request body object{content=string} true "Message content"
+// @Success 201 {object} object "Sent message details"
+// @Failure 400 {object} object{error=string} "Bad request - Missing content"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id}/messages [post]
 func handleSendMessage_Gin(c *gin.Context) {
 	senderID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2046,7 +2643,23 @@ func handleSendMessage_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Message)
 }
 
-// --- GIN-NATIVE HANDLER: handleSendMessageWithMedia ---
+// handleSendMessageWithMedia_Gin godoc
+// @Summary Send a message with media
+// @Description Send a message with an image, video, or GIF attachment
+// @Tags Messages
+// @Accept multipart/form-data
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Param file formData file true "Media file (image/video/gif)"
+// @Param content formData string false "Optional text content"
+// @Success 201 {object} object "Sent message with media details"
+// @Failure 400 {object} object{error=string} "Bad request - Missing file or unsupported media type"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id}/messages/media [post]
 func handleSendMessageWithMedia_Gin(c *gin.Context) {
 	senderID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2132,7 +2745,19 @@ func handleSendMessageWithMedia_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Message)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetConversations ---
+// handleGetConversations_Gin godoc
+// @Summary Get user's conversations
+// @Description Get paginated list of conversations for the authenticated user
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {array} object "List of conversations with last message"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations [get]
 func handleGetConversations_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2168,7 +2793,23 @@ func handleGetConversations_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Conversations)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetMessages ---
+// handleGetMessages_Gin godoc
+// @Summary Get messages in a conversation
+// @Description Get paginated list of messages in a specific conversation
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(50)
+// @Success 200 {array} object "List of messages"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid conversation ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id}/messages [get]
 func handleGetMessages_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2208,6 +2849,22 @@ func handleGetMessages_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Messages)
 }
 
+// handleSearchMessages_Gin godoc
+// @Summary Search messages in a conversation
+// @Description Search for messages containing specific text in a conversation
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Param q query string true "Search query"
+// @Success 200 {array} object "List of matching messages"
+// @Failure 400 {object} object{error=string} "Bad request - Search query required"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id}/messages/search [get]
 func handleSearchMessages_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2242,7 +2899,19 @@ func handleSearchMessages_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Messages)
 }
 
-// --- GIN-NATIVE HANDLER: handleSearchUsers ---
+// handleSearchUsers_Gin godoc
+// @Summary Search users
+// @Description Search for users by username or name
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param q query string true "Search query (username or name)"
+// @Success 200 {array} object "List of matching users"
+// @Failure 400 {object} object{error=string} "Bad request - Missing search query"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /search/users [get]
 func handleSearchUsers_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2273,7 +2942,20 @@ func handleSearchUsers_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Users)
 }
 
-// --- GIN-NATIVE HANDLER: handleSummarizeCaption (BapTion) ---
+// handleSummarizeCaption_Gin godoc
+// @Summary Summarize post caption (BapTion)
+// @Description Generate AI-powered summary of a post's caption
+// @Tags Posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {object} object{summary=string} "Caption summary"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Failure 503 {object} object{error=string} "AI service unavailable"
+// @Security BearerAuth
+// @Router /posts/{id}/summarize [post]
 func handleSummarizeCaption_Gin(c *gin.Context) {
 	postIDStr := c.Param("id")
 	postID, err := strconv.ParseInt(postIDStr, 10, 64)
@@ -2331,7 +3013,20 @@ func handleSummarizeCaption_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, aiResponse)
 }
 
-// --- GIN-NATIVE HANDLER: handleReportPost ---
+// handleReportPost_Gin godoc
+// @Summary Report a post
+// @Description Report a post for violating community guidelines
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Param request body object{post_id=int64,reason=string} true "Report data"
+// @Success 201 {object} object{message=string} "Report submitted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Missing post_id or reason"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /reports/post [post]
 func handleReportPost_Gin(c *gin.Context) {
 	reporterID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2366,7 +3061,20 @@ func handleReportPost_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleReportUser ---
+// handleReportUser_Gin godoc
+// @Summary Report a user
+// @Description Report a user for violating community guidelines
+// @Tags Reports
+// @Accept json
+// @Produce json
+// @Param request body object{reported_user_id=int64,reason=string} true "Report data"
+// @Success 201 {object} object{message=string} "Report submitted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Missing reported_user_id or reason"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /reports/user [post]
 func handleReportUser_Gin(c *gin.Context) {
 	reporterID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2401,7 +3109,18 @@ func handleReportUser_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetAllUsers (Admin) ---
+// handleGetAllUsers_Gin godoc
+// @Summary Get all users (Admin)
+// @Description Get list of all users in the system (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Success 200 {array} object "List of all users"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/users [get]
 func handleGetAllUsers_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2426,7 +3145,21 @@ func handleGetAllUsers_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Users)
 }
 
-// --- GIN-NATIVE HANDLER: handleBanUser ---
+// handleBanUser_Gin godoc
+// @Summary Ban a user (Admin)
+// @Description Ban a user from the platform (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID to ban"
+// @Success 200 {object} object{message=string} "User banned successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/users/{id}/ban [post]
 func handleBanUser_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2456,7 +3189,21 @@ func handleBanUser_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleUnbanUser ---
+// handleUnbanUser_Gin godoc
+// @Summary Unban a user (Admin)
+// @Description Remove ban from a user (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID to unban"
+// @Success 200 {object} object{message=string} "User unbanned successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/users/{id}/unban [post]
 func handleUnbanUser_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2486,7 +3233,21 @@ func handleUnbanUser_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetPostReports ---
+// handleGetPostReports_Gin godoc
+// @Summary Get post reports (Admin)
+// @Description Get list of post reports (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(50)
+// @Param unresolved_only query bool false "Show only unresolved reports" default(true)
+// @Success 200 {array} object "List of post reports"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/reports/posts [get]
 func handleGetPostReports_Gin(c *gin.Context) {
 	// Pagination and filtering
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -2509,7 +3270,21 @@ func handleGetPostReports_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Reports)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetUserReports ---
+// handleGetUserReports_Gin godoc
+// @Summary Get user reports (Admin)
+// @Description Get list of user reports (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(50)
+// @Param unresolved_only query bool false "Show only unresolved reports" default(true)
+// @Success 200 {array} object "List of user reports"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/reports/users [get]
 func handleGetUserReports_Gin(c *gin.Context) {
 	// Pagination and filtering
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -2532,7 +3307,22 @@ func handleGetUserReports_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Reports)
 }
 
-// --- GIN-NATIVE HANDLER: handleResolvePostReport ---
+// handleResolvePostReport_Gin godoc
+// @Summary Resolve post report (Admin)
+// @Description Accept or reject a post report (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "Report ID"
+// @Param request body object{action=string} true "Action: ACCEPT or REJECT"
+// @Success 200 {object} object{message=string} "Report resolved successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid action"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 404 {object} object{error=string} "Report not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/reports/posts/{id}/resolve [post]
 func handleResolvePostReport_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2570,7 +3360,22 @@ func handleResolvePostReport_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleResolveUserReport ---
+// handleResolveUserReport_Gin godoc
+// @Summary Resolve user report (Admin)
+// @Description Accept or reject a user report (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "Report ID"
+// @Param request body object{action=string} true "Action: ACCEPT or REJECT"
+// @Success 200 {object} object{message=string} "Report resolved successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid action"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 404 {object} object{error=string} "Report not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/reports/users/{id}/resolve [post]
 func handleResolveUserReport_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2608,7 +3413,20 @@ func handleResolveUserReport_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleSubmitVerification (User-facing) ---
+// handleSubmitVerification_Gin godoc
+// @Summary Submit verification request
+// @Description Submit a request for account verification (blue checkmark)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param request body object{id_card_number=string,face_picture_url=string,reason=string} true "Verification request data"
+// @Success 201 {object} object "Verification request details"
+// @Failure 400 {object} object{error=string} "Bad request - Missing required fields"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 409 {object} object{error=string} "Conflict - Already verified or pending request"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /profile/verify [post]
 func handleSubmitVerification_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2644,7 +3462,20 @@ func handleSubmitVerification_Gin(c *gin.Context) {
 	c.JSON(http.StatusCreated, grpcRes.Request)
 }
 
-// --- GIN-NATIVE HANDLER: handleSendNewsletter (Admin) ---
+// handleSendNewsletter_Gin godoc
+// @Summary Send newsletter (Admin)
+// @Description Send newsletter email to all subscribed users (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param request body object{subject=string,body=string} true "Newsletter content"
+// @Success 200 {object} object{message=string} "Newsletter sent successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Missing subject or body"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/newsletters [post]
 func handleSendNewsletter_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2678,7 +3509,21 @@ func handleSendNewsletter_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetVerifications (Admin) ---
+// handleGetVerifications_Gin godoc
+// @Summary Get verification requests (Admin)
+// @Description Get list of user verification requests (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(50)
+// @Param status query string false "Filter by status: pending, approved, rejected" default("pending")
+// @Success 200 {array} object "List of verification requests"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/verifications [get]
 func handleGetVerifications_Gin(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
@@ -2703,7 +3548,22 @@ func handleGetVerifications_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Requests)
 }
 
-// --- GIN-NATIVE HANDLER: handleResolveVerification (Admin) ---
+// handleResolveVerification_Gin godoc
+// @Summary Resolve verification request (Admin)
+// @Description Approve or reject a user verification request (admin only)
+// @Tags Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "Verification request ID"
+// @Param request body object{action=string} true "Action: APPROVE or REJECT"
+// @Success 200 {object} object{message=string} "Verification request resolved"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid action"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Admin access required"
+// @Failure 404 {object} object{error=string} "Verification request not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /admin/verifications/{id}/resolve [post]
 func handleResolveVerification_Gin(c *gin.Context) {
 	adminID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2741,7 +3601,21 @@ func handleResolveVerification_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleSearchHashtag ---
+// handleSearchHashtag_Gin godoc
+// @Summary Search posts by hashtag
+// @Description Search for posts containing a specific hashtag
+// @Tags Hashtags
+// @Accept json
+// @Produce json
+// @Param name path string true "Hashtag name (without #)"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(20)
+// @Success 200 {object} object{posts=[]object,total_post_count=int64} "Posts with the hashtag"
+// @Failure 400 {object} object{error=string} "Bad request - Hashtag name required"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /search/hashtags/{name} [get]
 func handleSearchHashtag_Gin(c *gin.Context) {
 	hashtagName := c.Param("name")
 	if hashtagName == "" {
@@ -2774,7 +3648,18 @@ func handleSearchHashtag_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes) // Returns { "posts": [...], "total_post_count": X }
 }
 
-// --- GIN-NATIVE HANDLER: handleTrendingHashtags ---
+// handleTrendingHashtags_Gin godoc
+// @Summary Get trending hashtags
+// @Description Get list of currently trending hashtags
+// @Tags Hashtags
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of hashtags to return (max 50)" default(10)
+// @Success 200 {array} object "List of trending hashtags with post counts"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /trending/hashtags [get]
 func handleTrendingHashtags_Gin(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	if limit < 1 || limit > 50 {
@@ -2795,7 +3680,21 @@ func handleTrendingHashtags_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes.Hashtags)
 }
 
-// --- GIN-NATIVE HANDLER: handleUnsendMessage ---
+// handleUnsendMessage_Gin godoc
+// @Summary Unsend a message
+// @Description Delete a sent message (only sender can unsend)
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Message ID"
+// @Success 200 {object} object{message=string} "Message unsent successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid message ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not the message sender"
+// @Failure 404 {object} object{error=string} "Message not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /messages/{id} [delete]
 func handleUnsendMessage_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2820,7 +3719,21 @@ func handleUnsendMessage_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleDeleteConversation ---
+// handleDeleteConversation_Gin godoc
+// @Summary Delete a conversation
+// @Description Delete a conversation for the current user (only removes it from their view)
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Success 200 {object} object{message=string} "Conversation deleted successfully"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid conversation ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id} [delete]
 func handleDeleteConversation_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2845,7 +3758,21 @@ func handleDeleteConversation_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGetVideoToken ---
+// handleGetVideoToken_Gin godoc
+// @Summary Get video call token
+// @Description Get a token for initiating a video call in a conversation
+// @Tags Messages
+// @Accept json
+// @Produce json
+// @Param id path string true "Conversation ID"
+// @Success 200 {object} object{token=string,room_name=string} "Video call token and room name"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid conversation ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 403 {object} object{error=string} "Forbidden - Not a participant"
+// @Failure 404 {object} object{error=string} "Conversation not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /conversations/{id}/video_token [get]
 func handleGetVideoToken_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -2870,7 +3797,18 @@ func handleGetVideoToken_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, grpcRes)
 }
 
-// --- GIN-NATIVE HANDLER: handleGoogleCallback ---
+// handleGoogleCallback_Gin godoc
+// @Summary Google OAuth callback
+// @Description Handle Google OAuth authentication callback
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body object{auth_code=string} true "Google OAuth authorization code"
+// @Success 200 {object} object{message=string,access_token=string,refresh_token=string} "Authentication successful"
+// @Failure 400 {object} object{error=string} "Bad request - Missing auth_code"
+// @Failure 401 {object} object{error=string} "Unauthorized - Invalid auth code"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/google/callback [post]
 func handleGoogleCallback_Gin(c *gin.Context) {
 	var req struct {
 		AuthCode string `json:"auth_code"`
@@ -2896,7 +3834,17 @@ func handleGoogleCallback_Gin(c *gin.Context) {
 	})
 }
 
-// --- GIN-NATIVE HANDLER: handleCheckUsername ---
+// handleCheckUsername_Gin godoc
+// @Summary Check username availability
+// @Description Check if a username is available for registration
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param username path string true "Username to check"
+// @Success 200 {object} object{exists=bool,available=bool} "Username availability status"
+// @Failure 400 {object} object{error=string} "Bad request - Username required"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Router /auth/check-username/{username} [get]
 func handleCheckUsername_Gin(c *gin.Context) {
 	username := c.Param("username")
 
@@ -2926,7 +3874,19 @@ func handleCheckUsername_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"exists": true, "available": false})
 }
 
-// --- HANDLER: GetUserTaggedPosts ---
+// handleGetUserTaggedPosts_Gin godoc
+// @Summary Get user's tagged posts
+// @Description Get posts where the user is tagged
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path string true "Username"
+// @Success 200 {array} object "List of posts where user is tagged"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/tagged [get]
 func handleGetUserTaggedPosts_Gin(c *gin.Context) {
 	requesterID, _ := c.Request.Context().Value(userIDKey).(int64)
 	username := c.Param("id")
@@ -2954,7 +3914,20 @@ func handleGetUserTaggedPosts_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, res.Posts)
 }
 
-// --- HANDLER: GetFollowersList ---
+// handleGetFollowersList_Gin godoc
+// @Summary Get user's followers
+// @Description Get list of users who follow a specific user
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {array} object "List of followers with user details"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/followers [get]
 func handleGetFollowersList_Gin(c *gin.Context) {
 	userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -2981,7 +3954,20 @@ func handleGetFollowersList_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-// --- HANDLER: GetFollowingList ---
+// handleGetFollowingList_Gin godoc
+// @Summary Get user's following
+// @Description Get list of users that a specific user follows
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {array} object "List of followed users with details"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid user ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "User not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/{id}/following [get]
 func handleGetFollowingList_Gin(c *gin.Context) {
 	userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
@@ -3008,7 +3994,20 @@ func handleGetFollowingList_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-// --- HANDLER: GetPostLikers ---
+// handleGetPostLikers_Gin godoc
+// @Summary Get post likes
+// @Description Get list of users who liked a specific post
+// @Tags Posts
+// @Accept json
+// @Produce json
+// @Param id path int true "Post ID"
+// @Success 200 {array} object "List of users who liked the post"
+// @Failure 400 {object} object{error=string} "Bad request - Invalid post ID"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Post not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /posts/{id}/likes [get]
 func handleGetPostLikers_Gin(c *gin.Context) {
 	postIDStr := c.Param("id")
 
@@ -3019,7 +4018,18 @@ func handleGetPostLikers_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, []map[string]interface{}{})
 }
 
-// --- HANDLER: GetTopUsers ---
+// handleGetTopUsers_Gin godoc
+// @Summary Get top users
+// @Description Get list of top users sorted by follower count
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of users to return (max 50)" default(10)
+// @Success 200 {array} object "List of top users with follower counts"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/top [get]
 func handleGetTopUsers_Gin(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -3075,7 +4085,17 @@ func handleGetTopUsers_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-// --- HANDLER: GetStoryFeed ---
+// handleGetStoryFeed_Gin godoc
+// @Summary Get story feed
+// @Description Get stories from followed users grouped by author
+// @Tags Stories
+// @Accept json
+// @Produce json
+// @Success 200 {array} object "List of story groups from followed users"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /stories/feed [get]
 func handleGetStoryFeed_Gin(c *gin.Context) {
 	userID, _ := c.Request.Context().Value(userIDKey).(int64)
 
@@ -3090,7 +4110,17 @@ func handleGetStoryFeed_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, res.StoryGroups)
 }
 
-// --- HANDLER: GetUserArchive ---
+// handleGetUserArchive_Gin godoc
+// @Summary Get story archive
+// @Description Get authenticated user's expired stories (24h+)
+// @Tags Stories
+// @Accept json
+// @Produce json
+// @Success 200 {array} object "List of archived stories"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /stories/archive [get]
 func handleGetUserArchive_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -3125,7 +4155,19 @@ type NotificationResponse struct {
 	CreatedAt              string `json:"created_at"`
 }
 
-// handleGetNotifications returns notifications for the current user
+// handleGetNotifications_Gin godoc
+// @Summary Get notifications
+// @Description Get paginated list of notifications for the authenticated user with actor details
+// @Tags Notifications
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of notifications to return" default(50)
+// @Success 200 {object} object{notifications=[]object,unread_count=int} "List of notifications with unread count"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Failure 503 {object} object{error=string} "Notification service unavailable"
+// @Security BearerAuth
+// @Router /notifications [get]
 func handleGetNotifications_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -3196,7 +4238,20 @@ func handleGetNotifications_Gin(c *gin.Context) {
 	})
 }
 
-// handleMarkNotificationRead marks a single notification as read
+// handleMarkNotificationRead_Gin godoc
+// @Summary Mark notification as read
+// @Description Mark a specific notification as read
+// @Tags Notifications
+// @Accept json
+// @Produce json
+// @Param id path int true "Notification ID"
+// @Success 200 {object} object{message=string} "Notification marked as read"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 404 {object} object{error=string} "Notification not found"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Failure 503 {object} object{error=string} "Notification service unavailable"
+// @Security BearerAuth
+// @Router /notifications/{id}/read [put]
 func handleMarkNotificationRead_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {
@@ -3229,7 +4284,18 @@ func handleMarkNotificationRead_Gin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Notification marked as read"})
 }
 
-// handleMarkAllNotificationsRead marks all notifications as read for the current user
+// handleMarkAllNotificationsRead_Gin godoc
+// @Summary Mark all notifications as read
+// @Description Mark all notifications as read for the authenticated user
+// @Tags Notifications
+// @Accept json
+// @Produce json
+// @Success 200 {object} object{message=string,count=int64} "All notifications marked as read with count"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Failure 503 {object} object{error=string} "Notification service unavailable"
+// @Security BearerAuth
+// @Router /notifications/read-all [put]
 func handleMarkAllNotificationsRead_Gin(c *gin.Context) {
 	userID, ok := c.Request.Context().Value(userIDKey).(int64)
 	if !ok {

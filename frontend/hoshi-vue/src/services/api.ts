@@ -386,6 +386,11 @@ export const feedAPI = {
 
 // Post APIs
 export const postAPI = {
+  getPost: async (postId: number) => {
+    const response = await apiClient.get(`/posts/${postId}`);
+    return response.data;
+  },
+
   createPost: async (data: {
     caption: string
     media_urls: string[]
@@ -467,6 +472,11 @@ export const storyAPI = {
     return response.data;
   },
 
+  viewStory: async (storyId: string) => {
+    const response = await apiClient.post(`/stories/${storyId}/view`);
+    return response.data;
+  },
+
   getArchive: async () => {
     const response = await apiClient.get("/stories/archive");
     return response.data; // Returns Story[]
@@ -520,6 +530,11 @@ export const collectionAPI = {
   getPosts: async (collectionId: string, page: number = 1, limit: number = 12) => {
     const response = await apiClient.get(`/collections/${collectionId}?page=${page}&limit=${limit}`);
     return response.data;
+  },
+
+  getCollectionsForPost: async (postId: string) => {
+    const response = await apiClient.get(`/posts/${postId}/collections`);
+    return response.data; // Returns { collection_ids: string[] }
   },
 
   savePost: async (collectionId: string, postId: number) => {

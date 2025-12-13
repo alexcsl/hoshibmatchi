@@ -615,6 +615,11 @@ type CommentResponse struct {
 	CreatedAt        string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	PostId           int64                  `protobuf:"varint,6,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	ParentCommentId  int64                  `protobuf:"varint,7,opt,name=parent_comment_id,json=parentCommentId,proto3" json:"parent_comment_id,omitempty"`
+	UserId           int64                  `protobuf:"varint,8,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	LikeCount        int64                  `protobuf:"varint,9,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
+	IsLiked          bool                   `protobuf:"varint,10,opt,name=is_liked,json=isLiked,proto3" json:"is_liked,omitempty"`
+	ReplyCount       int64                  `protobuf:"varint,11,opt,name=reply_count,json=replyCount,proto3" json:"reply_count,omitempty"`
+	AuthorIsVerified bool                   `protobuf:"varint,12,opt,name=author_is_verified,json=authorIsVerified,proto3" json:"author_is_verified,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -696,6 +701,41 @@ func (x *CommentResponse) GetParentCommentId() int64 {
 		return x.ParentCommentId
 	}
 	return 0
+}
+
+func (x *CommentResponse) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *CommentResponse) GetLikeCount() int64 {
+	if x != nil {
+		return x.LikeCount
+	}
+	return 0
+}
+
+func (x *CommentResponse) GetIsLiked() bool {
+	if x != nil {
+		return x.IsLiked
+	}
+	return false
+}
+
+func (x *CommentResponse) GetReplyCount() int64 {
+	if x != nil {
+		return x.ReplyCount
+	}
+	return 0
+}
+
+func (x *CommentResponse) GetAuthorIsVerified() bool {
+	if x != nil {
+		return x.AuthorIsVerified
+	}
+	return false
 }
 
 // --- Delete a Comment ---
@@ -1317,7 +1357,8 @@ type Collection struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"` // TODO: Add cover_image_urls from the 4 most recent posts
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	IsDefault     bool                   `protobuf:"varint,4,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"` // TODO: Add cover_image_urls from the 4 most recent posts
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1371,6 +1412,13 @@ func (x *Collection) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *Collection) GetIsDefault() bool {
+	if x != nil {
+		return x.IsDefault
+	}
+	return false
 }
 
 // --- Create Collection ---
@@ -1584,6 +1632,103 @@ func (x *GetPostsInCollectionRequest) GetPageOffset() int32 {
 	return 0
 }
 
+// --- Get Collections for a Post ---
+type GetCollectionsForPostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // For validation
+	PostId        int64                  `protobuf:"varint,2,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCollectionsForPostRequest) Reset() {
+	*x = GetCollectionsForPostRequest{}
+	mi := &file_post_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCollectionsForPostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCollectionsForPostRequest) ProtoMessage() {}
+
+func (x *GetCollectionsForPostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCollectionsForPostRequest.ProtoReflect.Descriptor instead.
+func (*GetCollectionsForPostRequest) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetCollectionsForPostRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetCollectionsForPostRequest) GetPostId() int64 {
+	if x != nil {
+		return x.PostId
+	}
+	return 0
+}
+
+type GetCollectionsForPostResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CollectionIds []string               `protobuf:"bytes,1,rep,name=collection_ids,json=collectionIds,proto3" json:"collection_ids,omitempty"` // IDs of collections that contain this post
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCollectionsForPostResponse) Reset() {
+	*x = GetCollectionsForPostResponse{}
+	mi := &file_post_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCollectionsForPostResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCollectionsForPostResponse) ProtoMessage() {}
+
+func (x *GetCollectionsForPostResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_post_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCollectionsForPostResponse.ProtoReflect.Descriptor instead.
+func (*GetCollectionsForPostResponse) Descriptor() ([]byte, []int) {
+	return file_post_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *GetCollectionsForPostResponse) GetCollectionIds() []string {
+	if x != nil {
+		return x.CollectionIds
+	}
+	return nil
+}
+
 // --- Save/Unsave Post ---
 type SavePostToCollectionRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1596,7 +1741,7 @@ type SavePostToCollectionRequest struct {
 
 func (x *SavePostToCollectionRequest) Reset() {
 	*x = SavePostToCollectionRequest{}
-	mi := &file_post_proto_msgTypes[26]
+	mi := &file_post_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1608,7 +1753,7 @@ func (x *SavePostToCollectionRequest) String() string {
 func (*SavePostToCollectionRequest) ProtoMessage() {}
 
 func (x *SavePostToCollectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[26]
+	mi := &file_post_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1621,7 +1766,7 @@ func (x *SavePostToCollectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePostToCollectionRequest.ProtoReflect.Descriptor instead.
 func (*SavePostToCollectionRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{26}
+	return file_post_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SavePostToCollectionRequest) GetUserId() int64 {
@@ -1654,7 +1799,7 @@ type SavePostToCollectionResponse struct {
 
 func (x *SavePostToCollectionResponse) Reset() {
 	*x = SavePostToCollectionResponse{}
-	mi := &file_post_proto_msgTypes[27]
+	mi := &file_post_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1666,7 +1811,7 @@ func (x *SavePostToCollectionResponse) String() string {
 func (*SavePostToCollectionResponse) ProtoMessage() {}
 
 func (x *SavePostToCollectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[27]
+	mi := &file_post_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1679,7 +1824,7 @@ func (x *SavePostToCollectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SavePostToCollectionResponse.ProtoReflect.Descriptor instead.
 func (*SavePostToCollectionResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{27}
+	return file_post_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SavePostToCollectionResponse) GetMessage() string {
@@ -1700,7 +1845,7 @@ type UnsavePostFromCollectionRequest struct {
 
 func (x *UnsavePostFromCollectionRequest) Reset() {
 	*x = UnsavePostFromCollectionRequest{}
-	mi := &file_post_proto_msgTypes[28]
+	mi := &file_post_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1712,7 +1857,7 @@ func (x *UnsavePostFromCollectionRequest) String() string {
 func (*UnsavePostFromCollectionRequest) ProtoMessage() {}
 
 func (x *UnsavePostFromCollectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[28]
+	mi := &file_post_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1725,7 +1870,7 @@ func (x *UnsavePostFromCollectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsavePostFromCollectionRequest.ProtoReflect.Descriptor instead.
 func (*UnsavePostFromCollectionRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{28}
+	return file_post_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *UnsavePostFromCollectionRequest) GetUserId() int64 {
@@ -1758,7 +1903,7 @@ type UnsavePostFromCollectionResponse struct {
 
 func (x *UnsavePostFromCollectionResponse) Reset() {
 	*x = UnsavePostFromCollectionResponse{}
-	mi := &file_post_proto_msgTypes[29]
+	mi := &file_post_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1770,7 +1915,7 @@ func (x *UnsavePostFromCollectionResponse) String() string {
 func (*UnsavePostFromCollectionResponse) ProtoMessage() {}
 
 func (x *UnsavePostFromCollectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[29]
+	mi := &file_post_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1783,7 +1928,7 @@ func (x *UnsavePostFromCollectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsavePostFromCollectionResponse.ProtoReflect.Descriptor instead.
 func (*UnsavePostFromCollectionResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{29}
+	return file_post_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UnsavePostFromCollectionResponse) GetMessage() string {
@@ -1804,7 +1949,7 @@ type DeleteCollectionRequest struct {
 
 func (x *DeleteCollectionRequest) Reset() {
 	*x = DeleteCollectionRequest{}
-	mi := &file_post_proto_msgTypes[30]
+	mi := &file_post_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1816,7 +1961,7 @@ func (x *DeleteCollectionRequest) String() string {
 func (*DeleteCollectionRequest) ProtoMessage() {}
 
 func (x *DeleteCollectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[30]
+	mi := &file_post_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1829,7 +1974,7 @@ func (x *DeleteCollectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCollectionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCollectionRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{30}
+	return file_post_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DeleteCollectionRequest) GetUserId() int64 {
@@ -1855,7 +2000,7 @@ type DeleteCollectionResponse struct {
 
 func (x *DeleteCollectionResponse) Reset() {
 	*x = DeleteCollectionResponse{}
-	mi := &file_post_proto_msgTypes[31]
+	mi := &file_post_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1867,7 +2012,7 @@ func (x *DeleteCollectionResponse) String() string {
 func (*DeleteCollectionResponse) ProtoMessage() {}
 
 func (x *DeleteCollectionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[31]
+	mi := &file_post_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1880,7 +2025,7 @@ func (x *DeleteCollectionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCollectionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteCollectionResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{31}
+	return file_post_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *DeleteCollectionResponse) GetMessage() string {
@@ -1901,7 +2046,7 @@ type RenameCollectionRequest struct {
 
 func (x *RenameCollectionRequest) Reset() {
 	*x = RenameCollectionRequest{}
-	mi := &file_post_proto_msgTypes[32]
+	mi := &file_post_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1913,7 +2058,7 @@ func (x *RenameCollectionRequest) String() string {
 func (*RenameCollectionRequest) ProtoMessage() {}
 
 func (x *RenameCollectionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[32]
+	mi := &file_post_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1926,7 +2071,7 @@ func (x *RenameCollectionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameCollectionRequest.ProtoReflect.Descriptor instead.
 func (*RenameCollectionRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{32}
+	return file_post_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RenameCollectionRequest) GetUserId() int64 {
@@ -1954,13 +2099,14 @@ func (x *RenameCollectionRequest) GetNewName() string {
 type GetPostRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PostId        int64                  `protobuf:"varint,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	ViewerId      int64                  `protobuf:"varint,2,opt,name=viewer_id,json=viewerId,proto3" json:"viewer_id,omitempty"` // For checking is_liked and is_saved
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPostRequest) Reset() {
 	*x = GetPostRequest{}
-	mi := &file_post_proto_msgTypes[33]
+	mi := &file_post_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1972,7 +2118,7 @@ func (x *GetPostRequest) String() string {
 func (*GetPostRequest) ProtoMessage() {}
 
 func (x *GetPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[33]
+	mi := &file_post_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1985,12 +2131,19 @@ func (x *GetPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostRequest.ProtoReflect.Descriptor instead.
 func (*GetPostRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{33}
+	return file_post_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GetPostRequest) GetPostId() int64 {
 	if x != nil {
 		return x.PostId
+	}
+	return 0
+}
+
+func (x *GetPostRequest) GetViewerId() int64 {
+	if x != nil {
+		return x.ViewerId
 	}
 	return 0
 }
@@ -2005,7 +2158,7 @@ type GetPostsRequest struct {
 
 func (x *GetPostsRequest) Reset() {
 	*x = GetPostsRequest{}
-	mi := &file_post_proto_msgTypes[34]
+	mi := &file_post_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2017,7 +2170,7 @@ func (x *GetPostsRequest) String() string {
 func (*GetPostsRequest) ProtoMessage() {}
 
 func (x *GetPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[34]
+	mi := &file_post_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2030,7 +2183,7 @@ func (x *GetPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostsRequest.ProtoReflect.Descriptor instead.
 func (*GetPostsRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{34}
+	return file_post_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetPostsRequest) GetPostIds() []int64 {
@@ -2049,7 +2202,7 @@ type GetPostsResponse struct {
 
 func (x *GetPostsResponse) Reset() {
 	*x = GetPostsResponse{}
-	mi := &file_post_proto_msgTypes[35]
+	mi := &file_post_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2061,7 +2214,7 @@ func (x *GetPostsResponse) String() string {
 func (*GetPostsResponse) ProtoMessage() {}
 
 func (x *GetPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[35]
+	mi := &file_post_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2074,7 +2227,7 @@ func (x *GetPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostsResponse.ProtoReflect.Descriptor instead.
 func (*GetPostsResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{35}
+	return file_post_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *GetPostsResponse) GetPosts() []*Post {
@@ -2095,7 +2248,7 @@ type DeletePostRequest struct {
 
 func (x *DeletePostRequest) Reset() {
 	*x = DeletePostRequest{}
-	mi := &file_post_proto_msgTypes[36]
+	mi := &file_post_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2107,7 +2260,7 @@ func (x *DeletePostRequest) String() string {
 func (*DeletePostRequest) ProtoMessage() {}
 
 func (x *DeletePostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[36]
+	mi := &file_post_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2120,7 +2273,7 @@ func (x *DeletePostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePostRequest.ProtoReflect.Descriptor instead.
 func (*DeletePostRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{36}
+	return file_post_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *DeletePostRequest) GetPostId() int64 {
@@ -2146,7 +2299,7 @@ type DeletePostResponse struct {
 
 func (x *DeletePostResponse) Reset() {
 	*x = DeletePostResponse{}
-	mi := &file_post_proto_msgTypes[37]
+	mi := &file_post_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2158,7 +2311,7 @@ func (x *DeletePostResponse) String() string {
 func (*DeletePostResponse) ProtoMessage() {}
 
 func (x *DeletePostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[37]
+	mi := &file_post_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2171,7 +2324,7 @@ func (x *DeletePostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePostResponse.ProtoReflect.Descriptor instead.
 func (*DeletePostResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{37}
+	return file_post_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *DeletePostResponse) GetMessage() string {
@@ -2193,7 +2346,7 @@ type SharePostRequest struct {
 
 func (x *SharePostRequest) Reset() {
 	*x = SharePostRequest{}
-	mi := &file_post_proto_msgTypes[38]
+	mi := &file_post_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2205,7 +2358,7 @@ func (x *SharePostRequest) String() string {
 func (*SharePostRequest) ProtoMessage() {}
 
 func (x *SharePostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[38]
+	mi := &file_post_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2218,7 +2371,7 @@ func (x *SharePostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SharePostRequest.ProtoReflect.Descriptor instead.
 func (*SharePostRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{38}
+	return file_post_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SharePostRequest) GetUserId() int64 {
@@ -2252,7 +2405,7 @@ type SharePostResponse struct {
 
 func (x *SharePostResponse) Reset() {
 	*x = SharePostResponse{}
-	mi := &file_post_proto_msgTypes[39]
+	mi := &file_post_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2264,7 +2417,7 @@ func (x *SharePostResponse) String() string {
 func (*SharePostResponse) ProtoMessage() {}
 
 func (x *SharePostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[39]
+	mi := &file_post_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2277,7 +2430,7 @@ func (x *SharePostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SharePostResponse.ProtoReflect.Descriptor instead.
 func (*SharePostResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{39}
+	return file_post_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SharePostResponse) GetMessage() string {
@@ -2305,7 +2458,7 @@ type UnsharePostRequest struct {
 
 func (x *UnsharePostRequest) Reset() {
 	*x = UnsharePostRequest{}
-	mi := &file_post_proto_msgTypes[40]
+	mi := &file_post_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2317,7 +2470,7 @@ func (x *UnsharePostRequest) String() string {
 func (*UnsharePostRequest) ProtoMessage() {}
 
 func (x *UnsharePostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[40]
+	mi := &file_post_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2330,7 +2483,7 @@ func (x *UnsharePostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsharePostRequest.ProtoReflect.Descriptor instead.
 func (*UnsharePostRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{40}
+	return file_post_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *UnsharePostRequest) GetUserId() int64 {
@@ -2356,7 +2509,7 @@ type UnsharePostResponse struct {
 
 func (x *UnsharePostResponse) Reset() {
 	*x = UnsharePostResponse{}
-	mi := &file_post_proto_msgTypes[41]
+	mi := &file_post_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2368,7 +2521,7 @@ func (x *UnsharePostResponse) String() string {
 func (*UnsharePostResponse) ProtoMessage() {}
 
 func (x *UnsharePostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[41]
+	mi := &file_post_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2381,7 +2534,7 @@ func (x *UnsharePostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsharePostResponse.ProtoReflect.Descriptor instead.
 func (*UnsharePostResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{41}
+	return file_post_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *UnsharePostResponse) GetMessage() string {
@@ -2403,7 +2556,7 @@ type GetSharedPostsRequest struct {
 
 func (x *GetSharedPostsRequest) Reset() {
 	*x = GetSharedPostsRequest{}
-	mi := &file_post_proto_msgTypes[42]
+	mi := &file_post_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2415,7 +2568,7 @@ func (x *GetSharedPostsRequest) String() string {
 func (*GetSharedPostsRequest) ProtoMessage() {}
 
 func (x *GetSharedPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[42]
+	mi := &file_post_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2428,7 +2581,7 @@ func (x *GetSharedPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSharedPostsRequest.ProtoReflect.Descriptor instead.
 func (*GetSharedPostsRequest) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{42}
+	return file_post_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *GetSharedPostsRequest) GetUserId() int64 {
@@ -2465,7 +2618,7 @@ type SharedPostItem struct {
 
 func (x *SharedPostItem) Reset() {
 	*x = SharedPostItem{}
-	mi := &file_post_proto_msgTypes[43]
+	mi := &file_post_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2477,7 +2630,7 @@ func (x *SharedPostItem) String() string {
 func (*SharedPostItem) ProtoMessage() {}
 
 func (x *SharedPostItem) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[43]
+	mi := &file_post_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2490,7 +2643,7 @@ func (x *SharedPostItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SharedPostItem.ProtoReflect.Descriptor instead.
 func (*SharedPostItem) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{43}
+	return file_post_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SharedPostItem) GetId() string {
@@ -2537,7 +2690,7 @@ type GetSharedPostsResponse struct {
 
 func (x *GetSharedPostsResponse) Reset() {
 	*x = GetSharedPostsResponse{}
-	mi := &file_post_proto_msgTypes[44]
+	mi := &file_post_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2549,7 +2702,7 @@ func (x *GetSharedPostsResponse) String() string {
 func (*GetSharedPostsResponse) ProtoMessage() {}
 
 func (x *GetSharedPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_post_proto_msgTypes[44]
+	mi := &file_post_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2562,7 +2715,7 @@ func (x *GetSharedPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSharedPostsResponse.ProtoReflect.Descriptor instead.
 func (*GetSharedPostsResponse) Descriptor() ([]byte, []int) {
-	return file_post_proto_rawDescGZIP(), []int{44}
+	return file_post_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *GetSharedPostsResponse) GetSharedPosts() []*SharedPostItem {
@@ -2629,7 +2782,7 @@ const file_post_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\x03R\x06postId\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x12*\n" +
-	"\x11parent_comment_id\x18\x04 \x01(\x03R\x0fparentCommentId\"\xf6\x01\n" +
+	"\x11parent_comment_id\x18\x04 \x01(\x03R\x0fparentCommentId\"\x98\x03\n" +
 	"\x0fCommentResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\acontent\x18\x02 \x01(\tR\acontent\x12'\n" +
@@ -2638,7 +2791,15 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\tR\tcreatedAt\x12\x17\n" +
 	"\apost_id\x18\x06 \x01(\x03R\x06postId\x12*\n" +
-	"\x11parent_comment_id\x18\a \x01(\x03R\x0fparentCommentId\"N\n" +
+	"\x11parent_comment_id\x18\a \x01(\x03R\x0fparentCommentId\x12\x17\n" +
+	"\auser_id\x18\b \x01(\x03R\x06userId\x12\x1d\n" +
+	"\n" +
+	"like_count\x18\t \x01(\x03R\tlikeCount\x12\x19\n" +
+	"\bis_liked\x18\n" +
+	" \x01(\bR\aisLiked\x12\x1f\n" +
+	"\vreply_count\x18\v \x01(\x03R\n" +
+	"replyCount\x12,\n" +
+	"\x12author_is_verified\x18\f \x01(\bR\x10authorIsVerified\"N\n" +
 	"\x14DeleteCommentRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1d\n" +
 	"\n" +
@@ -2680,12 +2841,14 @@ const file_post_proto_rawDesc = "" +
 	"\n" +
 	"post_count\x18\x01 \x01(\x03R\tpostCount\x12\x1d\n" +
 	"\n" +
-	"reel_count\x18\x02 \x01(\x03R\treelCount\"I\n" +
+	"reel_count\x18\x02 \x01(\x03R\treelCount\"h\n" +
 	"\n" +
 	"Collection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\"F\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"is_default\x18\x04 \x01(\bR\tisDefault\"F\n" +
 	"\x17CreateCollectionRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"4\n" +
@@ -2698,7 +2861,12 @@ const file_post_proto_rawDesc = "" +
 	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x1b\n" +
 	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1f\n" +
 	"\vpage_offset\x18\x04 \x01(\x05R\n" +
-	"pageOffset\"t\n" +
+	"pageOffset\"P\n" +
+	"\x1cGetCollectionsForPostRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x17\n" +
+	"\apost_id\x18\x02 \x01(\x03R\x06postId\"F\n" +
+	"\x1dGetCollectionsForPostResponse\x12%\n" +
+	"\x0ecollection_ids\x18\x01 \x03(\tR\rcollectionIds\"t\n" +
 	"\x1bSavePostToCollectionRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
 	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x17\n" +
@@ -2719,9 +2887,10 @@ const file_post_proto_rawDesc = "" +
 	"\x17RenameCollectionRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12#\n" +
 	"\rcollection_id\x18\x02 \x01(\x03R\fcollectionId\x12\x19\n" +
-	"\bnew_name\x18\x03 \x01(\tR\anewName\")\n" +
+	"\bnew_name\x18\x03 \x01(\tR\anewName\"F\n" +
 	"\x0eGetPostRequest\x12\x17\n" +
-	"\apost_id\x18\x01 \x01(\x03R\x06postId\",\n" +
+	"\apost_id\x18\x01 \x01(\x03R\x06postId\x12\x1b\n" +
+	"\tviewer_id\x18\x02 \x01(\x03R\bviewerId\",\n" +
 	"\x0fGetPostsRequest\x12\x19\n" +
 	"\bpost_ids\x18\x01 \x03(\x03R\apostIds\"4\n" +
 	"\x10GetPostsResponse\x12 \n" +
@@ -2757,7 +2926,7 @@ const file_post_proto_rawDesc = "" +
 	"\x0eshared_caption\x18\x04 \x01(\tR\rsharedCaption\x12\x1b\n" +
 	"\tshared_at\x18\x05 \x01(\tR\bsharedAt\"Q\n" +
 	"\x16GetSharedPostsResponse\x127\n" +
-	"\fshared_posts\x18\x01 \x03(\v2\x14.post.SharedPostItemR\vsharedPosts2\x90\x10\n" +
+	"\fshared_posts\x18\x01 \x03(\v2\x14.post.SharedPostItemR\vsharedPosts2\xf2\x10\n" +
 	"\vPostService\x12?\n" +
 	"\n" +
 	"CreatePost\x12\x17.post.CreatePostRequest\x1a\x18.post.CreatePostResponse\x129\n" +
@@ -2777,7 +2946,8 @@ const file_post_proto_rawDesc = "" +
 	"\x13GetUserContentCount\x12 .post.GetUserContentCountRequest\x1a!.post.GetUserContentCountResponse\x12C\n" +
 	"\x10CreateCollection\x12\x1d.post.CreateCollectionRequest\x1a\x10.post.Collection\x12W\n" +
 	"\x12GetUserCollections\x12\x1f.post.GetUserCollectionsRequest\x1a .post.GetUserCollectionsResponse\x12T\n" +
-	"\x14GetPostsInCollection\x12!.post.GetPostsInCollectionRequest\x1a\x19.post.GetHomeFeedResponse\x12]\n" +
+	"\x14GetPostsInCollection\x12!.post.GetPostsInCollectionRequest\x1a\x19.post.GetHomeFeedResponse\x12`\n" +
+	"\x15GetCollectionsForPost\x12\".post.GetCollectionsForPostRequest\x1a#.post.GetCollectionsForPostResponse\x12]\n" +
 	"\x14SavePostToCollection\x12!.post.SavePostToCollectionRequest\x1a\".post.SavePostToCollectionResponse\x12i\n" +
 	"\x18UnsavePostFromCollection\x12%.post.UnsavePostFromCollectionRequest\x1a&.post.UnsavePostFromCollectionResponse\x12Q\n" +
 	"\x10DeleteCollection\x12\x1d.post.DeleteCollectionRequest\x1a\x1e.post.DeleteCollectionResponse\x12C\n" +
@@ -2804,7 +2974,7 @@ func file_post_proto_rawDescGZIP() []byte {
 	return file_post_proto_rawDescData
 }
 
-var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_post_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_post_proto_goTypes = []any{
 	(*CreatePostRequest)(nil),                // 0: post.CreatePostRequest
 	(*Post)(nil),                             // 1: post.Post
@@ -2832,25 +3002,27 @@ var file_post_proto_goTypes = []any{
 	(*GetUserCollectionsRequest)(nil),        // 23: post.GetUserCollectionsRequest
 	(*GetUserCollectionsResponse)(nil),       // 24: post.GetUserCollectionsResponse
 	(*GetPostsInCollectionRequest)(nil),      // 25: post.GetPostsInCollectionRequest
-	(*SavePostToCollectionRequest)(nil),      // 26: post.SavePostToCollectionRequest
-	(*SavePostToCollectionResponse)(nil),     // 27: post.SavePostToCollectionResponse
-	(*UnsavePostFromCollectionRequest)(nil),  // 28: post.UnsavePostFromCollectionRequest
-	(*UnsavePostFromCollectionResponse)(nil), // 29: post.UnsavePostFromCollectionResponse
-	(*DeleteCollectionRequest)(nil),          // 30: post.DeleteCollectionRequest
-	(*DeleteCollectionResponse)(nil),         // 31: post.DeleteCollectionResponse
-	(*RenameCollectionRequest)(nil),          // 32: post.RenameCollectionRequest
-	(*GetPostRequest)(nil),                   // 33: post.GetPostRequest
-	(*GetPostsRequest)(nil),                  // 34: post.GetPostsRequest
-	(*GetPostsResponse)(nil),                 // 35: post.GetPostsResponse
-	(*DeletePostRequest)(nil),                // 36: post.DeletePostRequest
-	(*DeletePostResponse)(nil),               // 37: post.DeletePostResponse
-	(*SharePostRequest)(nil),                 // 38: post.SharePostRequest
-	(*SharePostResponse)(nil),                // 39: post.SharePostResponse
-	(*UnsharePostRequest)(nil),               // 40: post.UnsharePostRequest
-	(*UnsharePostResponse)(nil),              // 41: post.UnsharePostResponse
-	(*GetSharedPostsRequest)(nil),            // 42: post.GetSharedPostsRequest
-	(*SharedPostItem)(nil),                   // 43: post.SharedPostItem
-	(*GetSharedPostsResponse)(nil),           // 44: post.GetSharedPostsResponse
+	(*GetCollectionsForPostRequest)(nil),     // 26: post.GetCollectionsForPostRequest
+	(*GetCollectionsForPostResponse)(nil),    // 27: post.GetCollectionsForPostResponse
+	(*SavePostToCollectionRequest)(nil),      // 28: post.SavePostToCollectionRequest
+	(*SavePostToCollectionResponse)(nil),     // 29: post.SavePostToCollectionResponse
+	(*UnsavePostFromCollectionRequest)(nil),  // 30: post.UnsavePostFromCollectionRequest
+	(*UnsavePostFromCollectionResponse)(nil), // 31: post.UnsavePostFromCollectionResponse
+	(*DeleteCollectionRequest)(nil),          // 32: post.DeleteCollectionRequest
+	(*DeleteCollectionResponse)(nil),         // 33: post.DeleteCollectionResponse
+	(*RenameCollectionRequest)(nil),          // 34: post.RenameCollectionRequest
+	(*GetPostRequest)(nil),                   // 35: post.GetPostRequest
+	(*GetPostsRequest)(nil),                  // 36: post.GetPostsRequest
+	(*GetPostsResponse)(nil),                 // 37: post.GetPostsResponse
+	(*DeletePostRequest)(nil),                // 38: post.DeletePostRequest
+	(*DeletePostResponse)(nil),               // 39: post.DeletePostResponse
+	(*SharePostRequest)(nil),                 // 40: post.SharePostRequest
+	(*SharePostResponse)(nil),                // 41: post.SharePostResponse
+	(*UnsharePostRequest)(nil),               // 42: post.UnsharePostRequest
+	(*UnsharePostResponse)(nil),              // 43: post.UnsharePostResponse
+	(*GetSharedPostsRequest)(nil),            // 44: post.GetSharedPostsRequest
+	(*SharedPostItem)(nil),                   // 45: post.SharedPostItem
+	(*GetSharedPostsResponse)(nil),           // 46: post.GetSharedPostsResponse
 }
 var file_post_proto_depIdxs = []int32{
 	1,  // 0: post.CreatePostResponse.post:type_name -> post.Post
@@ -2859,7 +3031,7 @@ var file_post_proto_depIdxs = []int32{
 	21, // 3: post.GetUserCollectionsResponse.collections:type_name -> post.Collection
 	1,  // 4: post.GetPostsResponse.posts:type_name -> post.Post
 	1,  // 5: post.SharedPostItem.original_post:type_name -> post.Post
-	43, // 6: post.GetSharedPostsResponse.shared_posts:type_name -> post.SharedPostItem
+	45, // 6: post.GetSharedPostsResponse.shared_posts:type_name -> post.SharedPostItem
 	0,  // 7: post.PostService.CreatePost:input_type -> post.CreatePostRequest
 	3,  // 8: post.PostService.LikePost:input_type -> post.LikePostRequest
 	3,  // 9: post.PostService.UnlikePost:input_type -> post.LikePostRequest
@@ -2877,47 +3049,49 @@ var file_post_proto_depIdxs = []int32{
 	22, // 21: post.PostService.CreateCollection:input_type -> post.CreateCollectionRequest
 	23, // 22: post.PostService.GetUserCollections:input_type -> post.GetUserCollectionsRequest
 	25, // 23: post.PostService.GetPostsInCollection:input_type -> post.GetPostsInCollectionRequest
-	26, // 24: post.PostService.SavePostToCollection:input_type -> post.SavePostToCollectionRequest
-	28, // 25: post.PostService.UnsavePostFromCollection:input_type -> post.UnsavePostFromCollectionRequest
-	30, // 26: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
-	32, // 27: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
-	33, // 28: post.PostService.GetPost:input_type -> post.GetPostRequest
-	34, // 29: post.PostService.GetPosts:input_type -> post.GetPostsRequest
-	36, // 30: post.PostService.DeletePost:input_type -> post.DeletePostRequest
-	38, // 31: post.PostService.SharePost:input_type -> post.SharePostRequest
-	40, // 32: post.PostService.UnsharePost:input_type -> post.UnsharePostRequest
-	42, // 33: post.PostService.GetSharedPosts:input_type -> post.GetSharedPostsRequest
-	18, // 34: post.PostService.GetUserTaggedPosts:input_type -> post.GetUserContentRequest
-	2,  // 35: post.PostService.CreatePost:output_type -> post.CreatePostResponse
-	4,  // 36: post.PostService.LikePost:output_type -> post.LikePostResponse
-	6,  // 37: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
-	8,  // 38: post.PostService.CommentOnPost:output_type -> post.CommentResponse
-	15, // 39: post.PostService.GetCommentsByPost:output_type -> post.GetCommentsByPostResponse
-	10, // 40: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
-	12, // 41: post.PostService.LikeComment:output_type -> post.LikeCommentResponse
-	13, // 42: post.PostService.UnlikeComment:output_type -> post.UnlikeCommentResponse
-	17, // 43: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
-	17, // 44: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
-	17, // 45: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
-	17, // 46: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
-	17, // 47: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
-	20, // 48: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
-	21, // 49: post.PostService.CreateCollection:output_type -> post.Collection
-	24, // 50: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
-	17, // 51: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
-	27, // 52: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
-	29, // 53: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
-	31, // 54: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
-	21, // 55: post.PostService.RenameCollection:output_type -> post.Collection
-	1,  // 56: post.PostService.GetPost:output_type -> post.Post
-	35, // 57: post.PostService.GetPosts:output_type -> post.GetPostsResponse
-	37, // 58: post.PostService.DeletePost:output_type -> post.DeletePostResponse
-	39, // 59: post.PostService.SharePost:output_type -> post.SharePostResponse
-	41, // 60: post.PostService.UnsharePost:output_type -> post.UnsharePostResponse
-	44, // 61: post.PostService.GetSharedPosts:output_type -> post.GetSharedPostsResponse
-	17, // 62: post.PostService.GetUserTaggedPosts:output_type -> post.GetHomeFeedResponse
-	35, // [35:63] is the sub-list for method output_type
-	7,  // [7:35] is the sub-list for method input_type
+	26, // 24: post.PostService.GetCollectionsForPost:input_type -> post.GetCollectionsForPostRequest
+	28, // 25: post.PostService.SavePostToCollection:input_type -> post.SavePostToCollectionRequest
+	30, // 26: post.PostService.UnsavePostFromCollection:input_type -> post.UnsavePostFromCollectionRequest
+	32, // 27: post.PostService.DeleteCollection:input_type -> post.DeleteCollectionRequest
+	34, // 28: post.PostService.RenameCollection:input_type -> post.RenameCollectionRequest
+	35, // 29: post.PostService.GetPost:input_type -> post.GetPostRequest
+	36, // 30: post.PostService.GetPosts:input_type -> post.GetPostsRequest
+	38, // 31: post.PostService.DeletePost:input_type -> post.DeletePostRequest
+	40, // 32: post.PostService.SharePost:input_type -> post.SharePostRequest
+	42, // 33: post.PostService.UnsharePost:input_type -> post.UnsharePostRequest
+	44, // 34: post.PostService.GetSharedPosts:input_type -> post.GetSharedPostsRequest
+	18, // 35: post.PostService.GetUserTaggedPosts:input_type -> post.GetUserContentRequest
+	2,  // 36: post.PostService.CreatePost:output_type -> post.CreatePostResponse
+	4,  // 37: post.PostService.LikePost:output_type -> post.LikePostResponse
+	6,  // 38: post.PostService.UnlikePost:output_type -> post.UnlikePostResponse
+	8,  // 39: post.PostService.CommentOnPost:output_type -> post.CommentResponse
+	15, // 40: post.PostService.GetCommentsByPost:output_type -> post.GetCommentsByPostResponse
+	10, // 41: post.PostService.DeleteComment:output_type -> post.DeleteCommentResponse
+	12, // 42: post.PostService.LikeComment:output_type -> post.LikeCommentResponse
+	13, // 43: post.PostService.UnlikeComment:output_type -> post.UnlikeCommentResponse
+	17, // 44: post.PostService.GetHomeFeed:output_type -> post.GetHomeFeedResponse
+	17, // 45: post.PostService.GetExploreFeed:output_type -> post.GetHomeFeedResponse
+	17, // 46: post.PostService.GetReelsFeed:output_type -> post.GetHomeFeedResponse
+	17, // 47: post.PostService.GetUserPosts:output_type -> post.GetHomeFeedResponse
+	17, // 48: post.PostService.GetUserReels:output_type -> post.GetHomeFeedResponse
+	20, // 49: post.PostService.GetUserContentCount:output_type -> post.GetUserContentCountResponse
+	21, // 50: post.PostService.CreateCollection:output_type -> post.Collection
+	24, // 51: post.PostService.GetUserCollections:output_type -> post.GetUserCollectionsResponse
+	17, // 52: post.PostService.GetPostsInCollection:output_type -> post.GetHomeFeedResponse
+	27, // 53: post.PostService.GetCollectionsForPost:output_type -> post.GetCollectionsForPostResponse
+	29, // 54: post.PostService.SavePostToCollection:output_type -> post.SavePostToCollectionResponse
+	31, // 55: post.PostService.UnsavePostFromCollection:output_type -> post.UnsavePostFromCollectionResponse
+	33, // 56: post.PostService.DeleteCollection:output_type -> post.DeleteCollectionResponse
+	21, // 57: post.PostService.RenameCollection:output_type -> post.Collection
+	1,  // 58: post.PostService.GetPost:output_type -> post.Post
+	37, // 59: post.PostService.GetPosts:output_type -> post.GetPostsResponse
+	39, // 60: post.PostService.DeletePost:output_type -> post.DeletePostResponse
+	41, // 61: post.PostService.SharePost:output_type -> post.SharePostResponse
+	43, // 62: post.PostService.UnsharePost:output_type -> post.UnsharePostResponse
+	46, // 63: post.PostService.GetSharedPosts:output_type -> post.GetSharedPostsResponse
+	17, // 64: post.PostService.GetUserTaggedPosts:output_type -> post.GetHomeFeedResponse
+	36, // [36:65] is the sub-list for method output_type
+	7,  // [7:36] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -2934,7 +3108,7 @@ func file_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_post_proto_rawDesc), len(file_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   45,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

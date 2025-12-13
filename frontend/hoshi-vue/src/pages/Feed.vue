@@ -8,10 +8,15 @@
             class="story-item your-story active-story" 
             @click="openStoryViewer(myStoryGroup)"
           >
-            <img 
-              :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
-              class="story-image" 
-            />
+            <div class="story-circle" :class="{ 'has-unseen': !myStoryGroup.all_seen }">
+              <SecureImage
+                :src="authStore.user?.profile_picture_url"
+                alt="Your story"
+                class-name="story-image"
+                loading-placeholder="/default-avatar.svg"
+                error-placeholder="/default-avatar.svg"
+              />
+            </div>
             <div class="story-label">
               Your story
             </div>
@@ -22,12 +27,17 @@
             class="story-item your-story add-new" 
             @click="handleCreateStory"
           >
-            <img 
-              :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
-              class="story-image" 
-            />
-            <div class="plus-icon">
-              +
+            <div class="story-circle">
+              <SecureImage
+                :src="authStore.user?.profile_picture_url"
+                alt="Your story"
+                class-name="story-image"
+                loading-placeholder="/default-avatar.svg"
+                error-placeholder="/default-avatar.svg"
+              />
+              <div class="plus-icon">
+                +
+              </div>
             </div>
             <div class="story-label">
               Your story
@@ -41,11 +51,15 @@
             :class="{ 'seen': group.all_seen }"
             @click="openStoryViewer(group)"
           >
-            <img 
-              :src="getMediaUrl(group.user_profile_url) || '/default-avatar.svg'" 
-              :alt="group.username" 
-              class="story-image" 
-            />
+            <div class="story-circle" :class="{ 'has-unseen': !group.all_seen }">
+              <SecureImage
+                :src="group.user_profile_url"
+                :alt="group.username" 
+                class-name="story-image"
+                loading-placeholder="/default-avatar.svg"
+                error-placeholder="/default-avatar.svg"
+              />
+            </div>
             <div class="story-label">
               {{ group.username }}
             </div>
@@ -111,10 +125,12 @@
 
       <aside class="sidebar">
         <div class="user-card">
-          <img 
-            :src="getMediaUrl(authStore.user?.profile_picture_url) || '/default-avatar.svg'" 
-            alt="User" 
-            class="profile-pic" 
+          <SecureImage
+            :src="authStore.user?.profile_picture_url"
+            alt="User"
+            class-name="profile-pic"
+            loading-placeholder="/default-avatar.svg"
+            error-placeholder="/default-avatar.svg"
           />
           <div class="user-details">
             <div class="username">
@@ -183,6 +199,7 @@ import { useAuthStore } from "@/stores/auth";
 import { commentAPI, feedAPI, userAPI } from "@/services/api"; // Added userAPI
 import PostCard from "@/components/PostCard.vue";
 import StoryViewer from "@/components/StoryViewer.vue";
+import SecureImage from "@/components/SecureImage.vue";
 
 const router = useRouter();
 const feedStore = useFeedStore();
@@ -190,9 +207,12 @@ const authStore = useAuthStore();
 const postsContainer = ref<HTMLElement | null>(null);
 const showStoryViewer = ref(false);
 const selectedStoryGroup = ref<any>(null);
-const suggestedUsers = ref<any[]>([]); // Local state for suggestions
+const suggestedUsers = ref<any[]>([]);
 
 onMounted(async () => {
+  // 0. Refresh user profile to ensure we have profile_picture_url
+  await authStore.refreshUserProfile();
+  
   // 1. Load Home Feed
   if (feedStore.homeFeed.length === 0) {
     await feedStore.loadHomeFeed(1);
@@ -327,30 +347,20 @@ const handleDeleted = (postId: string) => {
   feedStore.homeFeed = feedStore.homeFeed.filter(p => p.id !== postId);
 };
 
-// Helper function for media URLs
-const getMediaUrl = (url: string | undefined) => {
-  if (!url) return "/default-avatar.svg";
-  if (url.startsWith("http")) return url;
-  if (url.startsWith("/uploads/") || url.startsWith("uploads/")) {
-    return `http://localhost:8000${url.startsWith("/") ? url : "/" + url}`;
-  }
-  return url;
-};
-
 // Computed Properties for Stories
 const myStoryGroup = computed(() => {
     const currentUser = authStore.user;
     const userId = currentUser?.user_id || (currentUser as any)?.id;
     if (!userId) return null;
     // Ensure we match ID types (string vs number)
-    return feedStore.storyFeed.find(g => String(g.user_id) === String(userId));
+    const group = feedStore.storyFeed.find(g => String(g.user_id) === String(userId));
+    return group;
 });
 
 const friendStoryGroups = computed(() => {
     const currentUser = authStore.user;
     const userId = currentUser?.user_id || (currentUser as any)?.id;
-    if (!userId) return feedStore.storyFeed;
-    return feedStore.storyFeed.filter(g => String(g.user_id) !== String(userId));
+    return !userId ? feedStore.storyFeed : feedStore.storyFeed.filter(g => String(g.user_id) !== String(userId));
 });
 </script>
 
@@ -395,13 +405,24 @@ const friendStoryGroups = computed(() => {
     flex-shrink: 0;
     position: relative;
 
+    .story-circle {
+      position: relative;
+      padding: 2px;
+      border-radius: 50%;
+      background: #404040;
+      
+      &.has-unseen {
+        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      }
+    }
+
     .story-image {
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      border: 2px solid #404040;
+      border: 2px solid #000;
       object-fit: cover;
-      transition: border-color 0.2s;
+      display: block;
     }
 
     .story-label {
@@ -411,27 +432,26 @@ const friendStoryGroups = computed(() => {
       max-width: 56px;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    &.your-story .story-image {
-      border: 2px solid #404040;
-    }
-
-    &.your-story::after {
-      content: '➕';
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      background-color: #0a66c2;
-      border: 2px solid #000;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: #fff;
+    &.your-story.add-new {
+      .plus-icon {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        background-color: #0095f6;
+        border: 2px solid #000;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff;
+      }
     }
   }
 }

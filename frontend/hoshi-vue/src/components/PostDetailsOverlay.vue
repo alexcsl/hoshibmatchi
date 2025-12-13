@@ -363,6 +363,16 @@
     >
       ›
     </button>
+
+    <!-- Save to Collection Modal -->
+    <SaveToCollectionModal
+      v-if="showSaveModal && postData"
+      :post-id="postData.id"
+      :saved-collection-ids="savedCollectionIds"
+      @close="showSaveModal = false"
+      @saved="handleCollectionSaved"
+      @unsaved="handleCollectionUnsaved"
+    />
   </div>
 </template>
 
@@ -370,10 +380,11 @@
 import { ref, onMounted, computed, watch } from "vue";
 import { useFeedStore } from "@/stores/feed";
 import { useAuthStore } from "@/stores/auth";
-import { commentAPI, postAPI } from "@/services/api";
+import { commentAPI, postAPI, collectionAPI } from "@/services/api";
 import { useRichText } from "@/composables/useRichText";
 import { getSecureMediaURL } from "@/services/media";
 import SecureImage from "@/components/SecureImage.vue";
+import SaveToCollectionModal from "@/components/SaveToCollectionModal.vue";
 
 interface Comment {
   id: string
@@ -566,8 +577,61 @@ const handleLike = () => {
   emit("like", props.postId);
 };
 
-const handleSave = () => {
+// Save Modal State
+const showSaveModal = ref(false);
+const savedCollectionIds = ref<string[]>([]);
+
+const handleSave = async () => {
+  if (!postData.value) return;
+  
+  // Use the new efficient endpoint to get which collections contain this post
+  try {
+    const response = await collectionAPI.getCollectionsForPost(postData.value.id);
+    savedCollectionIds.value = response.collection_ids || [];
+    showSaveModal.value = true;
+  } catch (error) {
+    console.error("Failed to load saved collections:", error);
+    // On error, show modal anyway with empty saved state
+    savedCollectionIds.value = [];
+    showSaveModal.value = true;
+  }
+};
+
+const handleCollectionSaved = (collectionId: string) => {
+  // Update post saved state
+  if (postData.value) {
+    postData.value.is_saved = true;
+  }
   emit("save", props.postId);
+};
+
+const handleCollectionUnsaved = async (collectionId: string) => {
+  // Check if post is still in any collection
+  try {
+    const response = await collectionAPI.getAll();
+    const collections = Array.isArray(response) ? response : (response.collections || []);
+    
+    let stillSaved = false;
+    for (const collection of collections) {
+      try {
+        const postsResponse = await collectionAPI.getPosts(collection.id, 1, 100);
+        const posts = Array.isArray(postsResponse) ? postsResponse : (postsResponse.posts || []);
+        if (posts.some((p: any) => p.id === postData.value?.id)) {
+          stillSaved = true;
+          break;
+        }
+      } catch (err) {
+        console.error(`Failed to check collection ${collection.id}:`, err);
+      }
+    }
+    
+    if (postData.value) {
+      postData.value.is_saved = stillSaved;
+    }
+    emit("save", props.postId);
+  } catch (error) {
+    console.error("Failed to check saved status:", error);
+  }
 };
 
 const handleShare = () => {

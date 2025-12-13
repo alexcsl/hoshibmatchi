@@ -324,7 +324,7 @@ func (s *server) processVideoTranscoding(body []byte) {
 				log.Printf("Failed to upload compressed original to MinIO: %v", err)
 			} else {
 				log.Printf("Uploaded compressed original to MinIO: %s", compressedMinioPath)
-				transcodedURLs = append(transcodedURLs, compressedMinioPath)
+				// Note: We'll only add the best quality version to transcodedURLs at the end
 			}
 
 			// Use compressed version as input for transcoding (smaller source = faster transcoding)
@@ -343,6 +343,7 @@ func (s *server) processVideoTranscoding(body []byte) {
 		}
 
 		successfulTranscode := false
+		var bestQualityURL string // Store only the best quality version
 		for _, res := range resolutions {
 			outputFilename := fmt.Sprintf("%s_%s.mp4", filenameNoExt, res.name)
 			outputPath := filepath.Join(tempDir, outputFilename)
@@ -389,15 +390,23 @@ func (s *server) processVideoTranscoding(body []byte) {
 			}
 
 			log.Printf("Uploaded %s to MinIO: %s", res.name, minioPath)
-			transcodedURLs = append(transcodedURLs, minioPath)
+
+			// Keep track of the best quality (720p) for display in media_urls
+			if bestQualityURL == "" || res.name == "720p" {
+				bestQualityURL = minioPath
+			}
 			successfulTranscode = true
 
 			// Note: Thumbnail generation is handled by media-service when user uploads
 			// This prevents duplicate thumbnail generation and respects user's chosen timestamp
 		}
 
-		// If transcoding failed, keep the original
-		if !successfulTranscode {
+		// Add only the best quality version to media_urls (for display)
+		// The other resolutions are still stored in MinIO and can be used for adaptive streaming in the future
+		if successfulTranscode && bestQualityURL != "" {
+			transcodedURLs = append(transcodedURLs, bestQualityURL)
+		} else {
+			// If transcoding failed, keep the original
 			log.Printf("All transcoding failed for %s, keeping original", mediaURL)
 			transcodedURLs = append(transcodedURLs, mediaURL)
 		}

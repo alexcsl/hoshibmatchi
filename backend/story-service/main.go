@@ -47,6 +47,12 @@ type StoryLike struct {
 	CreatedAt time.Time
 }
 
+type StoryView struct {
+	UserID    int64 `gorm:"primaryKey"`
+	StoryID   int64 `gorm:"primaryKey"`
+	CreatedAt time.Time
+}
+
 // server struct holds its DB, user-service client, and RabbitMQ channel
 type server struct {
 	pb.UnimplementedStoryServiceServer
@@ -63,7 +69,7 @@ func main() {
 		log.Fatalf("Failed to connect to story-db: %v", err)
 	}
 	// Update schema with new fields
-	db.AutoMigrate(&Story{}, &StoryLike{})
+	db.AutoMigrate(&Story{}, &StoryLike{}, &StoryView{})
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -277,7 +283,29 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 		return nil, status.Error(codes.Internal, "Failed to fetch stories")
 	}
 
-	// 3. Group Stories by AuthorID
+	// 3. Get user's likes and views for these stories
+	storyIDs := make([]uint, len(stories))
+	for i, story := range stories {
+		storyIDs[i] = story.ID
+	}
+
+	// Query likes
+	var userLikes []StoryLike
+	s.db.Where("user_id = ? AND story_id IN ?", req.UserId, storyIDs).Find(&userLikes)
+	likedMap := make(map[uint]bool)
+	for _, like := range userLikes {
+		likedMap[uint(like.StoryID)] = true
+	}
+
+	// Query views
+	var userViews []StoryView
+	s.db.Where("user_id = ? AND story_id IN ?", req.UserId, storyIDs).Find(&userViews)
+	viewedMap := make(map[uint]bool)
+	for _, view := range userViews {
+		viewedMap[uint(view.StoryID)] = true
+	}
+
+	// 4. Group Stories by AuthorID
 	groupedMap := make(map[int64]*pb.UserStoryGroup)
 
 	for _, story := range stories {
@@ -288,11 +316,11 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 				Username:       story.AuthorUsername,
 				UserProfileUrl: story.AuthorProfileURL,
 				Stories:        []*pb.Story{},
-				AllSeen:        false, // Placeholder
+				AllSeen:        false,
 			}
 		}
 
-		// Add story to group
+		// Add story to group with is_liked status
 		groupedMap[story.AuthorID].Stories = append(groupedMap[story.AuthorID].Stories, &pb.Story{
 			Id:        strconv.FormatUint(uint64(story.ID), 10),
 			MediaUrl:  story.MediaURL,
@@ -300,10 +328,24 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 			Caption:   story.Caption,
 			CreatedAt: story.CreatedAt.Format(time.RFC3339),
 			ExpiresAt: story.ExpiresAt.Format(time.RFC3339),
+			IsLiked:   likedMap[story.ID],
 		})
 	}
 
-	// 4. Convert Map to Slice
+	// 5. Calculate all_seen for each group
+	for _, group := range groupedMap {
+		allSeen := true
+		for _, story := range group.Stories {
+			storyID, _ := strconv.ParseUint(story.Id, 10, 32)
+			if !viewedMap[uint(storyID)] {
+				allSeen = false
+				break
+			}
+		}
+		group.AllSeen = allSeen
+	}
+
+	// 6. Convert Map to Slice
 	var responseGroups []*pb.UserStoryGroup
 	for _, group := range groupedMap {
 		// Optional: Put "Self" (current user) at the very front
@@ -370,6 +412,19 @@ func (s *server) UnlikeStory(ctx context.Context, req *pb.UnlikeStoryRequest) (*
 	return &pb.UnlikeStoryResponse{Message: "Story unliked"}, nil
 }
 
+// --- 6. View Story ---
+func (s *server) ViewStory(ctx context.Context, req *pb.ViewStoryRequest) (*pb.ViewStoryResponse, error) {
+	view := StoryView{
+		UserID:  req.UserId,
+		StoryID: req.StoryId,
+	}
+	// Use FirstOrCreate to avoid duplicate errors
+	if result := s.db.FirstOrCreate(&view, view); result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to mark story as viewed")
+	}
+	return &pb.ViewStoryResponse{Message: "Story viewed"}, nil
+}
+
 // --- 6. Get User Archive (All Stories for a Specific User) ---
 func (s *server) GetUserArchive(ctx context.Context, req *pb.GetUserArchiveRequest) (*pb.GetUserArchiveResponse, error) {
 	// Fetch all stories by this user (including expired ones for archive)
@@ -397,7 +452,7 @@ func (s *server) GetUserArchive(ctx context.Context, req *pb.GetUserArchiveReque
 		})
 	}
 
-	return &pb.GetUserArchiveResponse{Stories: protoStories}, nil
+	return &pb.GetUserArchiveResponse{Stories: pbStories}, nil
 }
 
 // --- Helper Function: Check if URL is a video file ---
