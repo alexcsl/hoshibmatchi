@@ -928,7 +928,7 @@ const formatNumber = (num: number) => {
 const getMediaUrl = (url: string) => {
   if (!url) return "/placeholder.svg";
   if (url.startsWith("http")) return url;
-  return `http://localhost:8000${url}`;
+  return `https://localhost:8000${url}`;
 };
 
 const handleImageError = (e: Event) => {

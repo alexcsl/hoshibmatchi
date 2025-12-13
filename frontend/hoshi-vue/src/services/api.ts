@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 
 // API Base URL - points to your API Gateway
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "https://localhost:8000";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
