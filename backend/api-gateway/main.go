@@ -262,6 +262,25 @@ func main() {
 		protected.POST("/users/:id/block", handleBlockUser_Gin)
 		protected.DELETE("/users/:id/block", handleBlockUser_Gin)
 
+		// Follow Requests
+		protected.POST("/follow-requests/:id/approve", handleApproveFollowRequest_Gin)
+		protected.POST("/follow-requests/:id/reject", handleRejectFollowRequest_Gin)
+		protected.GET("/follow-requests", handleGetFollowRequests_Gin)
+
+		// Close Friends
+		protected.POST("/close-friends/:id", handleAddCloseFriend_Gin)
+		protected.DELETE("/close-friends/:id", handleRemoveCloseFriend_Gin)
+		protected.GET("/close-friends", handleGetCloseFriends_Gin)
+
+		// Hide Story From
+		protected.POST("/hide-story/:id", handleAddHiddenStoryUser_Gin)
+		protected.DELETE("/hide-story/:id", handleRemoveHiddenStoryUser_Gin)
+		protected.GET("/hide-story", handleGetHiddenStoryUsers_Gin)
+
+		// Notification Settings
+		protected.PUT("/settings/notifications", handleUpdateNotificationSettings_Gin)
+		protected.GET("/settings/notifications", handleGetNotificationSettings_Gin)
+
 		protected.POST("/collections", handleCreateCollection_Gin)
 		protected.GET("/collections", handleGetUserCollections_Gin)
 		protected.GET("/collections/:id", handleGetPostsInCollection_Gin)
@@ -1885,15 +1904,19 @@ func handleGetUserPosts_Gin(c *gin.Context) {
 		return
 	}
 
+	// Get the current user ID from context
+	currentUserID, _ := c.Request.Context().Value(userIDKey).(int64)
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
 	offset := (page - 1) * limit
 
 	// --- THIS IS THE FIX ---
 	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
-		UserId:     userRes.UserId,
-		PageSize:   int32(limit),
-		PageOffset: int32(offset),
+		UserId:      userRes.UserId,
+		RequesterId: currentUserID,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
 	}
 	// --- END FIX ---
 
@@ -1931,15 +1954,19 @@ func handleGetUserReels_Gin(c *gin.Context) {
 		return
 	}
 
+	// Get the current user ID from context
+	currentUserID, _ := c.Request.Context().Value(userIDKey).(int64)
+
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
 	offset := (page - 1) * limit
 
 	// --- THIS IS THE FIX ---
 	grpcReq := &postPb.GetUserContentRequest{ // Was pb.
-		UserId:     userRes.UserId,
-		PageSize:   int32(limit),
-		PageOffset: int32(offset),
+		UserId:      userRes.UserId,
+		RequesterId: currentUserID,
+		PageSize:    int32(limit),
+		PageOffset:  int32(offset),
 	}
 	// --- END FIX ---
 
@@ -2157,6 +2184,432 @@ func handleBlockUser_Gin(c *gin.Context) {
 	} else {
 		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Invalid request method"})
 	}
+}
+
+// handleAddCloseFriend_Gin godoc
+// @Summary Add a close friend
+// @Description Add a user to your close friends list
+// @Tags Close Friends
+// @Accept json
+// @Produce json
+// @Param id path int true "Friend User ID"
+// @Success 200 {object} object{message=string} "Close friend added successfully"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /close-friends/{id} [post]
+func handleAddCloseFriend_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	friendIDStr := c.Param("id")
+	friendID, err := strconv.ParseInt(friendIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid friend ID"})
+		return
+	}
+
+	grpcReq := &pb.AddCloseFriendRequest{
+		UserId:   userID,
+		FriendId: friendID,
+	}
+
+	grpcRes, err := client.AddCloseFriend(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleRemoveCloseFriend_Gin godoc
+// @Summary Remove a close friend
+// @Description Remove a user from your close friends list
+// @Tags Close Friends
+// @Accept json
+// @Produce json
+// @Param id path int true "Friend User ID"
+// @Success 200 {object} object{message=string} "Close friend removed successfully"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /close-friends/{id} [delete]
+func handleRemoveCloseFriend_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	friendIDStr := c.Param("id")
+	friendID, err := strconv.ParseInt(friendIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid friend ID"})
+		return
+	}
+
+	grpcReq := &pb.RemoveCloseFriendRequest{
+		UserId:   userID,
+		FriendId: friendID,
+	}
+
+	grpcRes, err := client.RemoveCloseFriend(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleGetCloseFriends_Gin godoc
+// @Summary Get close friends list
+// @Description Get the list of your close friends
+// @Tags Close Friends
+// @Accept json
+// @Produce json
+// @Success 200 {object} object{friends=array} "List of close friends"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /close-friends [get]
+func handleGetCloseFriends_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	grpcReq := &pb.GetCloseFriendsRequest{
+		UserId: userID,
+	}
+
+	grpcRes, err := client.GetCloseFriends(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleAddHiddenStoryUser_Gin godoc
+// @Summary Add user to hide story from
+// @Description Hide your stories from a specific user
+// @Tags Hide Story
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID to hide stories from"
+// @Success 200 {object} object{message=string} "User hidden from stories successfully"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /hide-story/{id} [post]
+func handleAddHiddenStoryUser_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	hiddenUserIDStr := c.Param("id")
+	hiddenUserID, err := strconv.ParseInt(hiddenUserIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	grpcReq := &pb.AddHiddenStoryUserRequest{
+		UserId:       userID,
+		HiddenUserId: hiddenUserID,
+	}
+
+	grpcRes, err := client.AddHiddenStoryUser(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleRemoveHiddenStoryUser_Gin godoc
+// @Summary Remove user from hide story list
+// @Description Allow a user to see your stories again
+// @Tags Hide Story
+// @Accept json
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} object{message=string} "User removed from hidden list successfully"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /hide-story/{id} [delete]
+func handleRemoveHiddenStoryUser_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	hiddenUserIDStr := c.Param("id")
+	hiddenUserID, err := strconv.ParseInt(hiddenUserIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	grpcReq := &pb.RemoveHiddenStoryUserRequest{
+		UserId:       userID,
+		HiddenUserId: hiddenUserID,
+	}
+
+	grpcRes, err := client.RemoveHiddenStoryUser(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleGetHiddenStoryUsers_Gin godoc
+// @Summary Get list of users hidden from stories
+// @Description Get the list of users you're hiding your stories from
+// @Tags Hide Story
+// @Accept json
+// @Produce json
+// @Success 200 {object} object{hidden_users=array} "List of hidden users"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /hide-story [get]
+func handleGetHiddenStoryUsers_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	grpcReq := &pb.GetHiddenStoryUsersRequest{
+		UserId: userID,
+	}
+
+	grpcRes, err := client.GetHiddenStoryUsers(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleUpdateNotificationSettings_Gin godoc
+// @Summary Update notification settings
+// @Description Update your notification preferences
+// @Tags Settings
+// @Accept json
+// @Produce json
+// @Param settings body object{push_enabled=bool,email_enabled=bool} true "Notification settings"
+// @Success 200 {object} object{message=string} "Settings updated successfully"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /settings/notifications [put]
+func handleUpdateNotificationSettings_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	var req struct {
+		PushEnabled  bool `json:"push_enabled"`
+		EmailEnabled bool `json:"email_enabled"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	grpcReq := &pb.UpdateNotificationSettingsRequest{
+		UserId:       userID,
+		PushEnabled:  req.PushEnabled,
+		EmailEnabled: req.EmailEnabled,
+	}
+
+	grpcRes, err := client.UpdateNotificationSettings(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleGetNotificationSettings_Gin godoc
+// @Summary Get notification settings
+// @Description Get your notification preferences
+// @Tags Settings
+// @Accept json
+// @Produce json
+// @Success 200 {object} object{push_enabled=bool,email_enabled=bool} "Notification settings"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /settings/notifications [get]
+func handleGetNotificationSettings_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	grpcReq := &pb.GetNotificationSettingsRequest{
+		UserId: userID,
+	}
+
+	grpcRes, err := client.GetNotificationSettings(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleApproveFollowRequest_Gin godoc
+// @Summary Approve a follow request
+// @Description Approve a pending follow request from another user
+// @Tags Follow Requests
+// @Accept json
+// @Produce json
+// @Param id path int true "Follower User ID"
+// @Success 200 {object} object{message=string} "Follow request approved"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /follow-requests/{id}/approve [post]
+func handleApproveFollowRequest_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	followerIDStr := c.Param("id")
+	followerID, err := strconv.ParseInt(followerIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid follower ID"})
+		return
+	}
+
+	grpcReq := &pb.ApproveFollowRequestRequest{
+		UserId:     userID,
+		FollowerId: followerID,
+	}
+
+	grpcRes, err := client.ApproveFollowRequest(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleRejectFollowRequest_Gin godoc
+// @Summary Reject a follow request
+// @Description Reject a pending follow request from another user
+// @Tags Follow Requests
+// @Accept json
+// @Produce json
+// @Param id path int true "Follower User ID"
+// @Success 200 {object} object{message=string} "Follow request rejected"
+// @Failure 400 {object} object{error=string} "Bad request"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /follow-requests/{id}/reject [post]
+func handleRejectFollowRequest_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	followerIDStr := c.Param("id")
+	followerID, err := strconv.ParseInt(followerIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid follower ID"})
+		return
+	}
+
+	grpcReq := &pb.RejectFollowRequestRequest{
+		UserId:     userID,
+		FollowerId: followerID,
+	}
+
+	grpcRes, err := client.RejectFollowRequest(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
+// handleGetFollowRequests_Gin godoc
+// @Summary Get pending follow requests
+// @Description Get all pending follow requests for the current user
+// @Tags Follow Requests
+// @Accept json
+// @Produce json
+// @Success 200 {object} object{requests=array} "List of pending follow requests"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /follow-requests [get]
+func handleGetFollowRequests_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	grpcReq := &pb.GetFollowRequestsRequest{
+		UserId: userID,
+	}
+
+	grpcRes, err := client.GetFollowRequests(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
 }
 
 // handleCreateCollection_Gin godoc

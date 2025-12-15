@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 
 // API Base URL - points to your API Gateway
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -276,7 +276,7 @@ export const userAPI = {
   },
 
   // Update profile
-  updateProfile: async (data: { name: string; bio: string; gender: string }) => {
+  updateProfile: async (data: { name?: string; bio?: string; gender?: string; username?: string; profile_picture_url?: string }) => {
     const response = await apiClient.put("/profile/edit", data);
     return response.data;
   },
@@ -326,6 +326,96 @@ export const userAPI = {
       reported_user_id: userId, 
       reason 
     });
+    return response.data;
+  },
+
+  // Follow Requests
+  approveFollowRequest: async (followerId: number) => {
+    const response = await apiClient.post(`/follow-requests/${followerId}/approve`);
+    return response.data;
+  },
+
+  rejectFollowRequest: async (followerId: number) => {
+    const response = await apiClient.post(`/follow-requests/${followerId}/reject`);
+    return response.data;
+  },
+
+  getFollowRequests: async () => {
+    const response = await apiClient.get("/follow-requests");
+    return response.data;
+  },
+
+  // Get blocked users list
+  getBlockedUsers: async () => {
+    const response = await apiClient.get("/users/blocked");
+    return response.data;
+  },
+
+  // Update privacy settings
+  updatePrivacy: async (isPrivate: boolean) => {
+    const response = await apiClient.put("/settings/privacy", { is_private: isPrivate });
+    return response.data;
+  },
+
+  // Close Friends
+  addCloseFriend: async (userId: number) => {
+    const response = await apiClient.post(`/close-friends/${userId}`);
+    return response.data;
+  },
+
+  removeCloseFriend: async (userId: number) => {
+    const response = await apiClient.delete(`/close-friends/${userId}`);
+    return response.data;
+  },
+
+  getCloseFriends: async () => {
+    const response = await apiClient.get("/close-friends");
+    return response.data;
+  },
+
+  // Hide Story From
+  addHiddenStoryUser: async (userId: number) => {
+    const response = await apiClient.post(`/hide-story/${userId}`);
+    return response.data;
+  },
+
+  removeHiddenStoryUser: async (userId: number) => {
+    const response = await apiClient.delete(`/hide-story/${userId}`);
+    return response.data;
+  },
+
+  getHiddenStoryUsers: async () => {
+    const response = await apiClient.get("/hide-story");
+    return response.data;
+  },
+
+  // Notification Settings
+  updateNotificationSettings: async (pushEnabled: boolean, emailEnabled: boolean) => {
+    const response = await apiClient.put("/settings/notifications", {
+      push_enabled: pushEnabled,
+      email_enabled: emailEnabled
+    });
+    return response.data;
+  },
+
+  getNotificationSettings: async () => {
+    const response = await apiClient.get("/settings/notifications");
+    return response.data;
+  },
+
+  // Follow Requests
+  approveFollowRequest: async (followerId: number) => {
+    const response = await apiClient.post(`/follow-requests/${followerId}/approve`);
+    return response.data;
+  },
+
+  rejectFollowRequest: async (followerId: number) => {
+    const response = await apiClient.post(`/follow-requests/${followerId}/reject`);
+    return response.data;
+  },
+
+  getFollowRequests: async () => {
+    const response = await apiClient.get("/follow-requests");
     return response.data;
   }
 };

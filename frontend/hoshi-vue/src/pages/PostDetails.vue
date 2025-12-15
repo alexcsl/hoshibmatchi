@@ -70,15 +70,15 @@
         <div class="post-header">
           <div class="user-info">
             <SecureImage
-              :src="postData.author_profile_url"
-              :alt="postData.author_username"
+              :src="displayAuthorProfileUrl"
+              :alt="displayAuthorUsername"
               class-name="avatar"
               loading-placeholder="/placeholder.svg?height=32&width=32"
               error-placeholder="/default-avatar.svg"
             />
             <div>
-              <div class="username" @click="goToProfile(postData.author_username)">
-                {{ postData.author_username }}
+              <div class="username" @click="goToProfile(displayAuthorUsername)">
+                {{ displayAuthorUsername }}
                 <span
                   v-if="postData.author_is_verified"
                   class="verified"
@@ -103,15 +103,15 @@
           <!-- Original caption as first "comment" -->
           <div class="caption-comment">
             <SecureImage
-              :src="postData.author_profile_url"
-              :alt="postData.author_username"
+              :src="displayAuthorProfileUrl"
+              :alt="displayAuthorUsername"
               class-name="comment-avatar"
               loading-placeholder="/placeholder.svg?height=32&width=32"
               error-placeholder="/default-avatar.svg"
             />
             <div class="comment-content">
               <div class="comment-username">
-                {{ postData.author_username }}
+                {{ displayAuthorUsername }}
                 <span
                   v-if="postData.author_is_verified"
                   class="verified"
@@ -312,7 +312,7 @@
         <!-- Comment Input -->
         <div class="comment-input-section">
           <div v-if="replyingTo" class="replying-to">
-            Replying to @{{ replyingTo.commenter_username }}
+            Replying to @{{ replyingTo.author_username }}
             <button @click="replyingTo = null" class="cancel-reply">✕</button>
           </div>
           <div class="comment-input-wrapper">
@@ -510,7 +510,7 @@ import SaveToCollectionModal from "@/components/SaveToCollectionModal.vue";
 import { useRichText } from "@/composables/useRichText";
 
 interface Comment {
-  id: string;
+  id: number;
   post_id: number;
   user_id?: number;
   content: string;
@@ -584,6 +584,21 @@ const postId = computed(() => route.params.id as string);
 
 const isOwnPost = computed(() => {
   return postData.value?.author_id === authStore.user?.user_id;
+});
+
+// Use authStore data for current user's profile to ensure real-time updates
+const displayAuthorProfileUrl = computed(() => {
+  if (isOwnPost.value && authStore.user?.profile_picture_url) {
+    return authStore.user.profile_picture_url;
+  }
+  return postData.value?.author_profile_url || '';
+});
+
+const displayAuthorUsername = computed(() => {
+  if (isOwnPost.value && authStore.user?.username) {
+    return authStore.user.username;
+  }
+  return postData.value?.author_username || '';
 });
 
 const formattedCaption = computed(() => {

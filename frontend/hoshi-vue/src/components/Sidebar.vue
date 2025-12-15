@@ -87,15 +87,22 @@
             class="dropdown-item"
             @click="handleSettings"
           >
-            <span class="icon">⚙</span>
+            <span class="icon">⚙️</span>
             <span>Settings</span>
           </button>
           <button
             class="dropdown-item"
             @click="handleSaved"
           >
-            <span class="icon">📦</span>
-            <span>Archive</span>
+            <span class="icon">🔖</span>
+            <span>Saved</span>
+          </button>
+          <button
+            class="dropdown-item"
+            @click="handleTheme"
+          >
+            <span class="icon">🎨</span>
+            <span>Theme: {{ themeDisplay }}</span>
           </button>
           <button
             v-if="isAdmin"
@@ -104,11 +111,6 @@
           >
             <span class="icon">👑</span>
             <span>Admin Dashboard</span>
-          </button>
-          <div class="dropdown-divider"></div>
-          <button class="dropdown-item theme-switcher">
-            <span class="icon">🌙</span>
-            <span>{{ currentTheme === 'dark' ? 'Light Mode' : 'Dark Mode' }}</span>
           </button>
           <div class="dropdown-divider"></div>
           <button
@@ -147,7 +149,6 @@ const emit = defineEmits<{
 }>();
 
 const showMoreMenu = ref(false);
-const currentTheme = ref("dark");
 const unreadNotificationCount = ref(0);
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -189,6 +190,17 @@ const handleSaved = () => {
   showMoreMenu.value = false;
   emit("open-saved");
 };
+
+const handleTheme = () => {
+  // TODO: Implement theme switching logic
+  // For now, just close menu
+  showMoreMenu.value = false;
+};
+
+const themeDisplay = computed(() => {
+  // TODO: Will be dynamic when theme switching is implemented
+  return "Dark";
+});
 
 const handleAdmin = () => {
   showMoreMenu.value = false;

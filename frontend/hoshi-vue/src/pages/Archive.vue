@@ -1,7 +1,15 @@
 <template>
   <div class="archive-page">
     <div class="archive-container">
-      <h1>Archive</h1>
+      <div class="header-with-back">
+        <button
+          class="back-button"
+          @click="$router.back()"
+        >
+          ← Back
+        </button>
+        <h1>Archive</h1>
+      </div>
       <p class="subtitle">
         Only you can see your archived stories
       </p>
@@ -148,10 +156,32 @@ onMounted(() => {
 .archive-container {
   max-width: 1200px;
 
+  .header-with-back {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+
+    .back-button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+
   h1 {
     font-size: 32px;
     font-weight: 700;
-    margin-bottom: 8px;
+    margin-bottom: 0;
   }
 
   .subtitle {

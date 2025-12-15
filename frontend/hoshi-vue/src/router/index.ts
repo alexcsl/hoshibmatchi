@@ -133,6 +133,11 @@ const routes = [
         component: () => import("../pages/Settings.vue")
       },
       { 
+        path: "saved", 
+        name: "Saved", 
+        component: () => import("../pages/Saved.vue")
+      },
+      { 
         path: "archive", 
         name: "Archive", 
         component: () => import("../pages/Archive.vue")

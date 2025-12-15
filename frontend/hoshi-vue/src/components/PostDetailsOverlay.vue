@@ -84,15 +84,15 @@
           <div class="info-header">
             <div class="user-info">
               <SecureImage
-                :src="postData.author_profile_url"
-                :alt="postData.author_username"
+                :src="displayAuthorProfileUrl"
+                :alt="displayAuthorUsername"
                 class-name="avatar"
                 loading-placeholder="/placeholder.svg?height=32&width=32"
                 error-placeholder="/default-avatar.svg"
               />
               <div>
                 <div class="username">
-                  {{ postData.author_username }}
+                  {{ displayAuthorUsername }}
                   <span
                     v-if="postData.author_is_verified"
                     class="verified"
@@ -117,15 +117,15 @@
             >
               <div class="comment-header">
                 <SecureImage
-                  :src="postData.author_profile_url"
-                  :alt="postData.author_username"
+                  :src="displayAuthorProfileUrl"
+                  :alt="displayAuthorUsername"
                   class-name="comment-avatar"
                   loading-placeholder="/placeholder.svg?height=32&width=32"
                   error-placeholder="/default-avatar.svg"
                 />
                 <div class="comment-content">
                   <div class="comment-text">
-                    <strong>{{ postData.author_username }}</strong>
+                    <strong>{{ displayAuthorUsername }}</strong>
                     <span
                       @click="handleRichTextClick"
                       v-html="formattedCaption"
@@ -787,6 +787,21 @@ const isOwnComment = (comment: Comment) => {
 
 const isPostOwner = computed(() => {
   return postData.value?.author_id === authStore.user?.user_id;
+});
+
+// Use authStore data for current user's profile to ensure real-time updates
+const displayAuthorProfileUrl = computed(() => {
+  if (isPostOwner.value && authStore.user?.profile_picture_url) {
+    return authStore.user.profile_picture_url;
+  }
+  return postData.value?.author_profile_url || '';
+});
+
+const displayAuthorUsername = computed(() => {
+  if (isPostOwner.value && authStore.user?.username) {
+    return authStore.user.username;
+  }
+  return postData.value?.author_username || '';
 });
 
 const handleDeletePost = async () => {

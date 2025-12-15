@@ -46,7 +46,7 @@
           :key="notification.id" 
           class="notification-item"
           :class="{ unread: !notification.is_read }"
-          @click="handleNotificationClick(notification)"
+          @click="notification.type !== 'follow.request' && handleNotificationClick(notification)"
         >
           <img 
             :src="notification.actor_profile_picture_url || '/default-avatar.png'" 
@@ -66,6 +66,29 @@
               {{ formatTime(notification.created_at) }}
             </div>
           </div>
+          
+          <!-- Follow request action buttons -->
+          <div 
+            v-if="notification.type === 'follow.request'" 
+            class="follow-request-actions"
+            @click.stop
+          >
+            <button 
+              class="accept-btn" 
+              :disabled="processingRequest[notification.id]"
+              @click="handleApproveRequest(notification)"
+            >
+              Accept
+            </button>
+            <button 
+              class="reject-btn" 
+              :disabled="processingRequest[notification.id]"
+              @click="handleRejectRequest(notification)"
+            >
+              Reject
+            </button>
+          </div>
+          
           <div
             v-if="!notification.is_read"
             class="unread-dot"
@@ -78,7 +101,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { notificationAPI, type NotificationItem } from "../services/api";
+import { notificationAPI, userAPI, type NotificationItem } from "../services/api";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -91,6 +114,7 @@ const notifications = ref<NotificationItem[]>([]);
 const unreadCount = ref(0);
 const loading = ref(false);
 const markingAll = ref(false);
+const processingRequest = ref<Record<number, boolean>>({});
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 const loadNotifications = async (showLoading = true) => {
@@ -145,9 +169,47 @@ const handleNotificationClick = async (notification: NotificationItem) => {
   if (notification.type === "post.liked" || notification.type === "post.commented" || notification.type === "comment.created") {
     // Navigate to post (would need to fetch post and navigate to it)
     console.log("Navigate to post:", notification.entity_id);
-  } else if (notification.type === "user.followed") {
+  } else if (notification.type === "user.followed" || notification.type === "follow.approved") {
     // Navigate to user profile
-    router.push(`/${notification.actor_username}`);
+    router.push(`/profile/${notification.actor_username}`);
+  }
+};
+
+const handleApproveRequest = async (notification: NotificationItem) => {
+  processingRequest.value[notification.id] = true;
+  try {
+    await userAPI.approveFollowRequest(Number(notification.entity_id));
+    // Remove notification from list
+    const index = notifications.value.findIndex(n => n.id === notification.id);
+    if (index !== -1) {
+      notifications.value.splice(index, 1);
+    }
+    if (!notification.is_read) {
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+    }
+  } catch (error) {
+    console.error("Failed to approve follow request:", error);
+  } finally {
+    delete processingRequest.value[notification.id];
+  }
+};
+
+const handleRejectRequest = async (notification: NotificationItem) => {
+  processingRequest.value[notification.id] = true;
+  try {
+    await userAPI.rejectFollowRequest(Number(notification.entity_id));
+    // Remove notification from list
+    const index = notifications.value.findIndex(n => n.id === notification.id);
+    if (index !== -1) {
+      notifications.value.splice(index, 1);
+    }
+    if (!notification.is_read) {
+      unreadCount.value = Math.max(0, unreadCount.value - 1);
+    }
+  } catch (error) {
+    console.error("Failed to reject follow request:", error);
+  } finally {
+    delete processingRequest.value[notification.id];
   }
 };
 
@@ -155,6 +217,8 @@ const getNotificationText = (type: string): string => {
   const texts: Record<string, string> = {
     "post.liked": "liked your post",
     "user.followed": "started following you",
+    "follow.request": "requested to follow you",
+    "follow.approved": "accepted your follow request",
     "post.commented": "commented on your post",
     "comment.created": "commented on your post", // Alias
     "post.shared": "shared your post",
@@ -350,6 +414,44 @@ onUnmounted(() => {
       border-radius: 50%;
       flex-shrink: 0;
       margin-top: 8px;
+    }
+
+    .follow-request-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      width: 100%;
+
+      button {
+        flex: 1;
+        padding: 6px 16px;
+        border-radius: 6px;
+        border: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s;
+
+        &:hover:not(:disabled) {
+          opacity: 0.8;
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+
+      .accept-btn {
+        background-color: #0a66c2;
+        color: #fff;
+      }
+
+      .reject-btn {
+        background-color: transparent;
+        color: #fff;
+        border: 1px solid #a8a8a8;
+      }
     }
   }
 }

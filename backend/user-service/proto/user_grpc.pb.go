@@ -30,6 +30,9 @@ const (
 	UserService_FollowUser_FullMethodName                 = "/user.UserService/FollowUser"
 	UserService_UnfollowUser_FullMethodName               = "/user.UserService/UnfollowUser"
 	UserService_IsFollowing_FullMethodName                = "/user.UserService/IsFollowing"
+	UserService_ApproveFollowRequest_FullMethodName       = "/user.UserService/ApproveFollowRequest"
+	UserService_RejectFollowRequest_FullMethodName        = "/user.UserService/RejectFollowRequest"
+	UserService_GetFollowRequests_FullMethodName          = "/user.UserService/GetFollowRequests"
 	UserService_GetFollowingList_FullMethodName           = "/user.UserService/GetFollowingList"
 	UserService_GetFollowersList_FullMethodName           = "/user.UserService/GetFollowersList"
 	UserService_GetUserProfile_FullMethodName             = "/user.UserService/GetUserProfile"
@@ -45,6 +48,14 @@ const (
 	UserService_SubmitVerificationRequest_FullMethodName  = "/user.UserService/SubmitVerificationRequest"
 	UserService_GetVerificationRequests_FullMethodName    = "/user.UserService/GetVerificationRequests"
 	UserService_ResolveVerificationRequest_FullMethodName = "/user.UserService/ResolveVerificationRequest"
+	UserService_AddCloseFriend_FullMethodName             = "/user.UserService/AddCloseFriend"
+	UserService_RemoveCloseFriend_FullMethodName          = "/user.UserService/RemoveCloseFriend"
+	UserService_GetCloseFriends_FullMethodName            = "/user.UserService/GetCloseFriends"
+	UserService_AddHiddenStoryUser_FullMethodName         = "/user.UserService/AddHiddenStoryUser"
+	UserService_RemoveHiddenStoryUser_FullMethodName      = "/user.UserService/RemoveHiddenStoryUser"
+	UserService_GetHiddenStoryUsers_FullMethodName        = "/user.UserService/GetHiddenStoryUsers"
+	UserService_UpdateNotificationSettings_FullMethodName = "/user.UserService/UpdateNotificationSettings"
+	UserService_GetNotificationSettings_FullMethodName    = "/user.UserService/GetNotificationSettings"
 	UserService_HandleGoogleAuth_FullMethodName           = "/user.UserService/HandleGoogleAuth"
 )
 
@@ -68,6 +79,10 @@ type UserServiceClient interface {
 	FollowUser(ctx context.Context, in *FollowUserRequest, opts ...grpc.CallOption) (*FollowUserResponse, error)
 	UnfollowUser(ctx context.Context, in *UnfollowUserRequest, opts ...grpc.CallOption) (*UnfollowUserResponse, error)
 	IsFollowing(ctx context.Context, in *IsFollowingRequest, opts ...grpc.CallOption) (*IsFollowingResponse, error)
+	// Follow Requests
+	ApproveFollowRequest(ctx context.Context, in *ApproveFollowRequestRequest, opts ...grpc.CallOption) (*ApproveFollowRequestResponse, error)
+	RejectFollowRequest(ctx context.Context, in *RejectFollowRequestRequest, opts ...grpc.CallOption) (*RejectFollowRequestResponse, error)
+	GetFollowRequests(ctx context.Context, in *GetFollowRequestsRequest, opts ...grpc.CallOption) (*GetFollowRequestsResponse, error)
 	GetFollowingList(ctx context.Context, in *GetFollowingListRequest, opts ...grpc.CallOption) (*GetFollowingListResponse, error)
 	GetFollowersList(ctx context.Context, in *GetFollowersListRequest, opts ...grpc.CallOption) (*GetFollowersListResponse, error)
 	GetUserProfile(ctx context.Context, in *GetUserProfileRequest, opts ...grpc.CallOption) (*GetUserProfileResponse, error)
@@ -86,7 +101,18 @@ type UserServiceClient interface {
 	SubmitVerificationRequest(ctx context.Context, in *SubmitVerificationRequestRequest, opts ...grpc.CallOption) (*SubmitVerificationRequestResponse, error)
 	GetVerificationRequests(ctx context.Context, in *GetVerificationRequestsRequest, opts ...grpc.CallOption) (*GetVerificationRequestsResponse, error)
 	ResolveVerificationRequest(ctx context.Context, in *ResolveVerificationRequestRequest, opts ...grpc.CallOption) (*ResolveVerificationRequestResponse, error)
-	// Googel OAuth
+	// Close Friends
+	AddCloseFriend(ctx context.Context, in *AddCloseFriendRequest, opts ...grpc.CallOption) (*AddCloseFriendResponse, error)
+	RemoveCloseFriend(ctx context.Context, in *RemoveCloseFriendRequest, opts ...grpc.CallOption) (*RemoveCloseFriendResponse, error)
+	GetCloseFriends(ctx context.Context, in *GetCloseFriendsRequest, opts ...grpc.CallOption) (*GetCloseFriendsResponse, error)
+	// Hide Story From
+	AddHiddenStoryUser(ctx context.Context, in *AddHiddenStoryUserRequest, opts ...grpc.CallOption) (*AddHiddenStoryUserResponse, error)
+	RemoveHiddenStoryUser(ctx context.Context, in *RemoveHiddenStoryUserRequest, opts ...grpc.CallOption) (*RemoveHiddenStoryUserResponse, error)
+	GetHiddenStoryUsers(ctx context.Context, in *GetHiddenStoryUsersRequest, opts ...grpc.CallOption) (*GetHiddenStoryUsersResponse, error)
+	// Notification Settings
+	UpdateNotificationSettings(ctx context.Context, in *UpdateNotificationSettingsRequest, opts ...grpc.CallOption) (*UpdateNotificationSettingsResponse, error)
+	GetNotificationSettings(ctx context.Context, in *GetNotificationSettingsRequest, opts ...grpc.CallOption) (*GetNotificationSettingsResponse, error)
+	// Google OAuth
 	HandleGoogleAuth(ctx context.Context, in *HandleGoogleAuthRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 }
 
@@ -202,6 +228,36 @@ func (c *userServiceClient) IsFollowing(ctx context.Context, in *IsFollowingRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(IsFollowingResponse)
 	err := c.cc.Invoke(ctx, UserService_IsFollowing_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ApproveFollowRequest(ctx context.Context, in *ApproveFollowRequestRequest, opts ...grpc.CallOption) (*ApproveFollowRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveFollowRequestResponse)
+	err := c.cc.Invoke(ctx, UserService_ApproveFollowRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RejectFollowRequest(ctx context.Context, in *RejectFollowRequestRequest, opts ...grpc.CallOption) (*RejectFollowRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RejectFollowRequestResponse)
+	err := c.cc.Invoke(ctx, UserService_RejectFollowRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetFollowRequests(ctx context.Context, in *GetFollowRequestsRequest, opts ...grpc.CallOption) (*GetFollowRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFollowRequestsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetFollowRequests_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -358,6 +414,86 @@ func (c *userServiceClient) ResolveVerificationRequest(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *userServiceClient) AddCloseFriend(ctx context.Context, in *AddCloseFriendRequest, opts ...grpc.CallOption) (*AddCloseFriendResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddCloseFriendResponse)
+	err := c.cc.Invoke(ctx, UserService_AddCloseFriend_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RemoveCloseFriend(ctx context.Context, in *RemoveCloseFriendRequest, opts ...grpc.CallOption) (*RemoveCloseFriendResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveCloseFriendResponse)
+	err := c.cc.Invoke(ctx, UserService_RemoveCloseFriend_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCloseFriends(ctx context.Context, in *GetCloseFriendsRequest, opts ...grpc.CallOption) (*GetCloseFriendsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCloseFriendsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCloseFriends_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) AddHiddenStoryUser(ctx context.Context, in *AddHiddenStoryUserRequest, opts ...grpc.CallOption) (*AddHiddenStoryUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddHiddenStoryUserResponse)
+	err := c.cc.Invoke(ctx, UserService_AddHiddenStoryUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RemoveHiddenStoryUser(ctx context.Context, in *RemoveHiddenStoryUserRequest, opts ...grpc.CallOption) (*RemoveHiddenStoryUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveHiddenStoryUserResponse)
+	err := c.cc.Invoke(ctx, UserService_RemoveHiddenStoryUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetHiddenStoryUsers(ctx context.Context, in *GetHiddenStoryUsersRequest, opts ...grpc.CallOption) (*GetHiddenStoryUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHiddenStoryUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_GetHiddenStoryUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateNotificationSettings(ctx context.Context, in *UpdateNotificationSettingsRequest, opts ...grpc.CallOption) (*UpdateNotificationSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateNotificationSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateNotificationSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetNotificationSettings(ctx context.Context, in *GetNotificationSettingsRequest, opts ...grpc.CallOption) (*GetNotificationSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNotificationSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetNotificationSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) HandleGoogleAuth(ctx context.Context, in *HandleGoogleAuthRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LoginResponse)
@@ -388,6 +524,10 @@ type UserServiceServer interface {
 	FollowUser(context.Context, *FollowUserRequest) (*FollowUserResponse, error)
 	UnfollowUser(context.Context, *UnfollowUserRequest) (*UnfollowUserResponse, error)
 	IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error)
+	// Follow Requests
+	ApproveFollowRequest(context.Context, *ApproveFollowRequestRequest) (*ApproveFollowRequestResponse, error)
+	RejectFollowRequest(context.Context, *RejectFollowRequestRequest) (*RejectFollowRequestResponse, error)
+	GetFollowRequests(context.Context, *GetFollowRequestsRequest) (*GetFollowRequestsResponse, error)
 	GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error)
 	GetFollowersList(context.Context, *GetFollowersListRequest) (*GetFollowersListResponse, error)
 	GetUserProfile(context.Context, *GetUserProfileRequest) (*GetUserProfileResponse, error)
@@ -406,7 +546,18 @@ type UserServiceServer interface {
 	SubmitVerificationRequest(context.Context, *SubmitVerificationRequestRequest) (*SubmitVerificationRequestResponse, error)
 	GetVerificationRequests(context.Context, *GetVerificationRequestsRequest) (*GetVerificationRequestsResponse, error)
 	ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error)
-	// Googel OAuth
+	// Close Friends
+	AddCloseFriend(context.Context, *AddCloseFriendRequest) (*AddCloseFriendResponse, error)
+	RemoveCloseFriend(context.Context, *RemoveCloseFriendRequest) (*RemoveCloseFriendResponse, error)
+	GetCloseFriends(context.Context, *GetCloseFriendsRequest) (*GetCloseFriendsResponse, error)
+	// Hide Story From
+	AddHiddenStoryUser(context.Context, *AddHiddenStoryUserRequest) (*AddHiddenStoryUserResponse, error)
+	RemoveHiddenStoryUser(context.Context, *RemoveHiddenStoryUserRequest) (*RemoveHiddenStoryUserResponse, error)
+	GetHiddenStoryUsers(context.Context, *GetHiddenStoryUsersRequest) (*GetHiddenStoryUsersResponse, error)
+	// Notification Settings
+	UpdateNotificationSettings(context.Context, *UpdateNotificationSettingsRequest) (*UpdateNotificationSettingsResponse, error)
+	GetNotificationSettings(context.Context, *GetNotificationSettingsRequest) (*GetNotificationSettingsResponse, error)
+	// Google OAuth
 	HandleGoogleAuth(context.Context, *HandleGoogleAuthRequest) (*LoginResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
@@ -450,6 +601,15 @@ func (UnimplementedUserServiceServer) UnfollowUser(context.Context, *UnfollowUse
 }
 func (UnimplementedUserServiceServer) IsFollowing(context.Context, *IsFollowingRequest) (*IsFollowingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IsFollowing not implemented")
+}
+func (UnimplementedUserServiceServer) ApproveFollowRequest(context.Context, *ApproveFollowRequestRequest) (*ApproveFollowRequestResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApproveFollowRequest not implemented")
+}
+func (UnimplementedUserServiceServer) RejectFollowRequest(context.Context, *RejectFollowRequestRequest) (*RejectFollowRequestResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RejectFollowRequest not implemented")
+}
+func (UnimplementedUserServiceServer) GetFollowRequests(context.Context, *GetFollowRequestsRequest) (*GetFollowRequestsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFollowRequests not implemented")
 }
 func (UnimplementedUserServiceServer) GetFollowingList(context.Context, *GetFollowingListRequest) (*GetFollowingListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetFollowingList not implemented")
@@ -495,6 +655,30 @@ func (UnimplementedUserServiceServer) GetVerificationRequests(context.Context, *
 }
 func (UnimplementedUserServiceServer) ResolveVerificationRequest(context.Context, *ResolveVerificationRequestRequest) (*ResolveVerificationRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ResolveVerificationRequest not implemented")
+}
+func (UnimplementedUserServiceServer) AddCloseFriend(context.Context, *AddCloseFriendRequest) (*AddCloseFriendResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddCloseFriend not implemented")
+}
+func (UnimplementedUserServiceServer) RemoveCloseFriend(context.Context, *RemoveCloseFriendRequest) (*RemoveCloseFriendResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveCloseFriend not implemented")
+}
+func (UnimplementedUserServiceServer) GetCloseFriends(context.Context, *GetCloseFriendsRequest) (*GetCloseFriendsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCloseFriends not implemented")
+}
+func (UnimplementedUserServiceServer) AddHiddenStoryUser(context.Context, *AddHiddenStoryUserRequest) (*AddHiddenStoryUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddHiddenStoryUser not implemented")
+}
+func (UnimplementedUserServiceServer) RemoveHiddenStoryUser(context.Context, *RemoveHiddenStoryUserRequest) (*RemoveHiddenStoryUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveHiddenStoryUser not implemented")
+}
+func (UnimplementedUserServiceServer) GetHiddenStoryUsers(context.Context, *GetHiddenStoryUsersRequest) (*GetHiddenStoryUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHiddenStoryUsers not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateNotificationSettings(context.Context, *UpdateNotificationSettingsRequest) (*UpdateNotificationSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNotificationSettings not implemented")
+}
+func (UnimplementedUserServiceServer) GetNotificationSettings(context.Context, *GetNotificationSettingsRequest) (*GetNotificationSettingsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNotificationSettings not implemented")
 }
 func (UnimplementedUserServiceServer) HandleGoogleAuth(context.Context, *HandleGoogleAuthRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HandleGoogleAuth not implemented")
@@ -714,6 +898,60 @@ func _UserService_IsFollowing_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).IsFollowing(ctx, req.(*IsFollowingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ApproveFollowRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveFollowRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ApproveFollowRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ApproveFollowRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ApproveFollowRequest(ctx, req.(*ApproveFollowRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RejectFollowRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectFollowRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RejectFollowRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RejectFollowRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RejectFollowRequest(ctx, req.(*RejectFollowRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetFollowRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFollowRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetFollowRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetFollowRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetFollowRequests(ctx, req.(*GetFollowRequestsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -988,6 +1226,150 @@ func _UserService_ResolveVerificationRequest_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_AddCloseFriend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddCloseFriendRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AddCloseFriend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AddCloseFriend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AddCloseFriend(ctx, req.(*AddCloseFriendRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RemoveCloseFriend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveCloseFriendRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RemoveCloseFriend(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RemoveCloseFriend_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RemoveCloseFriend(ctx, req.(*RemoveCloseFriendRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCloseFriends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCloseFriendsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCloseFriends(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCloseFriends_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCloseFriends(ctx, req.(*GetCloseFriendsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_AddHiddenStoryUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddHiddenStoryUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AddHiddenStoryUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AddHiddenStoryUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AddHiddenStoryUser(ctx, req.(*AddHiddenStoryUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RemoveHiddenStoryUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveHiddenStoryUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RemoveHiddenStoryUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RemoveHiddenStoryUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RemoveHiddenStoryUser(ctx, req.(*RemoveHiddenStoryUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetHiddenStoryUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHiddenStoryUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetHiddenStoryUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetHiddenStoryUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetHiddenStoryUsers(ctx, req.(*GetHiddenStoryUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateNotificationSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateNotificationSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateNotificationSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateNotificationSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateNotificationSettings(ctx, req.(*UpdateNotificationSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetNotificationSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNotificationSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetNotificationSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetNotificationSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetNotificationSettings(ctx, req.(*GetNotificationSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_HandleGoogleAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HandleGoogleAuthRequest)
 	if err := dec(in); err != nil {
@@ -1058,6 +1440,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_IsFollowing_Handler,
 		},
 		{
+			MethodName: "ApproveFollowRequest",
+			Handler:    _UserService_ApproveFollowRequest_Handler,
+		},
+		{
+			MethodName: "RejectFollowRequest",
+			Handler:    _UserService_RejectFollowRequest_Handler,
+		},
+		{
+			MethodName: "GetFollowRequests",
+			Handler:    _UserService_GetFollowRequests_Handler,
+		},
+		{
 			MethodName: "GetFollowingList",
 			Handler:    _UserService_GetFollowingList_Handler,
 		},
@@ -1116,6 +1510,38 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveVerificationRequest",
 			Handler:    _UserService_ResolveVerificationRequest_Handler,
+		},
+		{
+			MethodName: "AddCloseFriend",
+			Handler:    _UserService_AddCloseFriend_Handler,
+		},
+		{
+			MethodName: "RemoveCloseFriend",
+			Handler:    _UserService_RemoveCloseFriend_Handler,
+		},
+		{
+			MethodName: "GetCloseFriends",
+			Handler:    _UserService_GetCloseFriends_Handler,
+		},
+		{
+			MethodName: "AddHiddenStoryUser",
+			Handler:    _UserService_AddHiddenStoryUser_Handler,
+		},
+		{
+			MethodName: "RemoveHiddenStoryUser",
+			Handler:    _UserService_RemoveHiddenStoryUser_Handler,
+		},
+		{
+			MethodName: "GetHiddenStoryUsers",
+			Handler:    _UserService_GetHiddenStoryUsers_Handler,
+		},
+		{
+			MethodName: "UpdateNotificationSettings",
+			Handler:    _UserService_UpdateNotificationSettings_Handler,
+		},
+		{
+			MethodName: "GetNotificationSettings",
+			Handler:    _UserService_GetNotificationSettings_Handler,
 		},
 		{
 			MethodName: "HandleGoogleAuth",

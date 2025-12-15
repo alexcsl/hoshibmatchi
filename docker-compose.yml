@@ -64,7 +64,7 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
-      - MINIO_SERVER_URL=https://localhost:9000
+      - MINIO_SERVER_URL=http://localhost:9000
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -238,10 +238,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api-gateway.rule=Host(`api.hoshi.local`)"
-      - "traefik.http.routers.api-gateway.entrypoints=websecure"
-      - "traefik.http.routers.api-gateway.tls=true"
-      - "traefik.http.routers.api-gateway.tls.certresolver=myresolver"
-      - "traefik.http.routers.api-gateway.priority=1" # <-- ADD THIS (low priority)
+      - "traefik.http.routers.api-gateway.entrypoints=web"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8000"
 
   user-service:

@@ -26,6 +26,11 @@ service UserService {
   rpc FollowUser (FollowUserRequest) returns (FollowUserResponse);
   rpc UnfollowUser (UnfollowUserRequest) returns (UnfollowUserResponse);
   rpc IsFollowing (IsFollowingRequest) returns (IsFollowingResponse);
+  
+  // Follow Requests
+  rpc ApproveFollowRequest (ApproveFollowRequestRequest) returns (ApproveFollowRequestResponse);
+  rpc RejectFollowRequest (RejectFollowRequestRequest) returns (RejectFollowRequestResponse);
+  rpc GetFollowRequests (GetFollowRequestsRequest) returns (GetFollowRequestsResponse);
 
   rpc GetFollowingList (GetFollowingListRequest) returns (GetFollowingListResponse);
   rpc GetFollowersList (GetFollowersListRequest) returns (GetFollowersListResponse);
@@ -52,8 +57,21 @@ service UserService {
   rpc GetVerificationRequests (GetVerificationRequestsRequest) returns (GetVerificationRequestsResponse);
   rpc ResolveVerificationRequest (ResolveVerificationRequestRequest) returns (ResolveVerificationRequestResponse);
 
+  // Close Friends
+  rpc AddCloseFriend (AddCloseFriendRequest) returns (AddCloseFriendResponse);
+  rpc RemoveCloseFriend (RemoveCloseFriendRequest) returns (RemoveCloseFriendResponse);
+  rpc GetCloseFriends (GetCloseFriendsRequest) returns (GetCloseFriendsResponse);
 
-  // Googel OAuth
+  // Hide Story From
+  rpc AddHiddenStoryUser (AddHiddenStoryUserRequest) returns (AddHiddenStoryUserResponse);
+  rpc RemoveHiddenStoryUser (RemoveHiddenStoryUserRequest) returns (RemoveHiddenStoryUserResponse);
+  rpc GetHiddenStoryUsers (GetHiddenStoryUsersRequest) returns (GetHiddenStoryUsersResponse);
+
+  // Notification Settings
+  rpc UpdateNotificationSettings (UpdateNotificationSettingsRequest) returns (UpdateNotificationSettingsResponse);
+  rpc GetNotificationSettings (GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse);
+
+  // Google OAuth
   rpc HandleGoogleAuth (HandleGoogleAuthRequest) returns (LoginResponse); 
 }
 
@@ -195,6 +213,7 @@ message IsFollowingRequest {
 
 message IsFollowingResponse {
   bool is_following = 1;
+  string status = 2; // 'pending', 'approved', or empty if not following
 }
 
 message GetFollowingListRequest {
@@ -232,6 +251,7 @@ message GetUserProfileResponse {
   int64 mutual_follower_count = 10;
   string gender = 11;
   bool is_private = 12;
+  string follow_status = 13; // pending, approved, or empty if not following
 }
 
 // --- Edit User Profile ---
@@ -370,4 +390,114 @@ message ResolveVerificationRequestRequest {
 
 message ResolveVerificationRequestResponse {
   string message = 1;
+}
+
+// --- User Info (for lists) ---
+message UserInfo {
+  int64 user_id = 1;
+  string username = 2;
+  string name = 3;
+  string profile_picture_url = 4;
+  bool is_verified = 5;
+}
+
+// --- Close Friends ---
+message AddCloseFriendRequest {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+}
+
+message AddCloseFriendResponse {
+  string message = 1;
+}
+
+message RemoveCloseFriendRequest {
+  int64 user_id = 1;
+  int64 friend_id = 2;
+}
+
+message RemoveCloseFriendResponse {
+  string message = 1;
+}
+
+message GetCloseFriendsRequest {
+  int64 user_id = 1;
+}
+
+message GetCloseFriendsResponse {
+  repeated UserInfo friends = 1;
+}
+
+// --- Hide Story From ---
+message AddHiddenStoryUserRequest {
+  int64 user_id = 1;
+  int64 hidden_user_id = 2;
+}
+
+message AddHiddenStoryUserResponse {
+  string message = 1;
+}
+
+message RemoveHiddenStoryUserRequest {
+  int64 user_id = 1;
+  int64 hidden_user_id = 2;
+}
+
+message RemoveHiddenStoryUserResponse {
+  string message = 1;
+}
+
+message GetHiddenStoryUsersRequest {
+  int64 user_id = 1;
+}
+
+message GetHiddenStoryUsersResponse {
+  repeated UserInfo hidden_users = 1;
+}
+
+// --- Notification Settings ---
+message UpdateNotificationSettingsRequest {
+  int64 user_id = 1;
+  bool push_enabled = 2;
+  bool email_enabled = 3;
+}
+
+message UpdateNotificationSettingsResponse {
+  string message = 1;
+}
+
+message GetNotificationSettingsRequest {
+  int64 user_id = 1;
+}
+
+message GetNotificationSettingsResponse {
+  bool push_enabled = 1;
+  bool email_enabled = 2;
+}
+
+// --- Follow Requests ---
+message ApproveFollowRequestRequest {
+  int64 user_id = 1; // The user approving (account owner)
+  int64 follower_id = 2; // The user who requested to follow
+}
+
+message ApproveFollowRequestResponse {
+  string message = 1;
+}
+
+message RejectFollowRequestRequest {
+  int64 user_id = 1; // The user rejecting (account owner)
+  int64 follower_id = 2; // The user who requested to follow
+}
+
+message RejectFollowRequestResponse {
+  string message = 1;
+}
+
+message GetFollowRequestsRequest {
+  int64 user_id = 1; // The user getting their pending requests
+}
+
+message GetFollowRequestsResponse {
+  repeated UserInfo requests = 1;
 }

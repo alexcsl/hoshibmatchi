@@ -9,6 +9,9 @@ interface User {
   name?: string
   profile_picture_url?: string
   role?: string
+  is_verified?: boolean
+  bio?: string
+  gender?: string
 }
 
 interface AuthState {

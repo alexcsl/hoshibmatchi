@@ -63,8 +63,9 @@ type User struct {
 // Follow defines the relationship between two users
 type Follow struct {
 	// Composite primary key (follower_id, following_id)
-	FollowerID  int64 `gorm:"primaryKey"` // The user doing the following
-	FollowingID int64 `gorm:"primaryKey"` // The user being followed
+	FollowerID  int64  `gorm:"primaryKey"`         // The user doing the following
+	FollowingID int64  `gorm:"primaryKey"`         // The user being followed
+	Status      string `gorm:"default:'approved'"` // 'pending', 'approved', 'rejected'
 	CreatedAt   time.Time
 }
 
@@ -93,6 +94,28 @@ type VerificationRequest struct {
 	Reason         string
 	Status         string `gorm:"type:varchar(10);default:'pending'"` // 'pending', 'approved', 'rejected'
 	ResolvedByID   int64  // Admin User ID who resolved it
+}
+
+// CloseFriend defines close friend relationships
+type CloseFriend struct {
+	UserID    int64 `gorm:"primaryKey"` // The user who marks someone as close friend
+	FriendID  int64 `gorm:"primaryKey"` // The close friend
+	CreatedAt time.Time
+}
+
+// HiddenStoryUser defines users who cannot see your stories
+type HiddenStoryUser struct {
+	UserID       int64 `gorm:"primaryKey"` // The user hiding their story
+	HiddenUserID int64 `gorm:"primaryKey"` // The user who cannot see stories
+	CreatedAt    time.Time
+}
+
+// NotificationSetting stores user notification preferences
+type NotificationSetting struct {
+	UserID       int64 `gorm:"primaryKey"`
+	PushEnabled  bool  `gorm:"default:true"`
+	EmailEnabled bool  `gorm:"default:true"`
+	UpdatedAt    time.Time
 }
 
 // searchResult is a helper struct for sorting
@@ -246,6 +269,9 @@ func main() {
 	db.AutoMigrate(&Follow{})
 	db.AutoMigrate(&Block{})
 	db.AutoMigrate(&VerificationRequest{})
+	db.AutoMigrate(&CloseFriend{})
+	db.AutoMigrate(&HiddenStoryUser{})
+	db.AutoMigrate(&NotificationSetting{})
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -794,30 +820,43 @@ func (s *server) FollowUser(ctx context.Context, req *pb.FollowUserRequest) (*pb
 		return nil, status.Error(codes.NotFound, "The user you are trying to follow does not exist")
 	}
 
-	// 3. Create the follow relationship
+	// 3. Determine follow status based on account privacy
+	followStatus := "approved"
+	message := "Successfully followed user"
+	notificationType := "user.followed"
+
+	if userToFollow.IsPrivate {
+		followStatus = "pending"
+		message = "Follow request sent"
+		notificationType = "follow.request"
+	}
+
+	// 4. Create the follow relationship
 	follow := Follow{
 		FollowerID:  req.FollowerId,
 		FollowingID: req.FollowingId,
+		Status:      followStatus,
 	}
 
 	if result := s.db.Create(&follow); result.Error != nil {
 		if strings.Contains(result.Error.Error(), "unique constraint") {
-			return nil, status.Error(codes.AlreadyExists, "You are already following this user")
+			return nil, status.Error(codes.AlreadyExists, "You already have a pending or active follow relationship")
 		}
 		return nil, status.Error(codes.Internal, "Failed to follow user")
 	}
 
+	// 5. Send notification
 	msgBody, _ := json.Marshal(map[string]interface{}{
-		"type":      "user.followed",
+		"type":      notificationType,
 		"actor_id":  req.FollowerId,
 		"user_id":   req.FollowingId, // The user to be notified
 		"entity_id": req.FollowerId,  // The entity is the follower
 	})
 	s.publishToQueue(ctx, "notification_queue", msgBody)
 
-	log.Printf("User %d is now following User %d", req.FollowerId, req.FollowingId)
+	log.Printf("User %d follow status: %s for User %d", req.FollowerId, followStatus, req.FollowingId)
 
-	return &pb.FollowUserResponse{Message: "Successfully followed user"}, nil
+	return &pb.FollowUserResponse{Message: message}, nil
 }
 
 // --- GPRC: UnfollowUser ---
@@ -833,23 +872,114 @@ func (s *server) UnfollowUser(ctx context.Context, req *pb.UnfollowUserRequest) 
 		return nil, status.Error(codes.NotFound, "You are not following this user")
 	}
 
+	// Invalidate follower's home feed cache (they should no longer see posts from this user)
+	pattern := "feed:home:" + strconv.FormatInt(req.FollowerId, 10) + ":*"
+	iter := s.rdb.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		s.rdb.Del(ctx, iter.Val())
+	}
+
 	log.Printf("User %d has unfollowed User %d", req.FollowerId, req.FollowingId)
 
 	return &pb.UnfollowUserResponse{Message: "Successfully unfollowed user"}, nil
 }
 
+// --- GPRC: ApproveFollowRequest ---
+func (s *server) ApproveFollowRequest(ctx context.Context, req *pb.ApproveFollowRequestRequest) (*pb.ApproveFollowRequestResponse, error) {
+	result := s.db.Model(&Follow{}).
+		Where("follower_id = ? AND following_id = ? AND status = ?", req.FollowerId, req.UserId, "pending").
+		Update("status", "approved")
+
+	if result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to approve follow request")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "No pending follow request found")
+	}
+
+	// Invalidate follower's home feed cache (they should now see posts from the followed user)
+	pattern := "feed:home:" + strconv.FormatInt(req.FollowerId, 10) + ":*"
+	iter := s.rdb.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		s.rdb.Del(ctx, iter.Val())
+	}
+
+	// Send notification to requester
+	msgBody, _ := json.Marshal(map[string]interface{}{
+		"type":      "follow.approved",
+		"actor_id":  req.UserId,
+		"user_id":   req.FollowerId,
+		"entity_id": req.UserId,
+	})
+	s.publishToQueue(ctx, "notification_queue", msgBody)
+
+	return &pb.ApproveFollowRequestResponse{Message: "Follow request approved"}, nil
+}
+
+// --- GPRC: RejectFollowRequest ---
+func (s *server) RejectFollowRequest(ctx context.Context, req *pb.RejectFollowRequestRequest) (*pb.RejectFollowRequestResponse, error) {
+	result := s.db.Where("follower_id = ? AND following_id = ? AND status = ?", req.FollowerId, req.UserId, "pending").
+		Delete(&Follow{})
+
+	if result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to reject follow request")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "No pending follow request found")
+	}
+
+	return &pb.RejectFollowRequestResponse{Message: "Follow request rejected"}, nil
+}
+
+// --- GPRC: GetFollowRequests ---
+func (s *server) GetFollowRequests(ctx context.Context, req *pb.GetFollowRequestsRequest) (*pb.GetFollowRequestsResponse, error) {
+	var follows []Follow
+	err := s.db.Where("following_id = ? AND status = ?", req.UserId, "pending").Find(&follows).Error
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get follow requests")
+	}
+
+	var followerIds []int64
+	for _, follow := range follows {
+		followerIds = append(followerIds, follow.FollowerID)
+	}
+
+	var users []User
+	if len(followerIds) > 0 {
+		s.db.Where("id IN ?", followerIds).Find(&users)
+	}
+
+	var requests []*pb.UserInfo
+	for _, user := range users {
+		requests = append(requests, &pb.UserInfo{
+			UserId:            int64(user.ID),
+			Username:          user.Username,
+			Name:              user.Name,
+			ProfilePictureUrl: user.ProfilePictureURL,
+			IsVerified:        user.IsVerified,
+		})
+	}
+
+	return &pb.GetFollowRequestsResponse{Requests: requests}, nil
+}
+
 // --- GPRC: IsFollowing ---
 func (s *server) IsFollowing(ctx context.Context, req *pb.IsFollowingRequest) (*pb.IsFollowingResponse, error) {
-	var count int64
-	err := s.db.Model(&Follow{}).
-		Where("follower_id = ? AND following_id = ?", req.FollowerId, req.FollowingId).
-		Count(&count).Error
+	var follow Follow
+	err := s.db.Where("follower_id = ? AND following_id = ?", req.FollowerId, req.FollowingId).
+		First(&follow).Error
 
+	if err == gorm.ErrRecordNotFound {
+		return &pb.IsFollowingResponse{IsFollowing: false, Status: ""}, nil
+	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to check follow status")
 	}
 
-	return &pb.IsFollowingResponse{IsFollowing: count > 0}, nil
+	return &pb.IsFollowingResponse{
+		IsFollowing: follow.Status == "approved",
+		Status:      follow.Status,
+	}, nil
 }
 
 // --- GPRC: GetFollowingList ---
@@ -917,27 +1047,27 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 	var followingCount int64
 	var mutualFollowerCount int64
 	var isFollowedBySelf bool
+	var followStatus string
 
 	// 2. Get follower count
-	s.db.Model(&Follow{}).Where("following_id = ?", user.ID).Count(&followerCount)
+	s.db.Model(&Follow{}).Where("following_id = ? AND status = ?", user.ID, "approved").Count(&followerCount)
 
 	// 3. Get following count
-	s.db.Model(&Follow{}).Where("follower_id = ?", user.ID).Count(&followingCount)
+	s.db.Model(&Follow{}).Where("follower_id = ? AND status = ?", user.ID, "approved").Count(&followingCount)
 
-	// 4. Check if the requestor is following this user
-	// --- THIS IS THE FIX ---
-	if req.SelfUserId != int64(user.ID) { // Cast user.ID to int64
-		var followCheck int64
-		// And cast here as well
-		s.db.Model(&Follow{}).Where("follower_id = ? AND following_id = ?", req.SelfUserId, int64(user.ID)).Count(&followCheck)
-		isFollowedBySelf = (followCheck > 0)
+	// 4. Check if the requestor is following this user and get status
+	if req.SelfUserId != int64(user.ID) {
+		var follow Follow
+		if err := s.db.Where("follower_id = ? AND following_id = ?", req.SelfUserId, int64(user.ID)).First(&follow).Error; err == nil {
+			followStatus = follow.Status
+			isFollowedBySelf = (follow.Status == "approved")
+		}
 	}
-	// --- END FIX ---
 
 	mutualFollowerCount = 0
 
 	return &pb.GetUserProfileResponse{
-		UserId:              int64(user.ID), // Also cast here
+		UserId:              int64(user.ID),
 		Name:                user.Name,
 		Username:            user.Username,
 		Bio:                 user.Bio,
@@ -949,6 +1079,7 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 		MutualFollowerCount: mutualFollowerCount,
 		Gender:              user.Gender,
 		IsPrivate:           user.IsPrivate,
+		FollowStatus:        followStatus,
 	}, nil
 }
 
@@ -960,23 +1091,28 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
-	// 2. Validate new data (as per PDF)
-	if len(req.Name) <= 4 {
-		return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
-	}
-	if len(req.Bio) > 150 {
-		return nil, status.Error(codes.InvalidArgument, "Bio must not exceed 150 characters")
-	}
-	if req.Gender != "Male" && req.Gender != "Female" && req.Gender != "Prefer not to say" {
-		// Loosened validation slightly to match frontend options,
-		// or strictly enforce "male"/"female" if business logic requires it.
-		// Ideally match what your frontend sends ("Male", "Female", "Prefer not to say")
+	// 2. Validate and update fields only if provided
+	if req.Name != "" {
+		if len(req.Name) <= 4 {
+			return nil, status.Error(codes.InvalidArgument, "Name must be more than 4 characters")
+		}
+		user.Name = req.Name
 	}
 
-	// 3. Update the fields
-	user.Name = req.Name
-	user.Bio = req.Bio
-	user.Gender = req.Gender
+	if req.Bio != "" || req.Bio == "" {
+		// Allow empty bio to clear it
+		if len(req.Bio) > 150 {
+			return nil, status.Error(codes.InvalidArgument, "Bio must not exceed 150 characters")
+		}
+		user.Bio = req.Bio
+	}
+
+	if req.Gender != "" {
+		if req.Gender != "Male" && req.Gender != "Female" && req.Gender != "Other" && req.Gender != "Prefer not to say" {
+			return nil, status.Error(codes.InvalidArgument, "Gender must be Male, Female, Other, or Prefer not to say")
+		}
+		user.Gender = req.Gender
+	}
 
 	if req.ProfilePictureUrl != "" {
 		user.ProfilePictureURL = req.ProfilePictureUrl
@@ -986,9 +1122,20 @@ func (s *server) UpdateUserProfile(ctx context.Context, req *pb.UpdateUserProfil
 		return nil, status.Error(codes.Internal, "Failed to update profile")
 	}
 
-	// Invalidate cache
+	// Invalidate cache - clear user profile cache
 	cacheKey := fmt.Sprintf("user:profile:%d", req.UserId)
 	s.rdb.Del(ctx, cacheKey)
+
+	// Also clear feed caches that might contain this user's posts (so updated profile pic shows)
+	iter := s.rdb.Scan(ctx, 0, "feed:*", 0).Iterator()
+	for iter.Next(ctx) {
+		if err := s.rdb.Del(ctx, iter.Val()).Err(); err != nil {
+			log.Printf("Failed to delete feed cache key %s: %v", iter.Val(), err)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		log.Printf("Error scanning feed cache keys: %v", err)
+	}
 
 	log.Printf("User profile updated for user_id: %d", req.UserId)
 
@@ -1585,5 +1732,184 @@ func (s *server) HandleGoogleAuth(ctx context.Context, req *pb.HandleGoogleAuthR
 		Name:                   user.Name,
 		ProfilePictureUrl:      user.ProfilePictureURL,
 		NeedsProfileCompletion: needsProfileCompletion,
+	}, nil
+}
+
+// --- GPRC: AddCloseFriend ---
+func (s *server) AddCloseFriend(ctx context.Context, req *pb.AddCloseFriendRequest) (*pb.AddCloseFriendResponse, error) {
+	// Check if already close friend
+	var existing CloseFriend
+	err := s.db.Where("user_id = ? AND friend_id = ?", req.UserId, req.FriendId).First(&existing).Error
+	if err == nil {
+		return nil, status.Error(codes.AlreadyExists, "Already a close friend")
+	}
+
+	// Add close friend
+	closeFriend := CloseFriend{
+		UserID:    req.UserId,
+		FriendID:  req.FriendId,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(&closeFriend).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to add close friend")
+	}
+
+	return &pb.AddCloseFriendResponse{Message: "Close friend added successfully"}, nil
+}
+
+// --- GPRC: RemoveCloseFriend ---
+func (s *server) RemoveCloseFriend(ctx context.Context, req *pb.RemoveCloseFriendRequest) (*pb.RemoveCloseFriendResponse, error) {
+	result := s.db.Where("user_id = ? AND friend_id = ?", req.UserId, req.FriendId).Delete(&CloseFriend{})
+	if result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to remove close friend")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "Close friend not found")
+	}
+
+	return &pb.RemoveCloseFriendResponse{Message: "Close friend removed successfully"}, nil
+}
+
+// --- GPRC: GetCloseFriends ---
+func (s *server) GetCloseFriends(ctx context.Context, req *pb.GetCloseFriendsRequest) (*pb.GetCloseFriendsResponse, error) {
+	var closeFriends []CloseFriend
+	if err := s.db.Where("user_id = ?", req.UserId).Find(&closeFriends).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get close friends")
+	}
+
+	// Get user details for each friend
+	var friendIds []int64
+	for _, cf := range closeFriends {
+		friendIds = append(friendIds, cf.FriendID)
+	}
+
+	var users []User
+	if len(friendIds) > 0 {
+		s.db.Where("id IN ?", friendIds).Find(&users)
+	}
+
+	// Build response
+	var friends []*pb.UserInfo
+	for _, user := range users {
+		friends = append(friends, &pb.UserInfo{
+			UserId:            int64(user.ID),
+			Username:          user.Username,
+			Name:              user.Name,
+			ProfilePictureUrl: user.ProfilePictureURL,
+			IsVerified:        user.IsVerified,
+		})
+	}
+
+	return &pb.GetCloseFriendsResponse{Friends: friends}, nil
+}
+
+// --- GPRC: AddHiddenStoryUser ---
+func (s *server) AddHiddenStoryUser(ctx context.Context, req *pb.AddHiddenStoryUserRequest) (*pb.AddHiddenStoryUserResponse, error) {
+	// Check if already hidden
+	var existing HiddenStoryUser
+	err := s.db.Where("user_id = ? AND hidden_user_id = ?", req.UserId, req.HiddenUserId).First(&existing).Error
+	if err == nil {
+		return nil, status.Error(codes.AlreadyExists, "User already hidden from stories")
+	}
+
+	// Add to hidden list
+	hiddenUser := HiddenStoryUser{
+		UserID:       req.UserId,
+		HiddenUserID: req.HiddenUserId,
+		CreatedAt:    time.Now(),
+	}
+
+	if err := s.db.Create(&hiddenUser).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to hide story from user")
+	}
+
+	return &pb.AddHiddenStoryUserResponse{Message: "User hidden from stories successfully"}, nil
+}
+
+// --- GPRC: RemoveHiddenStoryUser ---
+func (s *server) RemoveHiddenStoryUser(ctx context.Context, req *pb.RemoveHiddenStoryUserRequest) (*pb.RemoveHiddenStoryUserResponse, error) {
+	result := s.db.Where("user_id = ? AND hidden_user_id = ?", req.UserId, req.HiddenUserId).Delete(&HiddenStoryUser{})
+	if result.Error != nil {
+		return nil, status.Error(codes.Internal, "Failed to remove hidden story user")
+	}
+	if result.RowsAffected == 0 {
+		return nil, status.Error(codes.NotFound, "Hidden story user not found")
+	}
+
+	return &pb.RemoveHiddenStoryUserResponse{Message: "User removed from hidden list successfully"}, nil
+}
+
+// --- GPRC: GetHiddenStoryUsers ---
+func (s *server) GetHiddenStoryUsers(ctx context.Context, req *pb.GetHiddenStoryUsersRequest) (*pb.GetHiddenStoryUsersResponse, error) {
+	var hiddenUsers []HiddenStoryUser
+	if err := s.db.Where("user_id = ?", req.UserId).Find(&hiddenUsers).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get hidden story users")
+	}
+
+	// Get user details
+	var userIds []int64
+	for _, hu := range hiddenUsers {
+		userIds = append(userIds, hu.HiddenUserID)
+	}
+
+	var users []User
+	if len(userIds) > 0 {
+		s.db.Where("id IN ?", userIds).Find(&users)
+	}
+
+	// Build response
+	var hiddenUsersList []*pb.UserInfo
+	for _, user := range users {
+		hiddenUsersList = append(hiddenUsersList, &pb.UserInfo{
+			UserId:            int64(user.ID),
+			Username:          user.Username,
+			Name:              user.Name,
+			ProfilePictureUrl: user.ProfilePictureURL,
+			IsVerified:        user.IsVerified,
+		})
+	}
+
+	return &pb.GetHiddenStoryUsersResponse{HiddenUsers: hiddenUsersList}, nil
+}
+
+// --- GPRC: UpdateNotificationSettings ---
+func (s *server) UpdateNotificationSettings(ctx context.Context, req *pb.UpdateNotificationSettingsRequest) (*pb.UpdateNotificationSettingsResponse, error) {
+	// Upsert notification settings
+	settings := NotificationSetting{
+		UserID:       req.UserId,
+		PushEnabled:  req.PushEnabled,
+		EmailEnabled: req.EmailEnabled,
+		UpdatedAt:    time.Now(),
+	}
+
+	// Use GORM's save which does upsert
+	if err := s.db.Save(&settings).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update notification settings")
+	}
+
+	return &pb.UpdateNotificationSettingsResponse{Message: "Notification settings updated successfully"}, nil
+}
+
+// --- GPRC: GetNotificationSettings ---
+func (s *server) GetNotificationSettings(ctx context.Context, req *pb.GetNotificationSettingsRequest) (*pb.GetNotificationSettingsResponse, error) {
+	var settings NotificationSetting
+	err := s.db.Where("user_id = ?", req.UserId).First(&settings).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Return default settings
+		return &pb.GetNotificationSettingsResponse{
+			PushEnabled:  true,
+			EmailEnabled: true,
+		}, nil
+	}
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get notification settings")
+	}
+
+	return &pb.GetNotificationSettingsResponse{
+		PushEnabled:  settings.PushEnabled,
+		EmailEnabled: settings.EmailEnabled,
 	}, nil
 }

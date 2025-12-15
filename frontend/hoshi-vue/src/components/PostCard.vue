@@ -6,15 +6,15 @@
     <div class="post-header">
       <div class="user-info">
         <SecureImage 
-          :src="post.author_profile_url" 
-          :alt="post.author_username" 
+          :src="displayAuthorProfileUrl" 
+          :alt="displayAuthorUsername" 
           class-name="avatar"
           loading-placeholder="/placeholder.svg?height=32&width=32"
           error-placeholder="/default-avatar.svg"
         />
         <div>
           <div class="username">
-            {{ post.author_username }}
+            {{ displayAuthorUsername }}
             <span
               v-if="post.author_is_verified"
               class="verified"
@@ -121,7 +121,7 @@
         <strong>{{ formatLikes(post.like_count) }}</strong>
       </div>
       <div class="caption">
-        <strong>{{ post.author_username }}</strong>
+        <strong>{{ displayAuthorUsername }}</strong>
         <span
           v-if="!showingSummary"
           @click="handleRichTextClick"
@@ -492,6 +492,21 @@ const isOwnPost = computed(() => {
   const authorId = (props.post as any).authorId || props.post.author_id;
   
   return currentUserId === authorId;
+});
+
+// Use authStore data for current user's profile to ensure real-time updates
+const displayAuthorProfileUrl = computed(() => {
+  if (isOwnPost.value && authStore.user?.profile_picture_url) {
+    return authStore.user.profile_picture_url;
+  }
+  return props.post.author_profile_url;
+});
+
+const displayAuthorUsername = computed(() => {
+  if (isOwnPost.value && authStore.user?.username) {
+    return authStore.user.username;
+  }
+  return props.post.author_username;
 });
 
 // Load secure URLs for all media

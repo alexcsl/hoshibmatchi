@@ -49,21 +49,23 @@
               >✓</span>
             </h1>
             
-            <button
+            <div
               v-if="isOwnProfile"
-              class="edit-btn"
-              @click="$router.push('/edit-profile')"
+              class="own-profile-actions"
             >
-              Edit profile
-            </button>
-            
-            <button
-              v-if="isOwnProfile && !profile.is_verified"
-              class="verify-btn"
-              @click="showVerificationForm = true"
-            >
-              Request Verification
-            </button>
+              <button
+                class="settings-btn"
+                @click="$router.push('/settings')"
+              >
+                ⚙️ Settings
+              </button>
+              <button
+                class="archive-btn"
+                @click="$router.push('/archive')"
+              >
+                📦 Archive
+              </button>
+            </div>
             
             <div
               v-else
@@ -71,11 +73,11 @@
             >
               <button 
                 class="follow-btn" 
-                :class="{ following: profile.is_following }"
+                :class="{ following: profile.is_following, 'follow-back': profile.is_follower }"
                 :disabled="followLoading"
                 @click="toggleFollow"
               >
-                {{ profile.is_following ? 'Following' : 'Follow' }}
+                {{ getFollowButtonText() }}
               </button>
               <button
                 class="message-btn"
@@ -84,10 +86,17 @@
                 Message
               </button>
               <button
-                class="report-btn"
-                @click="reportUser"
+                class="block-btn"
+                :class="{ blocked: profile.is_blocked }"
+                @click="showBlockModal = true"
               >
-                Report
+                {{ profile.is_blocked ? 'Unblock' : 'Block' }}
+              </button>
+              <button
+                class="more-btn"
+                @click="showMoreOptions = true"
+              >
+                ⋯
               </button>
               <button
                 v-if="isAdmin"
@@ -171,7 +180,7 @@
           :class="{ active: activeTab === 'tagged' }"
           @click="switchTab('tagged')"
         >
-          <span class="icon">📌</span> TAGGED
+          <span class="icon">@</span> MENTIONS
         </button>
       </div>
 
@@ -443,6 +452,132 @@
       </div>
     </div>
 
+    <!-- Block User Modal -->
+    <div
+      v-if="showBlockModal"
+      class="modal-overlay"
+      @click="showBlockModal = false"
+    >
+      <div
+        class="confirm-modal"
+        @click.stop
+      >
+        <div class="modal-header">
+          <h3>{{ profile.is_blocked ? 'Unblock User' : 'Block User' }}</h3>
+          <button
+            class="close-btn"
+            @click="showBlockModal = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <p v-if="!profile.is_blocked">
+            Are you sure you want to block <strong>@{{ profile.username }}</strong>?
+          </p>
+          <p v-if="!profile.is_blocked">
+            They won't be able to see your posts or follow you. They won't be notified that you blocked them.
+          </p>
+          <p v-else>
+            <strong>@{{ profile.username }}</strong> will be able to see your posts and follow you again.
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="cancel-btn"
+            @click="showBlockModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="confirm-btn"
+            :class="{ danger: !profile.is_blocked }"
+            :disabled="blockLoading"
+            @click="handleBlockUser"
+          >
+            {{ blockLoading ? 'Processing...' : (profile.is_blocked ? 'Unblock' : 'Block') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report User Modal -->
+    <div
+      v-if="showReportModal"
+      class="modal-overlay"
+      @click="showReportModal = false"
+    >
+      <div
+        class="report-modal"
+        @click.stop
+      >
+        <div class="modal-header">
+          <h3>Report User</h3>
+          <button
+            class="close-btn"
+            @click="showReportModal = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>Why are you reporting <strong>@{{ profile.username }}</strong>?</p>
+          <textarea
+            v-model="reportReason"
+            placeholder="Please describe the issue..."
+            rows="4"
+            class="report-textarea"
+          ></textarea>
+        </div>
+        <div class="modal-actions">
+          <button
+            class="cancel-btn"
+            @click="showReportModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="confirm-btn danger"
+            :disabled="reportLoading || !reportReason.trim()"
+            @click="handleReportUser"
+          >
+            {{ reportLoading ? 'Reporting...' : 'Report' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- More Options Modal -->
+    <div
+      v-if="showMoreOptions"
+      class="modal-overlay"
+      @click="showMoreOptions = false"
+    >
+      <div
+        class="options-modal"
+        @click.stop
+      >
+        <button
+          class="option-btn danger"
+          @click="showReportModal = true; showMoreOptions = false"
+        >
+          Report
+        </button>
+        <button
+          class="option-btn"
+          @click="copyProfileLink"
+        >
+          Copy Profile Link
+        </button>
+        <button
+          class="option-btn cancel"
+          @click="showMoreOptions = false"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
     <!-- Verification Request Modal -->
     <div
       v-if="showVerificationForm"
@@ -604,6 +739,14 @@ const verificationForm = ref({
 
 // Ban user
 const banLoading = ref(false);
+
+// Block/Report modals
+const showBlockModal = ref(false);
+const showReportModal = ref(false);
+const showMoreOptions = ref(false);
+const reportReason = ref("");
+const blockLoading = ref(false);
+const reportLoading = ref(false);
 
 // Admin check
 const isAdmin = computed(() => {
@@ -838,6 +981,66 @@ const handlePostSave = async (postId: string) => {
   }
 };
 
+const getFollowButtonText = () => {
+  // Check follow_status first (from backend)
+  if (profile.value.follow_status === 'pending') return 'Requested';
+  if (profile.value.follow_status === 'approved' || profile.value.is_following) return 'Following';
+  if (profile.value.is_follower) return 'Follow Back';
+  return 'Follow';
+};
+
+const handleBlockUser = async () => {
+  if (blockLoading.value) return;
+  blockLoading.value = true;
+
+  const targetId = profile.value.user_id || profile.value.id;
+  try {
+    if (profile.value.is_blocked) {
+      await userAPI.unblockUser(targetId);
+      profile.value.is_blocked = false;
+      alert('User unblocked successfully');
+    } else {
+      await userAPI.blockUser(targetId);
+      profile.value.is_blocked = true;
+      // If following, unfollow automatically
+      if (profile.value.is_following) {
+        profile.value.is_following = false;
+        profile.value.followers_count--;
+      }
+      alert('User blocked successfully');
+    }
+    showBlockModal.value = false;
+  } catch (err) {
+    console.error('Failed to block/unblock user:', err);
+    alert('Failed to block/unblock user');
+  } finally {
+    blockLoading.value = false;
+  }
+};
+
+const handleReportUser = async () => {
+  if (!reportReason.value.trim()) {
+    alert('Please provide a reason for reporting');
+    return;
+  }
+
+  if (reportLoading.value) return;
+  reportLoading.value = true;
+
+  const targetId = profile.value.user_id || profile.value.id;
+  try {
+    await userAPI.reportUser(targetId, reportReason.value);
+    alert('User reported successfully');
+    showReportModal.value = false;
+    reportReason.value = '';
+  } catch (err) {
+    console.error('Failed to report user:', err);
+    alert('Failed to report user');
+  } finally {
+    reportLoading.value = false;
+  }
+};
+
 const toggleFollow = async () => {
   if (followLoading.value) return;
   followLoading.value = true;
@@ -851,14 +1054,47 @@ const toggleFollow = async () => {
   }
 
   try {
-    if (profile.value.is_following) {
+    // If following or requested, unfollow
+    if (profile.value.is_following || profile.value.follow_status === 'pending' || profile.value.follow_status === 'approved') {
+      const wasFollowing = profile.value.is_following || profile.value.follow_status === 'approved';
+      const wasPrivate = profile.value.is_private;
+      
       await apiClient.delete(`/users/${targetId}/follow`);
+      
+      // Update state
       profile.value.is_following = false;
-      profile.value.followers_count--;
+      profile.value.follow_status = '';
+      
+      if (wasFollowing) {
+        profile.value.followers_count--;
+      }
+      
+      // If account is private, clear posts and reload to show "Private account" message
+      if (wasPrivate) {
+        posts.value = [];
+        // Fetch posts again to trigger the privacy check on backend
+        const username = getTargetUsername();
+        if (username) {
+          await fetchPosts(activeTab.value);
+        }
+      }
     } else {
-      await apiClient.post(`/users/${targetId}/follow`);
-      profile.value.is_following = true;
-      profile.value.followers_count++;
+      // Try to follow (will be pending if private account)
+      const response = await apiClient.post(`/users/${targetId}/follow`);
+      const responseData = response.data || response;
+      
+      // Check if it's a follow request or immediate follow
+      if (responseData.message && responseData.message.includes('request')) {
+        profile.value.follow_status = 'pending';
+        profile.value.is_following = false;
+      } else {
+        profile.value.is_following = true;
+        profile.value.follow_status = 'approved';
+        profile.value.followers_count++;
+      }
+      
+      // Reload profile to get accurate status
+      await fetchProfile();
     }
   } catch (err) { 
     console.error(err); 
@@ -868,6 +1104,17 @@ const toggleFollow = async () => {
 };
 
 const sendMessage = () => router.push({ name: "Messages", query: { user: profile.value.username } });
+
+const copyProfileLink = () => {
+  const profileUrl = `${window.location.origin}/${profile.value.username}`;
+  navigator.clipboard.writeText(profileUrl).then(() => {
+    alert('Profile link copied to clipboard!');
+    showMoreOptions.value = false;
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+    alert('Failed to copy link');
+  });
+};
 
 const showFollowersModal = ref(false);
 const showFollowingModal = ref(false);
@@ -928,7 +1175,7 @@ const formatNumber = (num: number) => {
 const getMediaUrl = (url: string) => {
   if (!url) return "/placeholder.svg";
   if (url.startsWith("http")) return url;
-  return `https://localhost:8000${url}`;
+  return `http://localhost:8000${url}`;
 };
 
 const handleImageError = (e: Event) => {
@@ -1075,7 +1322,12 @@ watch(() => route.params.username, () => {
         font-size: 20px;
       }
       
-      .edit-btn, .follow-btn, .message-btn, .more-btn, .verify-btn, .ban-btn, .report-btn {
+      .own-profile-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .settings-btn, .archive-btn, .edit-btn, .follow-btn, .message-btn, .more-btn, .verify-btn, .ban-btn, .report-btn, .block-btn {
         background-color: #363636;
         color: #fff;
         border: none;
@@ -1087,10 +1339,27 @@ watch(() => route.params.username, () => {
         &:hover { background-color: #262626; }
       }
 
+      .settings-btn {
+        background-color: #262626;
+        &:hover { background-color: #363636; }
+      }
+
+      .archive-btn {
+        background-color: #262626;
+        &:hover { background-color: #363636; }
+      }
+
       .follow-btn {
         background-color: #0095f6;
         &:hover { background-color: #1877f2; }
         &.following { background-color: #363636; color: #fff; }
+        &.follow-back { background-color: #4a9eff; }
+      }
+
+      .block-btn {
+        background-color: #363636;
+        color: #fff;
+        &.blocked { background-color: #ed4956; }
       }
       
       .verify-btn {
@@ -1540,12 +1809,84 @@ watch(() => route.params.username, () => {
 /* Small Modal for Create Collection */
 .small-modal {
   max-width: 400px !important;
+  background: #262626;
+  border-radius: 12px;
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #363636;
+
+    h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #363636;
+    display: flex;
+    gap: 12px;
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .cancel-btn {
+      background: #363636;
+      color: #fff;
+
+      &:hover {
+        background: #404040;
+      }
+    }
+
+    .submit-btn {
+      background: #0095f6;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: #0084e0;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
 }
 
 .collection-name-input {
   width: 100%;
   padding: 12px;
-  background: #262626;
+  background: #121212;
   border: 1px solid #363636;
   border-radius: 8px;
   color: #fff;
@@ -1553,11 +1894,11 @@ watch(() => route.params.username, () => {
   outline: none;
 
   &:focus {
-    border-color: #4a9eff;
+    border-color: #0095f6;
   }
 
   &::placeholder {
-    color: #999;
+    color: #8e8e8e;
   }
 }
 
@@ -1615,6 +1956,166 @@ watch(() => route.params.username, () => {
   .details-body {
     padding: 20px;
     min-height: 400px;
+  }
+}
+
+/* Block and Report Modals */
+.confirm-modal, .report-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #404040;
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: #8e8e8e;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        color: #fff;
+      }
+    }
+  }
+
+  .modal-body {
+    padding: 20px;
+    color: #fff;
+
+    p {
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    strong {
+      color: #4a9eff;
+    }
+
+    .report-textarea {
+      width: 100%;
+      padding: 12px;
+      background-color: #121212;
+      border: 1px solid #404040;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      resize: vertical;
+      margin-top: 12px;
+
+      &:focus {
+        outline: none;
+        border-color: #0095f6;
+      }
+    }
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid #404040;
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .cancel-btn {
+      background-color: #363636;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background-color: #404040;
+      }
+    }
+
+    .confirm-btn {
+      background-color: #0095f6;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background-color: #1877f2;
+      }
+
+      &.danger {
+        background-color: #ed4956;
+
+        &:hover:not(:disabled) {
+          background-color: #d63447;
+        }
+      }
+    }
+  }
+}
+
+/* More Options Modal */
+.options-modal {
+  background-color: #262626;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  overflow: hidden;
+
+  .option-btn {
+    width: 100%;
+    padding: 16px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid #404040;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    &.danger {
+      color: #ed4956;
+      font-weight: 600;
+    }
+
+    &.cancel {
+      color: #8e8e8e;
+    }
   }
 }
 </style>
