@@ -994,11 +994,19 @@ const handleBlockUser = async () => {
   blockLoading.value = true;
 
   const targetId = profile.value.user_id || profile.value.id;
+  const wasBlocked = profile.value.is_blocked;
+  
   try {
     if (profile.value.is_blocked) {
       await userAPI.unblockUser(targetId);
       profile.value.is_blocked = false;
       alert('User unblocked successfully');
+      
+      // Reload posts after unblocking
+      const username = getTargetUsername();
+      if (username) {
+        await fetchPosts(activeTab.value);
+      }
     } else {
       await userAPI.blockUser(targetId);
       profile.value.is_blocked = true;
@@ -1007,6 +1015,8 @@ const handleBlockUser = async () => {
         profile.value.is_following = false;
         profile.value.followers_count--;
       }
+      // Clear posts since blocked users can't see them
+      posts.value = [];
       alert('User blocked successfully');
     }
     showBlockModal.value = false;

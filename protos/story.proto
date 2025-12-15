@@ -29,7 +29,7 @@ message CreateStoryRequest {
   string caption = 4;
   string filter_name = 5; 
   string stickers_json = 6;
-  // Add other fields later if needed, like "close_friends_only"
+  bool close_friends_only = 7;
 }
 
 // The created Story
@@ -45,6 +45,7 @@ message Story {
   bool is_liked = 9;
   string filter_name = 10;
   string stickers_json = 11;
+  bool close_friends_only = 12;
 }
 
 message CreateStoryResponse {

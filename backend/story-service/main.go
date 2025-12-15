@@ -37,8 +37,9 @@ type Story struct {
 	AuthorUsername   string
 	AuthorProfileURL string
 
-	FilterName   string
-	StickersJSON string `gorm:"type:text"`
+	FilterName       string
+	StickersJSON     string `gorm:"type:text"`
+	CloseFriendsOnly bool
 }
 
 type StoryLike struct {
@@ -208,6 +209,7 @@ func (s *server) CreateStory(ctx context.Context, req *pb.CreateStoryRequest) (*
 		AuthorProfileURL: userRes.ProfilePictureUrl,
 		FilterName:       req.FilterName,
 		StickersJSON:     req.StickersJson,
+		CloseFriendsOnly: req.CloseFriendsOnly,
 	}
 
 	if err := s.db.Create(&newStory).Error; err != nil {
@@ -275,6 +277,30 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 	// Include Self so user sees their own story
 	targetIDs := append(followingRes.FollowingUserIds, req.UserId)
 
+	// Get close friends list
+	closeFriendsRes, err := s.userClient.GetCloseFriends(ctx, &userPb.GetCloseFriendsRequest{UserId: req.UserId})
+	if err != nil {
+		log.Printf("Failed to get close friends: %v", err)
+	}
+	closeFriendsMap := make(map[int64]bool)
+	if closeFriendsRes != nil {
+		for _, friend := range closeFriendsRes.Friends {
+			closeFriendsMap[friend.UserId] = true
+		}
+	}
+
+	// Get hidden story users (users who have hidden their stories from viewer)
+	hiddenUsersRes, err := s.userClient.GetHiddenStoryUsers(ctx, &userPb.GetHiddenStoryUsersRequest{UserId: req.UserId})
+	if err != nil {
+		log.Printf("Failed to get hidden story users: %v", err)
+	}
+	hiddenUsersMap := make(map[int64]bool)
+	if hiddenUsersRes != nil {
+		for _, user := range hiddenUsersRes.HiddenUsers {
+			hiddenUsersMap[user.UserId] = true
+		}
+	}
+
 	// 2. Fetch Active Stories (ExpiresAt > Now)
 	var stories []Story
 	if err := s.db.Where("author_id IN ? AND expires_at > ?", targetIDs, time.Now()).
@@ -282,6 +308,42 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 		Find(&stories).Error; err != nil {
 		return nil, status.Error(codes.Internal, "Failed to fetch stories")
 	}
+
+	// Filter stories based on close friends, hidden story settings, and blocks
+	var filteredStories []Story
+	for _, story := range stories {
+		// Skip if author has hidden stories from this user
+		if hiddenUsersMap[story.AuthorID] {
+			continue
+		}
+
+		// Check if there's a block relationship (either direction)
+		if story.AuthorID != req.UserId {
+			blockCheckAuthorToViewer, err := s.userClient.IsBlocked(ctx, &userPb.IsBlockedRequest{
+				BlockerId: story.AuthorID,
+				BlockedId: req.UserId,
+			})
+			if err == nil && blockCheckAuthorToViewer.IsBlocked {
+				continue // Author blocked the viewer
+			}
+
+			blockCheckViewerToAuthor, err := s.userClient.IsBlocked(ctx, &userPb.IsBlockedRequest{
+				BlockerId: req.UserId,
+				BlockedId: story.AuthorID,
+			})
+			if err == nil && blockCheckViewerToAuthor.IsBlocked {
+				continue // Viewer blocked the author
+			}
+		}
+
+		// Skip close friends only stories if viewer is not a close friend (unless it's their own story)
+		if story.CloseFriendsOnly && story.AuthorID != req.UserId && !closeFriendsMap[story.AuthorID] {
+			continue
+		}
+
+		filteredStories = append(filteredStories, story)
+	}
+	stories = filteredStories
 
 	// 3. Get user's likes and views for these stories
 	storyIDs := make([]uint, len(stories))
@@ -322,13 +384,16 @@ func (s *server) GetStoryFeed(ctx context.Context, req *pb.GetStoryFeedRequest) 
 
 		// Add story to group with is_liked status
 		groupedMap[story.AuthorID].Stories = append(groupedMap[story.AuthorID].Stories, &pb.Story{
-			Id:        strconv.FormatUint(uint64(story.ID), 10),
-			MediaUrl:  story.MediaURL,
-			MediaType: story.MediaType,
-			Caption:   story.Caption,
-			CreatedAt: story.CreatedAt.Format(time.RFC3339),
-			ExpiresAt: story.ExpiresAt.Format(time.RFC3339),
-			IsLiked:   likedMap[story.ID],
+			Id:               strconv.FormatUint(uint64(story.ID), 10),
+			MediaUrl:         story.MediaURL,
+			MediaType:        story.MediaType,
+			Caption:          story.Caption,
+			CreatedAt:        story.CreatedAt.Format(time.RFC3339),
+			ExpiresAt:        story.ExpiresAt.Format(time.RFC3339),
+			IsLiked:          likedMap[story.ID],
+			FilterName:       story.FilterName,
+			StickersJson:     story.StickersJSON,
+			CloseFriendsOnly: story.CloseFriendsOnly,
 		})
 	}
 

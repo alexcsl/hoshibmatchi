@@ -1056,12 +1056,18 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 	s.db.Model(&Follow{}).Where("follower_id = ? AND status = ?", user.ID, "approved").Count(&followingCount)
 
 	// 4. Check if the requestor is following this user and get status
+	var isBlocked bool
 	if req.SelfUserId != int64(user.ID) {
 		var follow Follow
 		if err := s.db.Where("follower_id = ? AND following_id = ?", req.SelfUserId, int64(user.ID)).First(&follow).Error; err == nil {
 			followStatus = follow.Status
 			isFollowedBySelf = (follow.Status == "approved")
 		}
+
+		// Check if current user has blocked this profile
+		var blockCheck int64
+		s.db.Model(&Block{}).Where("blocker_id = ? AND blocked_id = ?", req.SelfUserId, int64(user.ID)).Count(&blockCheck)
+		isBlocked = (blockCheck > 0)
 	}
 
 	mutualFollowerCount = 0
@@ -1080,6 +1086,7 @@ func (s *server) GetUserProfile(ctx context.Context, req *pb.GetUserProfileReque
 		Gender:              user.Gender,
 		IsPrivate:           user.IsPrivate,
 		FollowStatus:        followStatus,
+		IsBlocked:           isBlocked,
 	}, nil
 }
 
@@ -1290,6 +1297,39 @@ func (s *server) UnblockUser(ctx context.Context, req *pb.UnblockUserRequest) (*
 	log.Printf("User %d has unblocked User %d", req.BlockerId, req.BlockedId)
 
 	return &pb.UnblockUserResponse{Message: "Successfully unblocked user"}, nil
+}
+
+// --- GPRC: IsBlocked ---
+func (s *server) IsBlocked(ctx context.Context, req *pb.IsBlockedRequest) (*pb.IsBlockedResponse, error) {
+	var count int64
+	s.db.Model(&Block{}).Where("blocker_id = ? AND blocked_id = ?", req.BlockerId, req.BlockedId).Count(&count)
+	return &pb.IsBlockedResponse{IsBlocked: count > 0}, nil
+}
+
+// --- GRPC: GetBlockedUsers ---
+func (s *server) GetBlockedUsers(ctx context.Context, req *pb.GetBlockedUsersRequest) (*pb.GetBlockedUsersResponse, error) {
+	var blocks []Block
+	if err := s.db.Where("blocker_id = ?", req.UserId).Find(&blocks).Error; err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch blocked users")
+	}
+
+	var blockedUsers []*pb.UserInfo
+	for _, block := range blocks {
+		var user User
+		if err := s.db.First(&user, block.BlockedID).Error; err != nil {
+			continue // Skip if user not found
+		}
+
+		blockedUsers = append(blockedUsers, &pb.UserInfo{
+			UserId:            int64(user.ID),
+			Username:          user.Username,
+			Name:              user.Name,
+			ProfilePictureUrl: user.ProfilePictureURL,
+			IsVerified:        user.IsVerified,
+		})
+	}
+
+	return &pb.GetBlockedUsersResponse{BlockedUsers: blockedUsers}, nil
 }
 
 // --- ADD NEW GRPC FUNCTION: VerifyRegistrationOtp ---

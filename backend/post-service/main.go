@@ -303,6 +303,23 @@ func (s *server) canViewPost(ctx context.Context, post *Post, viewerID int64) bo
 		return true
 	}
 
+	// Check if author has blocked the viewer or viewer has blocked the author
+	blockCheckAuthorToViewer, err := s.userClient.IsBlocked(ctx, &userPb.IsBlockedRequest{
+		BlockerId: post.AuthorID,
+		BlockedId: viewerID,
+	})
+	if err == nil && blockCheckAuthorToViewer.IsBlocked {
+		return false // Author blocked the viewer
+	}
+
+	blockCheckViewerToAuthor, err := s.userClient.IsBlocked(ctx, &userPb.IsBlockedRequest{
+		BlockerId: viewerID,
+		BlockedId: post.AuthorID,
+	})
+	if err == nil && blockCheckViewerToAuthor.IsBlocked {
+		return false // Viewer blocked the author
+	}
+
 	// Get the author's profile to check privacy settings
 	profileResp, err := s.userClient.GetUserProfile(ctx, &userPb.GetUserProfileRequest{
 		Username:   post.AuthorUsername,

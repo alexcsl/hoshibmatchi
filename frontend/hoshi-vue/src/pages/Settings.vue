@@ -233,12 +233,12 @@
           >
             <div
               v-for="friend in closeFriends"
-              :key="friend.id"
+              :key="friend.user_id"
               class="friend-item"
             >
               <img
                 :src="friend.profile_picture_url || '/default-avatar.svg'"
-                alt=""
+              alt=""
                 class="avatar"
               />
               <div class="friend-info">
@@ -251,7 +251,7 @@
               </div>
               <button
                 class="remove-btn"
-                @click="removeCloseFriend(friend.id)"
+                @click="removeCloseFriend(friend.user_id)"
               >
                 Remove
               </button>
@@ -287,7 +287,7 @@
           >
             <div
               v-for="user in blockedUsers"
-              :key="user.id"
+              :key="user.user_id"
               class="friend-item"
             >
               <img
@@ -305,7 +305,7 @@
               </div>
               <button
                 class="unblock-btn"
-                @click="unblockUser(user.id)"
+                @click="unblockUser(user.user_id)"
               >
                 Unblock
               </button>
@@ -348,7 +348,7 @@
           >
             <div
               v-for="user in hiddenStoryUsers"
-              :key="user.id"
+              :key="user.user_id"
               class="friend-item"
             >
               <img
@@ -366,7 +366,7 @@
               </div>
               <button
                 class="remove-btn"
-                @click="removeHiddenStoryUser(user.id)"
+                @click="removeHiddenStoryUser(user.user_id)"
               >
                 Remove
               </button>
@@ -492,7 +492,7 @@
           <div class="users-list">
             <div
               v-for="user in searchResults"
-              :key="user.id"
+              :key="user.user_id"
               class="user-item"
             >
               <img
@@ -507,7 +507,7 @@
               </div>
               <button
                 class="add-btn-small"
-                @click="addCloseFriend(user.id)"
+                @click="addCloseFriend(user.user_id)"
               >
                 Add
               </button>
@@ -547,7 +547,7 @@
           <div class="users-list">
             <div
               v-for="user in hideStorySearchResults"
-              :key="user.id"
+              :key="user.user_id"
               class="user-item"
             >
               <img
@@ -562,7 +562,7 @@
               </div>
               <button
                 class="add-btn-small"
-                @click="addHiddenStoryUser(user.id)"
+                @click="addHiddenStoryUser(user.user_id)"
               >
                 Add
               </button>
@@ -925,7 +925,7 @@ const addCloseFriend = async (userId: number) => {
 const removeCloseFriend = async (userId: number) => {
   try {
     await userAPI.removeCloseFriend(userId);
-    closeFriends.value = closeFriends.value.filter(f => f.id !== userId);
+    closeFriends.value = closeFriends.value.filter(f => f.user_id !== userId);
   } catch (error) {
     console.error('Failed to remove close friend:', error);
     alert('Failed to remove close friend');
@@ -935,7 +935,7 @@ const removeCloseFriend = async (userId: number) => {
 const unblockUser = async (userId: number) => {
   try {
     await userAPI.unblockUser(userId);
-    blockedUsers.value = blockedUsers.value.filter(u => u.id !== userId);
+    blockedUsers.value = blockedUsers.value.filter(u => u.user_id !== userId);
   } catch (error) {
     console.error('Failed to unblock user:', error);
   }
@@ -978,7 +978,7 @@ const addHiddenStoryUser = async (userId: number) => {
 const removeHiddenStoryUser = async (userId: number) => {
   try {
     await userAPI.removeHiddenStoryUser(userId);
-    hiddenStoryUsers.value = hiddenStoryUsers.value.filter(u => u.id !== userId);
+    hiddenStoryUsers.value = hiddenStoryUsers.value.filter(u => u.user_id !== userId);
   } catch (error) {
     console.error('Failed to remove hidden story user:', error);
     alert('Failed to remove hidden story user');

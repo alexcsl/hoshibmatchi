@@ -42,6 +42,8 @@ service UserService {
 
   rpc BlockUser (BlockUserRequest) returns (BlockUserResponse);
   rpc UnblockUser (UnblockUserRequest) returns (UnblockUserResponse);
+  rpc IsBlocked (IsBlockedRequest) returns (IsBlockedResponse);
+  rpc GetBlockedUsers (GetBlockedUsersRequest) returns (GetBlockedUsersResponse);
 
   rpc SearchUsers (SearchUsersRequest) returns (SearchUsersResponse);
 
@@ -252,6 +254,7 @@ message GetUserProfileResponse {
   string gender = 11;
   bool is_private = 12;
   string follow_status = 13; // pending, approved, or empty if not following
+  bool is_blocked = 14; // if current user has blocked this profile
 }
 
 // --- Edit User Profile ---
@@ -303,6 +306,23 @@ message UnblockUserRequest {
 
 message UnblockUserResponse {
   string message = 1; // "Successfully unblocked user"
+}
+
+message IsBlockedRequest {
+  int64 blocker_id = 1; // The potential blocker
+  int64 blocked_id = 2; // The potential blocked user
+}
+
+message IsBlockedResponse {
+  bool is_blocked = 1;
+}
+
+message GetBlockedUsersRequest {
+  int64 user_id = 1; // The user requesting their blocked list
+}
+
+message GetBlockedUsersResponse {
+  repeated UserInfo blocked_users = 1;
 }
 
 // --- Search Users ---

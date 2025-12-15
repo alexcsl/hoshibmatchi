@@ -261,6 +261,7 @@ func main() {
 
 		protected.POST("/users/:id/block", handleBlockUser_Gin)
 		protected.DELETE("/users/:id/block", handleBlockUser_Gin)
+		protected.GET("/users/blocked", handleGetBlockedUsers_Gin)
 
 		// Follow Requests
 		protected.POST("/follow-requests/:id/approve", handleApproveFollowRequest_Gin)
@@ -2186,6 +2187,34 @@ func handleBlockUser_Gin(c *gin.Context) {
 	}
 }
 
+// handleGetBlockedUsers_Gin godoc
+// @Summary Get blocked users list
+// @Description Get the list of users that the current user has blocked
+// @Tags Users
+// @Produce json
+// @Success 200 {object} object{blocked_users=[]object} "List of blocked users"
+// @Failure 401 {object} object{error=string} "Unauthorized"
+// @Failure 500 {object} object{error=string} "Internal server error"
+// @Security BearerAuth
+// @Router /users/blocked [get]
+func handleGetBlockedUsers_Gin(c *gin.Context) {
+	userID, ok := c.Request.Context().Value(userIDKey).(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user ID from token"})
+		return
+	}
+
+	grpcReq := &pb.GetBlockedUsersRequest{UserId: userID}
+	grpcRes, err := client.GetBlockedUsers(c.Request.Context(), grpcReq)
+	if err != nil {
+		grpcErr, _ := status.FromError(err)
+		c.JSON(gRPCToHTTPStatusCode(grpcErr.Code()), gin.H{"error": grpcErr.Message()})
+		return
+	}
+
+	c.JSON(http.StatusOK, grpcRes)
+}
+
 // handleAddCloseFriend_Gin godoc
 // @Summary Add a close friend
 // @Description Add a user to your close friends list
@@ -3392,7 +3421,7 @@ func handleSearchUsers_Gin(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, grpcRes.Users)
+	c.JSON(http.StatusOK, gin.H{"users": grpcRes.Users})
 }
 
 // handleSummarizeCaption_Gin godoc

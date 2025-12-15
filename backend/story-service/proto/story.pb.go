@@ -24,15 +24,16 @@ const (
 
 // Data from the API Gateway
 type CreateStoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AuthorId      int64                  `protobuf:"varint,1,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"` // From the JWT
-	MediaUrl      string                 `protobuf:"bytes,2,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`  // Stories are usually a single media item
-	MediaType     string                 `protobuf:"bytes,3,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
-	Caption       string                 `protobuf:"bytes,4,opt,name=caption,proto3" json:"caption,omitempty"`
-	FilterName    string                 `protobuf:"bytes,5,opt,name=filter_name,json=filterName,proto3" json:"filter_name,omitempty"`
-	StickersJson  string                 `protobuf:"bytes,6,opt,name=stickers_json,json=stickersJson,proto3" json:"stickers_json,omitempty"` // Add other fields later if needed, like "close_friends_only"
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AuthorId         int64                  `protobuf:"varint,1,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"` // From the JWT
+	MediaUrl         string                 `protobuf:"bytes,2,opt,name=media_url,json=mediaUrl,proto3" json:"media_url,omitempty"`  // Stories are usually a single media item
+	MediaType        string                 `protobuf:"bytes,3,opt,name=media_type,json=mediaType,proto3" json:"media_type,omitempty"`
+	Caption          string                 `protobuf:"bytes,4,opt,name=caption,proto3" json:"caption,omitempty"`
+	FilterName       string                 `protobuf:"bytes,5,opt,name=filter_name,json=filterName,proto3" json:"filter_name,omitempty"`
+	StickersJson     string                 `protobuf:"bytes,6,opt,name=stickers_json,json=stickersJson,proto3" json:"stickers_json,omitempty"`
+	CloseFriendsOnly bool                   `protobuf:"varint,7,opt,name=close_friends_only,json=closeFriendsOnly,proto3" json:"close_friends_only,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *CreateStoryRequest) Reset() {
@@ -107,6 +108,13 @@ func (x *CreateStoryRequest) GetStickersJson() string {
 	return ""
 }
 
+func (x *CreateStoryRequest) GetCloseFriendsOnly() bool {
+	if x != nil {
+		return x.CloseFriendsOnly
+	}
+	return false
+}
+
 // The created Story
 type Story struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
@@ -121,6 +129,7 @@ type Story struct {
 	IsLiked          bool                   `protobuf:"varint,9,opt,name=is_liked,json=isLiked,proto3" json:"is_liked,omitempty"`
 	FilterName       string                 `protobuf:"bytes,10,opt,name=filter_name,json=filterName,proto3" json:"filter_name,omitempty"`
 	StickersJson     string                 `protobuf:"bytes,11,opt,name=stickers_json,json=stickersJson,proto3" json:"stickers_json,omitempty"`
+	CloseFriendsOnly bool                   `protobuf:"varint,12,opt,name=close_friends_only,json=closeFriendsOnly,proto3" json:"close_friends_only,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -230,6 +239,13 @@ func (x *Story) GetStickersJson() string {
 		return x.StickersJson
 	}
 	return ""
+}
+
+func (x *Story) GetCloseFriendsOnly() bool {
+	if x != nil {
+		return x.CloseFriendsOnly
+	}
+	return false
 }
 
 type CreateStoryResponse struct {
@@ -918,7 +934,7 @@ var File_story_proto protoreflect.FileDescriptor
 const file_story_proto_rawDesc = "" +
 	"\n" +
 	"\vstory.proto\x12\x05story\x1a\n" +
-	"user.proto\"\xcd\x01\n" +
+	"user.proto\"\xfb\x01\n" +
 	"\x12CreateStoryRequest\x12\x1b\n" +
 	"\tauthor_id\x18\x01 \x01(\x03R\bauthorId\x12\x1b\n" +
 	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12\x1d\n" +
@@ -927,7 +943,8 @@ const file_story_proto_rawDesc = "" +
 	"\acaption\x18\x04 \x01(\tR\acaption\x12\x1f\n" +
 	"\vfilter_name\x18\x05 \x01(\tR\n" +
 	"filterName\x12#\n" +
-	"\rstickers_json\x18\x06 \x01(\tR\fstickersJson\"\xe3\x02\n" +
+	"\rstickers_json\x18\x06 \x01(\tR\fstickersJson\x12,\n" +
+	"\x12close_friends_only\x18\a \x01(\bR\x10closeFriendsOnly\"\x91\x03\n" +
 	"\x05Story\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tmedia_url\x18\x02 \x01(\tR\bmediaUrl\x12\x1d\n" +
@@ -944,7 +961,8 @@ const file_story_proto_rawDesc = "" +
 	"\vfilter_name\x18\n" +
 	" \x01(\tR\n" +
 	"filterName\x12#\n" +
-	"\rstickers_json\x18\v \x01(\tR\fstickersJson\"9\n" +
+	"\rstickers_json\x18\v \x01(\tR\fstickersJson\x12,\n" +
+	"\x12close_friends_only\x18\f \x01(\bR\x10closeFriendsOnly\"9\n" +
 	"\x13CreateStoryResponse\x12\"\n" +
 	"\x05story\x18\x01 \x01(\v2\f.story.StoryR\x05story\".\n" +
 	"\x13GetStoryFeedRequest\x12\x17\n" +

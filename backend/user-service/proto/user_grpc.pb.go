@@ -41,6 +41,8 @@ const (
 	UserService_SetAccountPrivacy_FullMethodName          = "/user.UserService/SetAccountPrivacy"
 	UserService_BlockUser_FullMethodName                  = "/user.UserService/BlockUser"
 	UserService_UnblockUser_FullMethodName                = "/user.UserService/UnblockUser"
+	UserService_IsBlocked_FullMethodName                  = "/user.UserService/IsBlocked"
+	UserService_GetBlockedUsers_FullMethodName            = "/user.UserService/GetBlockedUsers"
 	UserService_SearchUsers_FullMethodName                = "/user.UserService/SearchUsers"
 	UserService_BanUser_FullMethodName                    = "/user.UserService/BanUser"
 	UserService_UnbanUser_FullMethodName                  = "/user.UserService/UnbanUser"
@@ -91,6 +93,8 @@ type UserServiceClient interface {
 	SetAccountPrivacy(ctx context.Context, in *SetAccountPrivacyRequest, opts ...grpc.CallOption) (*SetAccountPrivacyResponse, error)
 	BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*BlockUserResponse, error)
 	UnblockUser(ctx context.Context, in *UnblockUserRequest, opts ...grpc.CallOption) (*UnblockUserResponse, error)
+	IsBlocked(ctx context.Context, in *IsBlockedRequest, opts ...grpc.CallOption) (*IsBlockedResponse, error)
+	GetBlockedUsers(ctx context.Context, in *GetBlockedUsersRequest, opts ...grpc.CallOption) (*GetBlockedUsersResponse, error)
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 	// Admin controls
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
@@ -344,6 +348,26 @@ func (c *userServiceClient) UnblockUser(ctx context.Context, in *UnblockUserRequ
 	return out, nil
 }
 
+func (c *userServiceClient) IsBlocked(ctx context.Context, in *IsBlockedRequest, opts ...grpc.CallOption) (*IsBlockedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(IsBlockedResponse)
+	err := c.cc.Invoke(ctx, UserService_IsBlocked_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetBlockedUsers(ctx context.Context, in *GetBlockedUsersRequest, opts ...grpc.CallOption) (*GetBlockedUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBlockedUsersResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBlockedUsers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchUsersResponse)
@@ -536,6 +560,8 @@ type UserServiceServer interface {
 	SetAccountPrivacy(context.Context, *SetAccountPrivacyRequest) (*SetAccountPrivacyResponse, error)
 	BlockUser(context.Context, *BlockUserRequest) (*BlockUserResponse, error)
 	UnblockUser(context.Context, *UnblockUserRequest) (*UnblockUserResponse, error)
+	IsBlocked(context.Context, *IsBlockedRequest) (*IsBlockedResponse, error)
+	GetBlockedUsers(context.Context, *GetBlockedUsersRequest) (*GetBlockedUsersResponse, error)
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
 	// Admin controls
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
@@ -634,6 +660,12 @@ func (UnimplementedUserServiceServer) BlockUser(context.Context, *BlockUserReque
 }
 func (UnimplementedUserServiceServer) UnblockUser(context.Context, *UnblockUserRequest) (*UnblockUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UnblockUser not implemented")
+}
+func (UnimplementedUserServiceServer) IsBlocked(context.Context, *IsBlockedRequest) (*IsBlockedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IsBlocked not implemented")
+}
+func (UnimplementedUserServiceServer) GetBlockedUsers(context.Context, *GetBlockedUsersRequest) (*GetBlockedUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBlockedUsers not implemented")
 }
 func (UnimplementedUserServiceServer) SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUsers not implemented")
@@ -1100,6 +1132,42 @@ func _UserService_UnblockUser_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_IsBlocked_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IsBlockedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).IsBlocked(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_IsBlocked_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).IsBlocked(ctx, req.(*IsBlockedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetBlockedUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBlockedUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBlockedUsers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBlockedUsers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBlockedUsers(ctx, req.(*GetBlockedUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SearchUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchUsersRequest)
 	if err := dec(in); err != nil {
@@ -1482,6 +1550,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnblockUser",
 			Handler:    _UserService_UnblockUser_Handler,
+		},
+		{
+			MethodName: "IsBlocked",
+			Handler:    _UserService_IsBlocked_Handler,
+		},
+		{
+			MethodName: "GetBlockedUsers",
+			Handler:    _UserService_GetBlockedUsers_Handler,
 		},
 		{
 			MethodName: "SearchUsers",
