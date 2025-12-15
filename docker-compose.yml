@@ -33,11 +33,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
-    ports:
-      - "6379:6379"
+    # Removed exposed port - internal network only
     networks:
       - hoshi-net
-    # Added healthcheck for services that depend on Redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -47,9 +45,10 @@ services:
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
+    # Removed exposed ports - internal network only
     networks:
       - hoshi-net
     healthcheck:
@@ -62,13 +61,11 @@ services:
     image: minio/minio
     container_name: minio
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-      - MINIO_SERVER_URL=http://localhost:9000
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_SERVER_URL=${MINIO_SERVER_URL:-http://minio:9000}
     command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    # Removed exposed ports - internal network only
     volumes:
       - minio-data:/data
     networks:
@@ -86,17 +83,16 @@ services:
     image: postgres:15-alpine
     container_name: user-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=user_service_db
-    ports:
-      - "5431:5432"
+      - POSTGRES_USER=${USER_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${USER_DB_PASSWORD:-password}
+      - POSTGRES_DB=${USER_DB_NAME:-user_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - user-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d user_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER:-admin} -d ${USER_DB_NAME:-user_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -105,17 +101,16 @@ services:
     image: postgres:15-alpine
     container_name: post-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=post_service_db
-    ports:
-      - "5432:5432"
+      - POSTGRES_USER=${POST_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${POST_DB_PASSWORD:-password}
+      - POSTGRES_DB=${POST_DB_NAME:-post_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - post-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d post_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POST_DB_USER:-admin} -d ${POST_DB_NAME:-post_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -124,17 +119,16 @@ services:
     image: postgres:15-alpine
     container_name: story-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=story_service_db
-    ports:
-      - "5433:5432"
+      - POSTGRES_USER=${STORY_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${STORY_DB_PASSWORD:-password}
+      - POSTGRES_DB=${STORY_DB_NAME:-story_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - story-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d story_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${STORY_DB_USER:-admin} -d ${STORY_DB_NAME:-story_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -143,17 +137,16 @@ services:
     image: postgres:15-alpine
     container_name: message-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=message_service_db
-    ports:
-      - "5434:5432"
+      - POSTGRES_USER=${MESSAGE_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${MESSAGE_DB_PASSWORD:-password}
+      - POSTGRES_DB=${MESSAGE_DB_NAME:-message_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - message-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d message_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${MESSAGE_DB_USER:-admin} -d ${MESSAGE_DB_NAME:-message_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -162,17 +155,16 @@ services:
     image: postgres:15-alpine
     container_name: notification-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=notification_service_db
-    ports:
-      - "5435:5432"
+      - POSTGRES_USER=${NOTIFICATION_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${NOTIFICATION_DB_PASSWORD:-password}
+      - POSTGRES_DB=${NOTIFICATION_DB_NAME:-notification_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - notification-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d notification_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATION_DB_USER:-admin} -d ${NOTIFICATION_DB_NAME:-notification_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -181,17 +173,16 @@ services:
     image: postgres:15-alpine
     container_name: report-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=report_service_db
-    ports:
-      - "5436:5432" # New port
+      - POSTGRES_USER=${REPORT_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${REPORT_DB_PASSWORD:-password}
+      - POSTGRES_DB=${REPORT_DB_NAME:-report_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - report-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d report_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${REPORT_DB_USER:-admin} -d ${REPORT_DB_NAME:-report_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -200,17 +191,16 @@ services:
     image: postgres:15-alpine
     container_name: hashtag-db
     environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=hashtag_service_db
-    ports:
-      - "5437:5432" # New port
+      - POSTGRES_USER=${HASHTAG_DB_USER:-admin}
+      - POSTGRES_PASSWORD=${HASHTAG_DB_PASSWORD:-password}
+      - POSTGRES_DB=${HASHTAG_DB_NAME:-hashtag_service_db}
+    # Removed exposed port - internal network only
     volumes:
       - hashtag-db-data:/var/lib/postgresql/data
     networks:
       - hoshi-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d hashtag_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${HASHTAG_DB_USER:-admin} -d ${HASHTAG_DB_NAME:-hashtag_service_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -225,8 +215,11 @@ services:
     container_name: api-gateway
     environment:
       - JWT_SECRET=${JWT_SECRET}
-    ports:
-      - "8000:8000"
+      - NOTIFICATION_DB_HOST=${NOTIFICATION_DB_HOST:-notification-db}
+      - NOTIFICATION_DB_USER=${NOTIFICATION_DB_USER:-admin}
+      - NOTIFICATION_DB_PASSWORD=${NOTIFICATION_DB_PASSWORD:-password}
+      - NOTIFICATION_DB_NAME=${NOTIFICATION_DB_NAME:-notification_service_db}
+    # Port removed for security - access through Traefik only
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -251,6 +244,10 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}     
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET} 
       - GOOGLE_REDIRECT_URL=${GOOGLE_REDIRECT_URL}
+      - USER_DB_HOST=${USER_DB_HOST:-user-db}
+      - USER_DB_USER=${USER_DB_USER:-admin}
+      - USER_DB_PASSWORD=${USER_DB_PASSWORD:-password}
+      - USER_DB_NAME=${USER_DB_NAME:-user_service_db}
     depends_on:
       user-db:
         condition: service_healthy
@@ -265,6 +262,14 @@ services:
       context: .
       dockerfile: ./backend/post-service/Dockerfile
     container_name: post-service
+    environment:
+      - POST_DB_HOST=${POST_DB_HOST:-post-db}
+      - POST_DB_USER=${POST_DB_USER:-admin}
+      - POST_DB_PASSWORD=${POST_DB_PASSWORD:-password}
+      - POST_DB_NAME=${POST_DB_NAME:-post_service_db}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
       post-db:
         condition: service_healthy
@@ -277,6 +282,11 @@ services:
       context: .
       dockerfile: ./backend/story-service/Dockerfile
     container_name: story-service
+    environment:
+      - STORY_DB_HOST=${STORY_DB_HOST:-story-db}
+      - STORY_DB_USER=${STORY_DB_USER:-admin}
+      - STORY_DB_PASSWORD=${STORY_DB_PASSWORD:-password}
+      - STORY_DB_NAME=${STORY_DB_NAME:-story_service_db}
     depends_on:
       story-db:
         condition: service_healthy
@@ -289,6 +299,13 @@ services:
       context: .
       dockerfile: ./backend/media-service/Dockerfile
     container_name: media-service
+    environment:
+      - MINIO_INTERNAL_ENDPOINT=${MINIO_INTERNAL_ENDPOINT:-minio:9000}
+      - MINIO_EXTERNAL_ENDPOINT=${MINIO_EXTERNAL_ENDPOINT:-localhost:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
+      - MINIO_USE_SSL=${MINIO_USE_SSL:-false}
     depends_on:
       minio:
         condition: service_healthy
@@ -303,6 +320,10 @@ services:
       - JWT_SECRET=${JWT_SECRET:-your-secret-key-min-32-characters-long}
       - VIDEOSDK_API_KEY=${VIDEOSDK_API_KEY:-}
       - VIDEOSDK_API_SECRET=${VIDEOSDK_API_SECRET:-}
+      - MESSAGE_DB_HOST=${MESSAGE_DB_HOST:-message-db}
+      - MESSAGE_DB_USER=${MESSAGE_DB_USER:-admin}
+      - MESSAGE_DB_PASSWORD=${MESSAGE_DB_PASSWORD:-password}
+      - MESSAGE_DB_NAME=${MESSAGE_DB_NAME:-message_service_db}
     depends_on:
       message-db:
         condition: service_healthy
@@ -315,6 +336,11 @@ services:
       context: .
       dockerfile: ./backend/notification-service/Dockerfile
     container_name: notification-service
+    environment:
+      - NOTIFICATION_DB_HOST=${NOTIFICATION_DB_HOST:-notification-db}
+      - NOTIFICATION_DB_USER=${NOTIFICATION_DB_USER:-admin}
+      - NOTIFICATION_DB_PASSWORD=${NOTIFICATION_DB_PASSWORD:-password}
+      - NOTIFICATION_DB_NAME=${NOTIFICATION_DB_NAME:-notification_service_db}
     depends_on:
       notification-db:
         condition: service_healthy
@@ -339,6 +365,18 @@ services:
       context: .
       dockerfile: ./backend/worker-service/Dockerfile
     container_name: worker-service
+    environment:
+      - STORY_DB_HOST=${STORY_DB_HOST:-story-db}
+      - STORY_DB_USER=${STORY_DB_USER:-admin}
+      - STORY_DB_PASSWORD=${STORY_DB_PASSWORD:-password}
+      - STORY_DB_NAME=${STORY_DB_NAME:-story_service_db}
+      - POST_DB_HOST=${POST_DB_HOST:-post-db}
+      - POST_DB_USER=${POST_DB_USER:-admin}
+      - POST_DB_PASSWORD=${POST_DB_PASSWORD:-password}
+      - POST_DB_NAME=${POST_DB_NAME:-post_service_db}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -351,8 +389,7 @@ services:
       context: .
       dockerfile: ./backend/ai-service/Dockerfile
     container_name: ai-service
-    ports:
-      - "9008:9008" # Expose the port
+    # Removed exposed port - internal network only
     networks: [hoshi-net]
   
   report-service:
@@ -360,6 +397,11 @@ services:
       context: .
       dockerfile: ./backend/report-service/Dockerfile
     container_name: report-service
+    environment:
+      - REPORT_DB_HOST=${REPORT_DB_HOST:-report-db}
+      - REPORT_DB_USER=${REPORT_DB_USER:-admin}
+      - REPORT_DB_PASSWORD=${REPORT_DB_PASSWORD:-password}
+      - REPORT_DB_NAME=${REPORT_DB_NAME:-report_service_db}
     depends_on:
       report-db:
         condition: service_healthy
@@ -376,6 +418,11 @@ services:
       context: .
       dockerfile: ./backend/hashtag-service/Dockerfile
     container_name: hashtag-service
+    environment:
+      - HASHTAG_DB_HOST=${HASHTAG_DB_HOST:-hashtag-db}
+      - HASHTAG_DB_USER=${HASHTAG_DB_USER:-admin}
+      - HASHTAG_DB_PASSWORD=${HASHTAG_DB_PASSWORD:-password}
+      - HASHTAG_DB_NAME=${HASHTAG_DB_NAME:-hashtag_service_db}
     depends_on:
       hashtag-db:
         condition: service_healthy

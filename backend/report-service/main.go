@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -54,7 +55,23 @@ type server struct {
 
 func main() {
 	// --- Step 1: Connect to report-db ---
-	dsn := "host=report-db user=admin password=password dbname=report_service_db port=5432 sslmode=disable TimeZone=UTC"
+	dbHost := os.Getenv("REPORT_DB_HOST")
+	if dbHost == "" {
+		dbHost = "report-db"
+	}
+	dbUser := os.Getenv("REPORT_DB_USER")
+	if dbUser == "" {
+		dbUser = "admin"
+	}
+	dbPassword := os.Getenv("REPORT_DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "password"
+	}
+	dbName := os.Getenv("REPORT_DB_NAME")
+	if dbName == "" {
+		dbName = "report_service_db"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", dbHost, dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to report-db: %v", err)

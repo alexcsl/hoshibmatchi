@@ -605,7 +605,7 @@ onUnmounted(() => {
 }
 
 .create-modal {
-  background-color: #262626;
+  background-color: var(--bg-elevated);
   border-radius: 12px;
   width: 90%;
   max-width: 500px;
@@ -623,12 +623,12 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--border-color);
 
   .back-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 24px;
     cursor: pointer;
     padding: 0;
@@ -649,7 +649,7 @@ onUnmounted(() => {
   .close-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
     cursor: pointer;
     padding: 0;
@@ -673,7 +673,7 @@ onUnmounted(() => {
     font-size: 20px;
     font-weight: 600;
     margin-bottom: 32px;
-    color: #fff;
+    color: var(--text-primary);
   }
 
   .type-options {
@@ -689,8 +689,8 @@ onUnmounted(() => {
   }
 
   .type-option {
-    background-color: #1a1a1a;
-    border: 2px solid #404040;
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-color);
     border-radius: 12px;
     padding: 32px 20px;
     cursor: pointer;
@@ -699,11 +699,11 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    color: #fff;
+    color: var(--text-primary);
 
     &:hover {
-      border-color: #0a66c2;
-      background-color: #262626;
+      border-color: var(--accent-primary);
+      background-color: var(--bg-elevated);
       transform: translateY(-2px);
     }
 
@@ -719,14 +719,14 @@ onUnmounted(() => {
 
     .type-description {
       font-size: 13px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
       line-height: 1.4;
     }
   }
 }
 
 .upload-area {
-  border: 2px dashed #404040;
+  border: 2px dashed var(--border-color);
   border-radius: 8px;
   padding: 40px;
   text-align: center;
@@ -738,7 +738,7 @@ onUnmounted(() => {
   transition: all 0.2s;
 
   &.dragging {
-    border-color: #0a66c2;
+    border-color: var(--accent-primary);
     background-color: rgba(10, 102, 194, 0.1);
   }
 
@@ -750,13 +750,13 @@ onUnmounted(() => {
   .upload-text {
     font-size: 16px;
     margin-bottom: 12px;
-    color: #fff;
+    color: var(--text-primary);
   }
 
   .select-btn {
-    background-color: #0a66c2;
+    background-color: var(--accent-primary);
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     padding: 8px 24px;
     border-radius: 24px;
     font-weight: 600;
@@ -765,7 +765,7 @@ onUnmounted(() => {
     transition: background-color 0.2s;
 
     &:hover {
-      background-color: #0958a3;
+      background-color: var(--accent-hover);
     }
   }
 }
@@ -787,13 +787,13 @@ onUnmounted(() => {
   width: 100%;
   background: transparent;
   border: none;
-  color: white;
+  color: var(--text-primary);
   font-size: 14px;
   padding: 8px 0;
   outline: none;
   
   &::placeholder {
-    color: #a8a8a8;
+    color: var(--text-secondary);
   }
 }
 
@@ -803,7 +803,7 @@ onUnmounted(() => {
 }
 
 .media-preview {
-  background-color: #000;
+  background-color: var(--bg-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -830,7 +830,7 @@ onUnmounted(() => {
       transform: translateY(-50%);
       background: rgba(0, 0, 0, 0.5);
       border: none;
-      color: #fff;
+      color: var(--text-primary);
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -870,7 +870,7 @@ onUnmounted(() => {
         transition: background 0.2s;
 
         &.active {
-          background: #fff;
+          background: var(--text-primary);
         }
 
         &:hover {
@@ -891,7 +891,7 @@ onUnmounted(() => {
       align-items: center;
       gap: 8px;
       margin-bottom: 12px;
-      color: #fff;
+      color: var(--text-primary);
       font-size: 14px;
       font-weight: 600;
 

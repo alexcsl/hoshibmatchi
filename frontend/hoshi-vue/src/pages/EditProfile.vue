@@ -333,4 +333,40 @@ onMounted(() => {
     &.save-btn { background: #0095f6; color: #fff; &:disabled { opacity: 0.7; } }
   }
 }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .edit-profile-container {
+    padding: 20px 16px;
+  }
+  
+  .profile-picture-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    
+    button {
+      width: 100%;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .edit-header h1 {
+    font-size: 20px;
+  }
+  
+  .edit-profile-container {
+    padding: 16px 12px;
+  }
+  
+  .profile-pic {
+    width: 80px;
+    height: 80px;
+  }
+}
 </style>

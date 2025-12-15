@@ -1281,9 +1281,9 @@ watch(() => route.params.username, () => {
   width: 100%;
   padding: 30px 20px;
   padding-left: calc(244px + 40px);
-  background-color: #000;
+  background-color: var(--bg-primary);
   min-height: 100vh;
-  color: white;
+  color: var(--text-primary);
 }
 
 .profile-container {
@@ -1294,8 +1294,8 @@ watch(() => route.params.username, () => {
 .error {
     text-align: center;
     padding: 40px;
-    color: #ff4444;
-    .retry-btn { margin-top: 10px; background: #0095f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+    color: var(--error);
+    .retry-btn { margin-top: 10px; background: var(--accent-primary); color: var(--text-primary); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
 }
 
 .profile-header {
@@ -1308,7 +1308,7 @@ watch(() => route.params.username, () => {
     height: 150px;
     border-radius: 50%;
     object-fit: cover;
-    border: 1px solid #363636;
+    border: 1px solid var(--border-color);
   }
 
   .profile-info {
@@ -1328,7 +1328,7 @@ watch(() => route.params.username, () => {
       }
       
       .verified-badge {
-        color: #4a9eff;
+        color: var(--accent-primary);
         font-size: 20px;
       }
       
@@ -1338,48 +1338,48 @@ watch(() => route.params.username, () => {
       }
 
       .settings-btn, .archive-btn, .edit-btn, .follow-btn, .message-btn, .more-btn, .verify-btn, .ban-btn, .report-btn, .block-btn {
-        background-color: #363636;
-        color: #fff;
+        background-color: var(--bg-elevated);
+        color: var(--text-primary);
         border: none;
         padding: 7px 16px;
         border-radius: 8px;
         font-weight: 600;
         font-size: 14px;
         cursor: pointer;
-        &:hover { background-color: #262626; }
+        &:hover { background-color: var(--bg-hover); }
       }
 
       .settings-btn {
-        background-color: #262626;
-        &:hover { background-color: #363636; }
+        background-color: var(--bg-secondary);
+        &:hover { background-color: var(--bg-elevated); }
       }
 
       .archive-btn {
-        background-color: #262626;
-        &:hover { background-color: #363636; }
+        background-color: var(--bg-secondary);
+        &:hover { background-color: var(--bg-elevated); }
       }
 
       .follow-btn {
-        background-color: #0095f6;
-        &:hover { background-color: #1877f2; }
-        &.following { background-color: #363636; color: #fff; }
-        &.follow-back { background-color: #4a9eff; }
+        background-color: var(--accent-primary);
+        &:hover { background-color: var(--accent-hover); }
+        &.following { background-color: var(--bg-elevated); color: var(--text-primary); }
+        &.follow-back { background-color: var(--accent-primary); }
       }
 
       .block-btn {
-        background-color: #363636;
-        color: #fff;
-        &.blocked { background-color: #ed4956; }
+        background-color: var(--bg-elevated);
+        color: var(--text-primary);
+        &.blocked { background-color: var(--error); }
       }
       
       .verify-btn {
-        background-color: #4a9eff;
-        &:hover { background-color: #3a8eef; }
+        background-color: var(--accent-primary);
+        &:hover { background-color: var(--accent-hover); }
       }
       
       .ban-btn {
-        background-color: #ed4956;
-        &:hover { background-color: #d63447; }
+        background-color: var(--error);
+        &:hover { background-color: var(--error); opacity: 0.8; }
       }
       
       .report-btn {

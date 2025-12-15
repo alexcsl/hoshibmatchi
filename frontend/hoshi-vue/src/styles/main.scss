@@ -1,14 +1,16 @@
+// Note: theme.scss is loaded first and contains all CSS variables
+// This file should NOT override theme colors
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+// Don't set colors here - they're handled by theme.scss
 html, body {
   width: 100%;
   height: 100%;
-  background-color: #000;
-  color: #fff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
 }
 
@@ -17,20 +19,20 @@ html, body {
   min-height: 100vh;
 }
 
-// Scrollbar styling
+// Scrollbar styling uses theme variables
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #000;
+  background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262626;
+  background: var(--bg-elevated);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #404040;
+  background: var(--bg-hover);
 }

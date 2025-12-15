@@ -338,8 +338,8 @@ const formatNumber = (num: number) => {
   top: 0;
   bottom: 0;
   width: 400px;
-  background-color: #000;
-  border-right: 1px solid #262626;
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 61;
@@ -350,7 +350,7 @@ const formatNumber = (num: number) => {
   justify-content: space-between;
   align-items: center;
   padding: 24px 20px;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
 
   h2 {
     font-size: 24px;
@@ -361,7 +361,7 @@ const formatNumber = (num: number) => {
   .close-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 24px;
     cursor: pointer;
     padding: 0;
@@ -380,24 +380,24 @@ const formatNumber = (num: number) => {
 .search-input-wrapper {
   position: relative;
   padding: 16px 20px;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
 
   .search-input {
     width: 100%;
     padding: 12px 40px 12px 16px;
-    background-color: #262626;
+    background-color: var(--bg-secondary);
     border: none;
     border-radius: 8px;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 14px;
     outline: none;
 
     &::placeholder {
-      color: #a8a8a8;
+      color: var(--text-tertiary);
     }
 
     &:focus {
-      background-color: #1a1a1a;
+      background-color: var(--bg-elevated);
     }
   }
 
@@ -408,13 +408,13 @@ const formatNumber = (num: number) => {
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #a8a8a8;
+    color: var(--text-secondary);
     font-size: 16px;
     cursor: pointer;
     padding: 4px;
 
     &:hover {
-      color: #fff;
+      color: var(--text-primary);
     }
   }
 }
@@ -440,13 +440,13 @@ const formatNumber = (num: number) => {
   .clear-all-btn {
     background: none;
     border: none;
-    color: #0095f6;
+    color: var(--accent-primary);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
 
     &:hover {
-      color: #1877f2;
+      color: var(--accent-hover);
     }
   }
 }
@@ -469,7 +469,7 @@ const formatNumber = (num: number) => {
   transition: background-color 0.2s;
 
   &:hover {
-    background-color: #262626;
+    background-color: var(--bg-hover);
   }
 
   .recent-avatar,
@@ -484,13 +484,13 @@ const formatNumber = (num: number) => {
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background-color: #262626;
+    background-color: var(--bg-elevated);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 20px;
     font-weight: 600;
-    color: #a8a8a8;
+    color: var(--text-secondary);
 
     &.large {
       font-size: 24px;
@@ -514,7 +514,7 @@ const formatNumber = (num: number) => {
     .recent-username,
     .result-username {
       font-size: 14px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -522,7 +522,7 @@ const formatNumber = (num: number) => {
 
     .result-meta {
       font-size: 12px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
       margin-top: 2px;
     }
   }
@@ -530,7 +530,7 @@ const formatNumber = (num: number) => {
   .remove-btn {
     background: none;
     border: none;
-    color: #a8a8a8;
+    color: var(--text-secondary);
     font-size: 16px;
     cursor: pointer;
     padding: 4px;
@@ -538,7 +538,7 @@ const formatNumber = (num: number) => {
     transition: opacity 0.2s;
 
     &:hover {
-      color: #fff;
+      color: var(--text-primary);
     }
   }
 
@@ -564,14 +564,14 @@ const formatNumber = (num: number) => {
   .spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid #262626;
-    border-top-color: #0095f6;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
 
   p {
-    color: #a8a8a8;
+    color: var(--text-secondary);
     font-size: 14px;
   }
 }
@@ -590,7 +590,7 @@ const formatNumber = (num: number) => {
   text-align: center;
 
   p {
-    color: #a8a8a8;
+    color: var(--text-secondary);
     font-size: 14px;
   }
 }

@@ -55,7 +55,23 @@ type server struct {
 func main() {
 	// --- Step 1: Connect to Databases ---
 	// Connection to story-db (for deleting stories)
-	storyDSN := "host=story-db user=admin password=password dbname=story_service_db port=5432 sslmode=disable TimeZone=UTC"
+	storyDBHost := os.Getenv("STORY_DB_HOST")
+	if storyDBHost == "" {
+		storyDBHost = "story-db"
+	}
+	storyDBUser := os.Getenv("STORY_DB_USER")
+	if storyDBUser == "" {
+		storyDBUser = "admin"
+	}
+	storyDBPassword := os.Getenv("STORY_DB_PASSWORD")
+	if storyDBPassword == "" {
+		storyDBPassword = "password"
+	}
+	storyDBName := os.Getenv("STORY_DB_NAME")
+	if storyDBName == "" {
+		storyDBName = "story_service_db"
+	}
+	storyDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", storyDBHost, storyDBUser, storyDBPassword, storyDBName)
 	storyDB, err := gorm.Open(postgres.Open(storyDSN), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to story-db: %v", err)
@@ -64,7 +80,23 @@ func main() {
 	log.Println("Worker successfully connected to story-db")
 
 	// Connection to post-db (for updating transcoded video URLs)
-	postDSN := "host=post-db user=admin password=password dbname=post_service_db port=5432 sslmode=disable TimeZone=UTC"
+	postDBHost := os.Getenv("POST_DB_HOST")
+	if postDBHost == "" {
+		postDBHost = "post-db"
+	}
+	postDBUser := os.Getenv("POST_DB_USER")
+	if postDBUser == "" {
+		postDBUser = "admin"
+	}
+	postDBPassword := os.Getenv("POST_DB_PASSWORD")
+	if postDBPassword == "" {
+		postDBPassword = "password"
+	}
+	postDBName := os.Getenv("POST_DB_NAME")
+	if postDBName == "" {
+		postDBName = "post_service_db"
+	}
+	postDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", postDBHost, postDBUser, postDBPassword, postDBName)
 	postDB, err := gorm.Open(postgres.Open(postDSN), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to post-db: %v", err)

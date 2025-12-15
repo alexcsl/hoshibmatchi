@@ -30,19 +30,33 @@ type server struct {
 }
 
 const (
-	// Internal Docker networking (Backend -> MinIO)
-	minioInternalEndpoint = "minio:9000"
-	// External Browser networking (Frontend -> MinIO)
-	minioExternalEndpoint = "localhost:9000"
-
-	minioAccessKeyID     = "minioadmin"
-	minioSecretAccessKey = "minioadmin"
-	minioUseSSL          = false
-	minioBucketName      = "media"
-	minioRegion          = "us-east-1" // Critical for avoiding 500 errors
+	minioBucketName = "media"
 )
 
 func main() {
+	// Load environment variables
+	minioInternalEndpoint := os.Getenv("MINIO_INTERNAL_ENDPOINT")
+	if minioInternalEndpoint == "" {
+		minioInternalEndpoint = "minio:9000"
+	}
+	minioExternalEndpoint := os.Getenv("MINIO_EXTERNAL_ENDPOINT")
+	if minioExternalEndpoint == "" {
+		minioExternalEndpoint = "localhost:9000"
+	}
+	minioAccessKeyID := os.Getenv("MINIO_ACCESS_KEY")
+	if minioAccessKeyID == "" {
+		minioAccessKeyID = "minioadmin"
+	}
+	minioSecretAccessKey := os.Getenv("MINIO_SECRET_KEY")
+	if minioSecretAccessKey == "" {
+		minioSecretAccessKey = "minioadmin"
+	}
+	minioRegion := os.Getenv("MINIO_REGION")
+	if minioRegion == "" {
+		minioRegion = "us-east-1"
+	}
+	minioUseSSL := os.Getenv("MINIO_USE_SSL") == "true"
+
 	// 1. Internal Client (Backend Operations)
 	var internalClient *minio.Client
 	var err error

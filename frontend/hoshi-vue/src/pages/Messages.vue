@@ -1871,7 +1871,7 @@ const toggleVideo = () => {
   width: 100%;
   padding-left: calc(244px);
   height: 100vh;
-  background-color: #000;
+  background-color: var(--bg-primary);
   display: flex;
 }
 
@@ -1890,7 +1890,7 @@ const toggleVideo = () => {
 }
 
 .video-call-modal {
-  background-color: #1a1a1a;
+  background-color: var(--bg-elevated);
   border-radius: 12px;
   width: 90%;
   max-width: 1200px;
@@ -1903,7 +1903,7 @@ const toggleVideo = () => {
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border-bottom: 1px solid #262626;
+    border-bottom: 1px solid var(--border-color);
 
     h3 {
       font-size: 18px;
@@ -1913,7 +1913,7 @@ const toggleVideo = () => {
     .close-btn {
       background: none;
       border: none;
-      color: #fff;
+      color: var(--text-primary);
       font-size: 24px;
       cursor: pointer;
       padding: 0;

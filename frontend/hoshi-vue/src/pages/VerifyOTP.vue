@@ -296,4 +296,15 @@ form {
     }
   }
 }
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .verify-otp-container {
+    padding: 16px;
+  }
+  
+  .otp-card {
+    padding: 24px 20px;
+  }
+}
 </style>

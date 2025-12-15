@@ -266,7 +266,23 @@ func main() {
 	appLogger.Debug("Google OAuth configured with ClientID: %s", os.Getenv("GOOGLE_CLIENT_ID"))
 
 	// --- Step 1: Connect to PostgreSQL ---
-	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=UTC"
+	dbHost := os.Getenv("USER_DB_HOST")
+	if dbHost == "" {
+		dbHost = "user-db"
+	}
+	dbUser := os.Getenv("USER_DB_USER")
+	if dbUser == "" {
+		dbUser = "admin"
+	}
+	dbPassword := os.Getenv("USER_DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "password"
+	}
+	dbName := os.Getenv("USER_DB_NAME")
+	if dbName == "" {
+		dbName = "user_service_db"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", dbHost, dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		appLogger.Fatal("Failed to connect to database: %v", err)

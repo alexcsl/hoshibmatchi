@@ -133,7 +133,23 @@ func main() {
 	}
 
 	// --- Connect to Notification Database ---
-	notificationDSN := "host=notification-db user=admin password=password dbname=notification_service_db port=5432 sslmode=disable"
+	notificationDBHost := os.Getenv("NOTIFICATION_DB_HOST")
+	if notificationDBHost == "" {
+		notificationDBHost = "notification-db"
+	}
+	notificationDBUser := os.Getenv("NOTIFICATION_DB_USER")
+	if notificationDBUser == "" {
+		notificationDBUser = "admin"
+	}
+	notificationDBPassword := os.Getenv("NOTIFICATION_DB_PASSWORD")
+	if notificationDBPassword == "" {
+		notificationDBPassword = "password"
+	}
+	notificationDBName := os.Getenv("NOTIFICATION_DB_NAME")
+	if notificationDBName == "" {
+		notificationDBName = "notification_service_db"
+	}
+	notificationDSN := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable", notificationDBHost, notificationDBUser, notificationDBPassword, notificationDBName)
 	var dbErr error
 	notificationDB, dbErr = gorm.Open(postgres.Open(notificationDSN), &gorm.Config{})
 	if dbErr != nil {

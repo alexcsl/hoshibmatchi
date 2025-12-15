@@ -276,8 +276,8 @@ onUnmounted(() => {
 .notification-panel {
   width: 360px;
   height: 100vh;
-  background-color: #000;
-  border-right: 1px solid #262626;
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -288,10 +288,10 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
-  background-color: #000;
+  background-color: var(--bg-primary);
   z-index: 10;
 
   h2 {
@@ -308,7 +308,7 @@ onUnmounted(() => {
   .mark-all-btn {
     background: none;
     border: none;
-    color: #0a66c2;
+    color: var(--accent-primary);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -328,7 +328,7 @@ onUnmounted(() => {
   .close-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
     cursor: pointer;
     padding: 0;
@@ -342,13 +342,13 @@ onUnmounted(() => {
 
   .loading {
     text-align: center;
-    color: #a8a8a8;
+    color: var(--text-secondary);
     padding: 40px 16px;
   }
 
   .empty {
     text-align: center;
-    color: #a8a8a8;
+    color: var(--text-secondary);
     padding: 40px 16px;
   }
 
@@ -363,7 +363,7 @@ onUnmounted(() => {
     position: relative;
 
     &:hover {
-      background-color: #262626;
+      background-color: var(--bg-hover);
     }
 
     &.unread {
@@ -384,7 +384,7 @@ onUnmounted(() => {
       .notification-text {
         font-size: 14px;
         line-height: 1.4;
-        color: #fff;
+        color: var(--text-primary);
 
         .verified-badge {
           display: inline-flex;
@@ -392,8 +392,8 @@ onUnmounted(() => {
           justify-content: center;
           width: 14px;
           height: 14px;
-          background-color: #0a66c2;
-          color: #fff;
+          background-color: var(--accent-primary);
+          color: var(--text-primary);
           border-radius: 50%;
           font-size: 10px;
           margin-left: 4px;
@@ -402,7 +402,7 @@ onUnmounted(() => {
 
       .notification-time {
         font-size: 12px;
-        color: #a8a8a8;
+        color: var(--text-secondary);
         margin-top: 4px;
       }
     }
@@ -410,7 +410,7 @@ onUnmounted(() => {
     .unread-dot {
       width: 8px;
       height: 8px;
-      background-color: #0a66c2;
+      background-color: var(--accent-primary);
       border-radius: 50%;
       flex-shrink: 0;
       margin-top: 8px;
@@ -443,14 +443,14 @@ onUnmounted(() => {
       }
 
       .accept-btn {
-        background-color: #0a66c2;
-        color: #fff;
+        background-color: var(--accent-primary);
+        color: var(--text-primary);
       }
 
       .reject-btn {
         background-color: transparent;
-        color: #fff;
-        border: 1px solid #a8a8a8;
+        color: var(--text-primary);
+        border: 1px solid var(--text-secondary);
       }
     }
   }

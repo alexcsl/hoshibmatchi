@@ -186,8 +186,8 @@ declare global {
 <style scoped>
 .main-layout {
   display: flex;
-  background-color: #000; /* Example background */
-  color: #fff;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .main-content {

@@ -1017,8 +1017,8 @@ const submitVerificationRequest = async () => {
 <style scoped>
 .settings-page {
   min-height: 100vh;
-  background: #000;
-  color: #fff;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   padding: 60px 20px 20px;
 }
 
@@ -1037,7 +1037,7 @@ h1 {
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
   margin-bottom: 30px;
   padding-bottom: 0;
 }
@@ -1046,7 +1046,7 @@ h1 {
   padding: 12px 20px;
   background: none;
   border: none;
-  color: #8e8e8e;
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
@@ -1055,12 +1055,12 @@ h1 {
 }
 
 .tab-button:hover {
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .tab-button.active {
-  color: #fff;
-  border-bottom-color: #fff;
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
 }
 
 .tab-content {
@@ -1073,7 +1073,7 @@ h1 {
 }
 
 .tab-description {
-  color: #8e8e8e;
+  color: var(--text-secondary);
   margin-bottom: 20px;
 }
 
@@ -1089,7 +1089,7 @@ h1 {
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -1098,10 +1098,10 @@ h1 {
 .form-group textarea {
   width: 100%;
   padding: 12px;
-  background: #121212;
-  border: 1px solid #262626;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
@@ -1109,12 +1109,12 @@ h1 {
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #0095f6;
+  border-color: var(--accent-primary);
 }
 
 .form-group .error {
   display: block;
-  color: #ed4956;
+  color: var(--error);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -1134,8 +1134,8 @@ h1 {
 
 .upload-btn {
   padding: 8px 16px;
-  background: #0095f6;
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -1144,8 +1144,8 @@ h1 {
 
 .save-btn {
   padding: 12px 32px;
-  background: #0095f6;
-  color: #fff;
+  background: var(--accent-primary);
+  color: var(--text-primary);
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -1160,7 +1160,7 @@ h1 {
 
 /* Settings Section */
 .settings-section {
-  background: #121212;
+  background: var(--bg-secondary);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1170,7 +1170,7 @@ h1 {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .setting-item:last-child {
@@ -1189,7 +1189,7 @@ h1 {
 
 .setting-info .description {
   font-size: 14px;
-  color: #8e8e8e;
+  color: var(--text-secondary);
 }
 
 /* Toggle Switch */
@@ -1213,7 +1213,7 @@ h1 {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #262626;
+  background-color: var(--bg-elevated);
   transition: 0.4s;
   border-radius: 34px;
 }

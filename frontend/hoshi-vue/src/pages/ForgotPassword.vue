@@ -342,4 +342,15 @@ const handleSubmit = async () => {
     text-decoration: underline;
   }
 }
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .forgot-password-container {
+    padding: 16px;
+  }
+  
+  .form-card {
+    padding: 24px 20px;
+  }
+}
 </style>
