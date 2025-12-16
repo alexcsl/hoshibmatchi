@@ -32,10 +32,13 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
+	"github.com/hoshibmatchi/user-service/logger"
 	pb "github.com/hoshibmatchi/user-service/proto"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var appLogger *logger.Logger
 
 // User defines the data model as per GORM tags
 type User struct {
@@ -244,8 +247,12 @@ func generateOtp() string {
 }
 
 func main() {
+	// Initialize logger
+	appLogger = logger.New("user-service")
+	appLogger.Info("Starting user-service...")
+
 	if os.Getenv("JWT_SECRET") == "" {
-		log.Fatal("JWT_SECRET environment variable is not set")
+		appLogger.Fatal("JWT_SECRET environment variable is not set")
 	}
 
 	// Initialize Google OAuth
@@ -256,15 +263,17 @@ func main() {
 		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"},
 		Endpoint:     google.Endpoint,
 	}
+	appLogger.Debug("Google OAuth configured with ClientID: %s", os.Getenv("GOOGLE_CLIENT_ID"))
 
 	// --- Step 1: Connect to PostgreSQL ---
 	dsn := "host=user-db user=admin password=password dbname=user_service_db port=5432 sslmode=disable TimeZone=UTC"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		appLogger.Fatal("Failed to connect to database: %v", err)
 	}
+	appLogger.Info("Successfully connected to PostgreSQL database")
 
-	log.Println("Running database migrations...")
+	appLogger.Info("Running database migrations...")
 	db.AutoMigrate(&User{})
 	db.AutoMigrate(&Follow{})
 	db.AutoMigrate(&Block{})
@@ -272,6 +281,7 @@ func main() {
 	db.AutoMigrate(&CloseFriend{})
 	db.AutoMigrate(&HiddenStoryUser{})
 	db.AutoMigrate(&NotificationSetting{})
+	appLogger.Info("Database migrations completed")
 
 	// --- Step 2: Connect to Redis ---
 	rdb := redis.NewClient(&redis.Options{
@@ -281,9 +291,9 @@ func main() {
 	})
 
 	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
-		log.Fatalf("Failed to connect to redis: %v", err)
+		appLogger.Fatal("Failed to connect to redis: %v", err)
 	}
-	log.Println("Successfully connected to Redis.")
+	appLogger.Info("Successfully connected to Redis")
 
 	// --- Step 3: Connect to RabbitMQ (with retries) ---
 	var amqpConn *amqp.Connection
@@ -297,7 +307,7 @@ func main() {
 		}
 		amqpConn, err = amqp.Dial(amqpURI)
 		if err == nil {
-			log.Println("Successfully connected to RabbitMQ")
+			appLogger.Info("Successfully connected to RabbitMQ")
 			break
 		}
 		log.Printf("Failed to connect to RabbitMQ: %v", err)

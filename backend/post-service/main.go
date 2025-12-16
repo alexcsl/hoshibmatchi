@@ -22,6 +22,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
+	"github.com/hoshibmatchi/post-service/logger"
 	pb "github.com/hoshibmatchi/post-service/proto"
 	userPb "github.com/hoshibmatchi/user-service/proto"
 
@@ -31,6 +32,7 @@ import (
 )
 
 var hashtagRegex = regexp.MustCompile(`#(\w+)`)
+var appLogger *logger.Logger
 
 // Post defines the GORM model
 type Post struct {
@@ -126,12 +128,19 @@ type SavedPost struct {
 }
 
 func main() {
+	// Initialize logger
+	appLogger = logger.New("post-service")
+	appLogger.Info("Starting post-service...")
+
 	// --- Step 1: Connect to Post DB ---
 	dsn := "host=post-db user=admin password=password dbname=post_service_db port=5432 sslmode=disable TimeZone=UTC"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to post-db: %v", err)
+		appLogger.Fatal("Failed to connect to post-db: %v", err)
 	}
+	appLogger.Info("Successfully connected to PostgreSQL database")
+
+	appLogger.Info("Running database migrations...")
 	db.AutoMigrate(&Post{})
 	db.AutoMigrate(&PostLike{})
 	db.AutoMigrate(&Comment{})
@@ -140,14 +149,17 @@ func main() {
 	db.AutoMigrate(&SavedPost{})
 	db.AutoMigrate(&PostCollaborator{})
 	db.AutoMigrate(&SharedPost{})
+	appLogger.Info("Database migrations completed")
 
 	// --- Step 2: Connect to User Service (gRPC Client) ---
+	appLogger.Debug("Connecting to user-service...")
 	userConn, err := grpc.Dial("user-service:9000", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Failed to connect to user-service: %v", err)
+		appLogger.Fatal("Failed to connect to user-service: %v", err)
 	}
 	defer userConn.Close()
 	userClient := userPb.NewUserServiceClient(userConn)
+	appLogger.Info("Successfully connected to user-service")
 	log.Println("Successfully connected to user-service")
 
 	// --- Step 3: Connect to RabbitMQ (with retries) ---
