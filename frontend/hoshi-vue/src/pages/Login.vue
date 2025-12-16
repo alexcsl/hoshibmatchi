@@ -297,7 +297,7 @@ onUnmounted(() => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #000;
+  background-color: var(--bg-primary);
   padding: 20px;
 }
 
@@ -343,7 +343,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
   padding: 40px 0;
-  border: 1px solid #262626;
+  border: 1px solid var(--border-color);
   border-radius: 1px;
   padding: 40px;
 }

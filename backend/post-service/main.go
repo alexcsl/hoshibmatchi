@@ -133,7 +133,23 @@ func main() {
 	appLogger.Info("Starting post-service...")
 
 	// --- Step 1: Connect to Post DB ---
-	dsn := "host=post-db user=admin password=password dbname=post_service_db port=5432 sslmode=disable TimeZone=UTC"
+	dbHost := os.Getenv("POST_DB_HOST")
+	if dbHost == "" {
+		dbHost = "post-db"
+	}
+	dbUser := os.Getenv("POST_DB_USER")
+	if dbUser == "" {
+		dbUser = "admin"
+	}
+	dbPassword := os.Getenv("POST_DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "password"
+	}
+	dbName := os.Getenv("POST_DB_NAME")
+	if dbName == "" {
+		dbName = "post_service_db"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", dbHost, dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		appLogger.Fatal("Failed to connect to post-db: %v", err)

@@ -845,21 +845,21 @@ const toggleSummary = async () => {
 
 <style scoped lang="scss">
 .post {
-  border: 1px solid #262626;
+  border: 1px solid var(--border-color);
   border-radius: 1px;
   cursor: pointer;
-  background-color: #000;
+  background-color: var(--bg-primary);
 }
 
 .location {
   font-size: 12px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 /* Rich text styles for hashtags and mentions */
 :deep(.rich-text-hashtag),
 :deep(.rich-text-mention) {
-  color: #0095f6;
+  color: var(--accent-primary);
   font-weight: 500;
   cursor: pointer;
   &:hover {
@@ -893,21 +893,21 @@ const toggleSummary = async () => {
       gap: 4px;
 
       .verified {
-        color: #0a66c2;
+        color: var(--accent-primary);
         font-size: 12px;
       }
     }
 
     .timestamp {
       font-size: 12px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
   }
 
   .options-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
     cursor: pointer;
     padding: 0;
@@ -932,12 +932,12 @@ const toggleSummary = async () => {
   .no-media-placeholder {
     width: 100%;
     height: 400px;
-    background-color: #1a1a1a;
+    background-color: var(--bg-elevated);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    color: #a8a8a8;
+    color: var(--text-secondary);
 
     span {
       font-size: 48px;
@@ -954,7 +954,7 @@ const toggleSummary = async () => {
     top: 12px;
     right: 12px;
     background: rgba(0, 0, 0, 0.7);
-    color: #fff;
+    color: var(--text-primary);
     padding: 4px 12px;
     border-radius: 16px;
     font-size: 12px;
@@ -976,7 +976,7 @@ const toggleSummary = async () => {
   .icon-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
     cursor: pointer;
     padding: 8px;
@@ -1023,11 +1023,11 @@ const toggleSummary = async () => {
 
   .comments-link {
     font-size: 14px;
-    color: #a8a8a8;
+    color: var(--text-secondary);
     cursor: pointer;
 
     &:hover {
-      color: #fff;
+      color: var(--text-primary);
     }
   }
 }
@@ -1037,25 +1037,25 @@ const toggleSummary = async () => {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-top: 1px solid #262626;
+  border-top: 1px solid var(--border-color);
 
   input {
     flex: 1;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 14px;
     outline: none;
 
     &::placeholder {
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
   }
 
   button {
     background: none;
     border: none;
-    color: #0a66c2;
+    color: var(--accent-primary);
     cursor: pointer;
     font-weight: 600;
     font-size: 14px;
@@ -1066,13 +1066,13 @@ const toggleSummary = async () => {
     }
 
     &:not(:disabled):hover {
-      color: #0a66c2;
+      color: var(--accent-hover);
     }
   }
 }
 
 .ai-btn {
-    background: none; border: none; color: #0095f6; 
+    background: none; border: none; color: var(--accent-primary); 
     font-size: 12px; font-weight: 600; cursor: pointer;
     margin-top: 4px; display: block;
 }
@@ -1091,7 +1091,7 @@ const toggleSummary = async () => {
 }
 
 .share-modal {
-  background-color: #262626;
+  background-color: var(--bg-elevated);
   border-radius: 12px;
   width: 90%;
   max-width: 400px;

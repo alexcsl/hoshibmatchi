@@ -1449,4 +1449,66 @@ function formatDate(dateString: string): string {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .admin-page {
+    padding: 20px 16px;
+  }
+  
+  .tabs {
+    gap: 8px;
+  }
+  
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding: 16px 12px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .search-box {
+    width: 100%;
+  }
+  
+  .user-item, .post-item, .report-item {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .user-actions, .post-actions, .report-actions {
+    width: 100%;
+    justify-content: stretch;
+    flex-direction: column;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .tabs {
+    gap: 4px;
+  }
+  
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
 </style>

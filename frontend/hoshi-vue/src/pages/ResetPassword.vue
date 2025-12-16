@@ -239,4 +239,15 @@ const handleSubmit = async () => {
     text-decoration: underline;
   }
 }
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .reset-password-container {
+    padding: 16px;
+  }
+  
+  .form-card {
+    padding: 24px 20px;
+  }
+}
 </style>

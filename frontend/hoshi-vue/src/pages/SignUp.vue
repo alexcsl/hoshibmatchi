@@ -402,7 +402,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #000;
+  background-color: var(--bg-primary);
   padding: 20px;
 }
 

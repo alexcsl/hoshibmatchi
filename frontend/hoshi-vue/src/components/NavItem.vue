@@ -69,7 +69,7 @@ const getIcon = (icon: string) => {
   padding: 12px 16px;
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 16px;
   cursor: pointer;
   border-radius: 24px;
@@ -87,8 +87,8 @@ const getIcon = (icon: string) => {
   }
 
   .badge {
-    background-color: #ff3040;
-    color: #fff;
+    background-color: var(--error);
+    color: var(--text-primary);
     font-size: 11px;
     font-weight: 700;
     padding: 2px 6px;
@@ -99,11 +99,11 @@ const getIcon = (icon: string) => {
   }
 
   &:hover {
-    background-color: #262626;
+    background-color: var(--bg-hover);
   }
 
   &.active {
-    background-color: #262626;
+    background-color: var(--bg-hover);
     font-weight: 700;
   }
 }

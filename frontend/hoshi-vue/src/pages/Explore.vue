@@ -90,7 +90,7 @@ const formatCount = (count: number) => {
   width: 100%;
   padding: 20px;
   padding-left: calc(244px + 20px);
-  background-color: #000;
+  background-color: var(--bg-primary);
 }
 
 .explore-header {
@@ -121,7 +121,7 @@ const formatCount = (count: number) => {
 
 .skeleton-item {
   aspect-ratio: 1;
-  background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated) 50%, var(--bg-secondary) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -142,13 +142,13 @@ const formatCount = (count: number) => {
   
   p {
     font-size: 16px;
-    color: #fff;
+    color: var(--text-primary);
     margin-bottom: 8px;
   }
 
   .empty-subtitle {
     font-size: 14px;
-    color: #a8a8a8;
+    color: var(--text-secondary);
   }
 }
 
@@ -158,7 +158,7 @@ const formatCount = (count: number) => {
   cursor: pointer;
   overflow: hidden;
   border-radius: 4px;
-  background-color: #262626;
+  background-color: var(--bg-secondary);
 
   .post-image {
     width: 100%;
@@ -183,7 +183,7 @@ const formatCount = (count: number) => {
     .post-stats {
       display: flex;
       gap: 24px;
-      color: #fff;
+      color: var(--text-primary);
       font-weight: 700;
 
       .stat {

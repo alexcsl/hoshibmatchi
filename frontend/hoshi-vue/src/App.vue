@@ -200,7 +200,7 @@ window.openStoryViewer = (index: number = 0) => {
 .app-wrapper {
   width: 100%;
   min-height: 100vh;
-  background-color: #000;
+  background-color: var(--bg-primary);
 }
 
 .app-layout {
@@ -213,6 +213,6 @@ window.openStoryViewer = (index: number = 0) => {
 .main-content {
   flex: 1;
   overflow-y: auto;
-  background-color: #000;
+  background-color: var(--bg-primary);
 }
 </style>

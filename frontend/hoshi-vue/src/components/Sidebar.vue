@@ -98,11 +98,37 @@
             <span>Saved</span>
           </button>
           <button
-            class="dropdown-item"
-            @click="handleTheme"
+            class="dropdown-item theme-item"
+            @click.stop
           >
             <span class="icon">🎨</span>
-            <span>Theme: {{ themeDisplay }}</span>
+            <span>Theme</span>
+            <div class="theme-options">
+              <button
+                title="Light theme"
+                class="theme-option"
+                :class="{ active: mode === 'light' }"
+                @click="handleThemeChange('light')"
+              >
+                ☀️
+              </button>
+              <button
+                title="Dark theme"
+                class="theme-option"
+                :class="{ active: mode === 'dark' }"
+                @click="handleThemeChange('dark')"
+              >
+                🌙
+              </button>
+              <button
+                title="Auto (system preference)"
+                class="theme-option"
+                :class="{ active: mode === 'auto' }"
+                @click="handleThemeChange('auto')"
+              >
+                💻
+              </button>
+            </div>
           </button>
           <button
             v-if="isAdmin"
@@ -131,8 +157,10 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import NavItem from "./NavItem.vue";
 import { notificationAPI } from "../services/api";
 import { useAuthStore } from "@/stores/auth";
+import { useTheme } from "@/composables/useTheme";
 
 const authStore = useAuthStore();
+const { mode, setMode } = useTheme();
 
 defineProps<{
   currentRoute: string
@@ -191,16 +219,10 @@ const handleSaved = () => {
   emit("open-saved");
 };
 
-const handleTheme = () => {
-  // TODO: Implement theme switching logic
-  // For now, just close menu
-  showMoreMenu.value = false;
+const handleThemeChange = (newMode: "light" | "dark" | "auto") => {
+  setMode(newMode);
+  // Keep menu open so user can see the change
 };
-
-const themeDisplay = computed(() => {
-  // TODO: Will be dynamic when theme switching is implemented
-  return "Dark";
-});
 
 const handleAdmin = () => {
   showMoreMenu.value = false;
@@ -230,8 +252,8 @@ onUnmounted(() => {
 .sidebar {
   width: 244px;
   height: 100vh;
-  border-right: 1px solid #262626;
-  background-color: #000;
+  border-right: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
   position: fixed;
   left: 0;
   top: 0;
@@ -252,7 +274,7 @@ onUnmounted(() => {
   gap: 12px;
   margin-bottom: 32px;
   text-decoration: none;
-  color: #fff;
+  color: var(--text-primary);
   cursor: pointer;
   transition: opacity 0.2s;
 
@@ -297,14 +319,14 @@ onUnmounted(() => {
     padding: 12px 16px;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 16px;
     cursor: pointer;
     border-radius: 24px;
     transition: background-color 0.2s;
 
     &:hover {
-      background-color: #262626;
+      background-color: var(--bg-hover);
     }
 
     .icon {
@@ -320,10 +342,11 @@ onUnmounted(() => {
     position: absolute;
     bottom: calc(100% + 8px);
     left: 0;
-    background-color: #262626;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     min-width: 200px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+    box-shadow: var(--shadow-lg);
     z-index: 100;
     overflow: hidden;
 
@@ -335,14 +358,14 @@ onUnmounted(() => {
       padding: 12px 16px;
       background: none;
       border: none;
-      color: #fff;
+      color: var(--text-primary);
       font-size: 14px;
       cursor: pointer;
       text-align: left;
       transition: background-color 0.2s;
 
       &:hover {
-        background-color: #404040;
+        background-color: var(--bg-hover);
       }
 
       .icon {
@@ -350,13 +373,55 @@ onUnmounted(() => {
       }
 
       &.logout {
-        color: #ff4458;
+        color: var(--error);
+      }
+
+      &.theme-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        cursor: default;
+
+        &:hover {
+          background-color: var(--bg-elevated);
+        }
+      }
+    }
+
+    .theme-options {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+
+      .theme-option {
+        flex: 1;
+        padding: 8px;
+        background-color: var(--bg-secondary);
+        border: 2px solid transparent;
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+          background-color: var(--bg-hover);
+          transform: scale(1.05);
+        }
+
+        &.active {
+          border-color: var(--accent-primary);
+          background-color: rgba(0, 149, 246, 0.1);
+        }
       }
     }
 
     .dropdown-divider {
       height: 1px;
-      background-color: #404040;
+      background-color: var(--border-color);
       margin: 4px 0;
     }
   }

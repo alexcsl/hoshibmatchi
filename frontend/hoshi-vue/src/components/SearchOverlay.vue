@@ -160,8 +160,8 @@ const selectUser = (user: any) => {
 .search-panel {
   width: 360px;
   height: 100vh;
-  background-color: #000;
-  border-right: 1px solid #262626;
+  background-color: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -172,35 +172,35 @@ const selectUser = (user: any) => {
   align-items: center;
   gap: 8px;
   padding: 16px;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
-  background-color: #000;
+  background-color: var(--bg-primary);
   z-index: 10;
 
   .search-input {
     flex: 1;
-    background-color: #262626;
+    background-color: var(--bg-secondary);
     border: none;
     border-radius: 20px;
     padding: 10px 16px;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 14px;
     outline: none;
 
     &::placeholder {
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
 
     &:focus {
-      background-color: #404040;
+      background-color: var(--bg-elevated);
     }
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 20px;
     cursor: pointer;
     padding: 0;
@@ -222,13 +222,13 @@ const selectUser = (user: any) => {
     h3 {
       font-size: 14px;
       font-weight: 600;
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
 
     .clear-btn {
       background: none;
       border: none;
-      color: #0a66c2;
+      color: var(--accent-primary);
       font-size: 12px;
       cursor: pointer;
       font-weight: 600;
@@ -270,7 +270,7 @@ const selectUser = (user: any) => {
     .remove-btn {
       background: none;
       border: none;
-      color: #a8a8a8;
+      color: var(--text-secondary);
       font-size: 16px;
       cursor: pointer;
       opacity: 0;
@@ -279,7 +279,7 @@ const selectUser = (user: any) => {
   }
 
   .empty {
-    color: #a8a8a8;
+    color: var(--text-secondary);
     font-size: 14px;
     text-align: center;
     padding: 24px;

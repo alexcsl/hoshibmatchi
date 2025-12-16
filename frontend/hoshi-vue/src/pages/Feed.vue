@@ -367,7 +367,7 @@ const friendStoryGroups = computed(() => {
 <style scoped lang="scss">
 .feed-container {
   width: 100%;
-  background-color: #000;
+  background-color: var(--bg-primary);
   min-height: 100vh;
   padding-left: 244px;
 }
@@ -409,7 +409,7 @@ const friendStoryGroups = computed(() => {
       position: relative;
       padding: 2px;
       border-radius: 50%;
-      background: #404040;
+      background: var(--bg-secondary);
       
       &.has-unseen {
         background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
@@ -420,14 +420,14 @@ const friendStoryGroups = computed(() => {
       width: 56px;
       height: 56px;
       border-radius: 50%;
-      border: 2px solid #000;
+      border: 2px solid var(--bg-primary);
       object-fit: cover;
       display: block;
     }
 
     .story-label {
       font-size: 12px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
       text-align: center;
       max-width: 56px;
       overflow: hidden;
@@ -440,8 +440,8 @@ const friendStoryGroups = computed(() => {
         position: absolute;
         bottom: 2px;
         right: 2px;
-        background-color: #0095f6;
-        border: 2px solid #000;
+        background-color: var(--accent-primary);
+        border: 2px solid var(--bg-primary);
         border-radius: 50%;
         width: 20px;
         height: 20px;
@@ -450,7 +450,7 @@ const friendStoryGroups = computed(() => {
         justify-content: center;
         font-size: 12px;
         font-weight: bold;
-        color: #fff;
+        color: var(--text-primary);
       }
     }
   }
@@ -468,27 +468,27 @@ const friendStoryGroups = computed(() => {
   gap: 20px;
 
   .skeleton-post {
-    border: 1px solid #262626;
+    border: 1px solid var(--border-color);
     border-radius: 1px;
     overflow: hidden;
 
     .skeleton-header {
       height: 60px;
-      background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated) 50%, var(--bg-secondary) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
 
     .skeleton-image {
       height: 500px;
-      background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated) 50%, var(--bg-secondary) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
 
     .skeleton-actions {
       height: 100px;
-      background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
+      background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-elevated) 50%, var(--bg-secondary) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
@@ -507,14 +507,14 @@ const friendStoryGroups = computed(() => {
 .loading-more {
   text-align: center;
   padding: 20px;
-  color: #a8a8a8;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .end-message {
   text-align: center;
   padding: 40px 20px;
-  color: #a8a8a8;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -524,13 +524,13 @@ const friendStoryGroups = computed(() => {
   
   p {
     font-size: 16px;
-    color: #fff;
+    color: var(--text-primary);
     margin-bottom: 8px;
   }
 
   .empty-subtitle {
     font-size: 14px;
-    color: #a8a8a8;
+    color: var(--text-secondary);
   }
 }
 
@@ -569,14 +569,14 @@ const friendStoryGroups = computed(() => {
 
     .fullname {
       font-size: 12px;
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
   }
 
   .switch-btn {
     background: none;
     border: none;
-    color: #0a66c2;
+    color: var(--accent-primary);
     cursor: pointer;
     font-weight: 600;
     font-size: 12px;
@@ -597,17 +597,17 @@ const friendStoryGroups = computed(() => {
     h3 {
       font-size: 14px;
       font-weight: 600;
-      color: #a8a8a8;
+      color: var(--text-secondary);
     }
 
     a {
       font-size: 12px;
-      color: #fff;
+      color: var(--text-primary);
       text-decoration: none;
       font-weight: 600;
 
       &:hover {
-        color: #a8a8a8;
+        color: var(--text-secondary);
       }
     }
   }

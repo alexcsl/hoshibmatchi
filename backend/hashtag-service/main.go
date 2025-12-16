@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 
 	// "strings"
@@ -45,7 +47,23 @@ type server struct {
 
 func main() {
 	// --- Step 1: Connect to hashtag-db ---
-	dsn := "host=hashtag-db user=admin password=password dbname=hashtag_service_db port=5432 sslmode=disable TimeZone=UTC"
+	dbHost := os.Getenv("HASHTAG_DB_HOST")
+	if dbHost == "" {
+		dbHost = "hashtag-db"
+	}
+	dbUser := os.Getenv("HASHTAG_DB_USER")
+	if dbUser == "" {
+		dbUser = "admin"
+	}
+	dbPassword := os.Getenv("HASHTAG_DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "password"
+	}
+	dbName := os.Getenv("HASHTAG_DB_NAME")
+	if dbName == "" {
+		dbName = "hashtag_service_db"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", dbHost, dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to hashtag-db: %v", err)

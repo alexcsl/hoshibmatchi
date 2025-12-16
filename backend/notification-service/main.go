@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -27,7 +28,23 @@ type server struct {
 
 func main() {
 	// --- Step 1: Connect to Notification DB ---
-	dsn := "host=notification-db user=admin password=password dbname=notification_service_db port=5432 sslmode=disable TimeZone=UTC"
+	dbHost := os.Getenv("NOTIFICATION_DB_HOST")
+	if dbHost == "" {
+		dbHost = "notification-db"
+	}
+	dbUser := os.Getenv("NOTIFICATION_DB_USER")
+	if dbUser == "" {
+		dbUser = "admin"
+	}
+	dbPassword := os.Getenv("NOTIFICATION_DB_PASSWORD")
+	if dbPassword == "" {
+		dbPassword = "password"
+	}
+	dbName := os.Getenv("NOTIFICATION_DB_NAME")
+	if dbName == "" {
+		dbName = "notification_service_db"
+	}
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=5432 sslmode=disable TimeZone=UTC", dbHost, dbUser, dbPassword, dbName)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to notification-db: %v", err)
