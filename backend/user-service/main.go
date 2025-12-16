@@ -723,23 +723,20 @@ func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordRese
 		return &pb.SendPasswordResetResponse{Message: "If an account with that email exists, a reset link has been sent."}, nil
 	}
 
-	// Generate a secure token
-	token, err := generateSecureToken(32) // 32 bytes = 64-char string
-	if err != nil {
-		return nil, status.Error(codes.Internal, "Failed to generate reset token")
-	}
+	// Generate a 6-digit OTP code (same as registration)
+	otpCode := generateOtp()
 
-	// Store token in Redis with a 15-minute expiry
+	// Store OTP in Redis with a 15-minute expiry
 	tokenKey := "reset_token:" + req.Email
-	if err := s.rdb.Set(ctx, tokenKey, token, 15*time.Minute).Err(); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to store reset token")
+	if err := s.rdb.Set(ctx, tokenKey, otpCode, 15*time.Minute).Err(); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to store reset OTP")
 	}
 
 	// --- Step 4: Publish to RabbitMQ for email-service ---
 	emailBody, _ := json.Marshal(map[string]string{
-		"to":    req.Email,
-		"type":  "password_reset",
-		"token": token,
+		"to":      req.Email,
+		"type":    "password_reset",
+		"otpCode": otpCode,
 	})
 	if err := s.publishToQueue(ctx, "email_queue", emailBody); err != nil {
 		log.Printf("Failed to publish reset email to queue: %v", err)
