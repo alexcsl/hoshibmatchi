@@ -197,7 +197,7 @@ func generateEmailContent(emailType string, data map[string]string) (string, str
 
 	case "password_reset":
 		return "Reset Your hoshiBmaTchi Password",
-			fmt.Sprintf(templatePasswordReset, data["token"])
+			fmt.Sprintf(templatePasswordReset, data["otpCode"])
 
 	case "newsletter":
 		return data["subject"],
@@ -268,7 +268,7 @@ const templatePasswordReset = `
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
         .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-        .token { font-size: 18px; font-weight: bold; color: #667eea; text-align: center; padding: 15px; background: white; border-radius: 8px; margin: 20px 0; word-break: break-all; }
+        .otp-code { font-size: 32px; font-weight: bold; color: #667eea; text-align: center; padding: 20px; background: white; border-radius: 8px; margin: 20px 0; letter-spacing: 5px; }
         .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
         .footer { text-align: center; margin-top: 20px; color: #777; font-size: 12px; }
     </style>
@@ -280,9 +280,9 @@ const templatePasswordReset = `
         </div>
         <div class="content">
             <p>Hello!</p>
-            <p>We received a request to reset your hoshiBmaTchi password. Use the following reset token:</p>
-            <div class="token">%s</div>
-            <p>This token will expire in 1 hour.</p>
+            <p>We received a request to reset your hoshiBmaTchi password. Use the following verification code:</p>
+            <div class="otp-code">%s</div>
+            <p>This code will expire in 15 minutes.</p>
             <div class="warning">
                 <strong>⚠️ Security Notice:</strong> If you didn't request a password reset, please ignore this email and ensure your account is secure.
             </div>
