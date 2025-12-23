@@ -373,7 +373,7 @@ func main() {
 func (s *server) RegisterUser(ctx context.Context, req *pb.RegisterUserRequest) (*pb.RegisterUserResponse, error) {
 	log.Println("RegisterUser request received for username:", req.Username)
 
-	// --- Step 1: Validate Business Logic (as per PDF) ---
+	// Validate Business Logic
 	if req.Password != req.ConfirmPassword {
 		return nil, status.Error(codes.InvalidArgument, "Passwords do not match")
 	}
@@ -493,7 +493,7 @@ func validatePassword(password string) error {
 		rulesMet++
 	}
 
-	// PDF requires "at least 4 (four) different validations"
+	// Password must meet at least 4 validation rules
 	if rulesMet >= 4 {
 		return nil
 	}
@@ -512,7 +512,7 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, status.Error(codes.Internal, "Database error")
 	}
 
-	// PDF Requirement: "Only activated accounts that are not banned and not deactivated"
+	// Only activated accounts that are not banned and not deactivated
 	if user.IsBanned {
 		return nil, status.Error(codes.PermissionDenied, "This account is banned")
 	}
@@ -529,7 +529,7 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 
 	// --- Password is correct, proceed ---
 
-	// PDF Requirement: "If the user's account has 2FA enabled, send a verification code" [cite: 214]
+	// If the user's account has 2FA enabled, send a verification code
 	if user.Is2FAEnabled {
 		// Send a 2FA code
 		otpKey := "2fa:" + user.Email
@@ -551,7 +551,7 @@ func (s *server) LoginUser(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	}
 
 	// --- User is logged in (No 2FA) ---
-	// PDF Requirement: "Implement access tokens and refresh tokens"
+	// Implement access tokens and refresh tokens
 
 	// Create Access Token (short-lived)
 	accessToken, err := createToken(user, 1*time.Hour) // 1 hour expiry
@@ -713,7 +713,7 @@ func (s *server) publishToQueue(ctx context.Context, queueName string, body []by
 func (s *server) SendPasswordReset(ctx context.Context, req *pb.SendPasswordResetRequest) (*pb.SendPasswordResetResponse, error) {
 	var user User
 
-	// PDF Requirement: "Only registered emails that are not banned can be used"
+	// Only registered emails that are not banned can be used
 	err := s.db.Where("email = ?", req.Email).First(&user).Error
 	if err == gorm.ErrRecordNotFound {
 		// Don't tell the user if the email exists or not.
@@ -768,7 +768,7 @@ func (s *server) ResetPassword(ctx context.Context, req *pb.ResetPasswordRequest
 	}
 
 	// --- Step 3: Validate new password ---
-	// PDF Requirement: "Validate the new password can't be the same as the old one"
+	// Validate the new password can't be the same as the old one
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.NewPassword))
 	if err == nil {
 		// 'err == nil' means the passwords *match*, which is an error
@@ -1452,7 +1452,7 @@ func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*
 		return nil, status.Error(codes.Internal, "Failed to perform search")
 	}
 
-	// --- Step 2: Calculate Jaro-Winkler distance (as required by PDF) ---
+	// Calculate Jaro-Winkler distance for similarity ranking
 	var results []searchResult
 	for _, user := range users {
 		similarity := jaroWinklerDistance(req.Query, user.Username)
@@ -1467,8 +1467,7 @@ func (s *server) SearchUsers(ctx context.Context, req *pb.SearchUsersRequest) (*
 		return results[i].similarity > results[j].similarity
 	})
 
-	// --- Step 4: Get top 5 and convert to gRPC response ---
-	// PDF requires "5 recommended user profiles"
+	// Get top 5 and convert to gRPC response
 	var grpcUsers []*pb.GetUserProfileResponse
 	limit := 5
 	if len(results) < 5 {
