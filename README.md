@@ -391,9 +391,9 @@ This project is for educational and portfolio purposes. All rights reserved.
 ## 📧 Contact
 
 For questions or collaboration opportunities, please reach out via:
-- GitHub: [@yourusername](https://github.com/yourusername)
+- GitHub: [@alexcsl](https://github.com/alexcsl)
 - Email: hoshibmatchi@gmail.com
 
 ---
 
-**Note**: This is a demonstration project showcasing microservices architecture, full-stack development, and modern DevOps practices. It is not intended for production use without proper security hardening and infrastructure setup.
+**Note**: This is a demonstration project showcasing microservices architecture, full-stack development, and modern DevOps practices. It is not intended for production use without proper security hardening and infrastructure setup. This project is still buggy and is in development. It's a messy project hehe...
