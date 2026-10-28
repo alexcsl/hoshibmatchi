@@ -401,22 +401,6 @@ export const userAPI = {
   getNotificationSettings: async () => {
     const response = await apiClient.get("/settings/notifications");
     return response.data;
-  },
-
-  // Follow Requests
-  approveFollowRequest: async (followerId: number) => {
-    const response = await apiClient.post(`/follow-requests/${followerId}/approve`);
-    return response.data;
-  },
-
-  rejectFollowRequest: async (followerId: number) => {
-    const response = await apiClient.post(`/follow-requests/${followerId}/reject`);
-    return response.data;
-  },
-
-  getFollowRequests: async () => {
-    const response = await apiClient.get("/follow-requests");
-    return response.data;
   }
 };
 

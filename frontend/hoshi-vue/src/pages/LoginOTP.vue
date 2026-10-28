@@ -106,7 +106,7 @@ const handleResendCode = async () => {
     error.value = err?.message || "Failed to resend code";
   }
 
-  countdownInterval = setInterval(() => {
+  countdownInterval = window.setInterval(() => {
     resendCountdown.value--;
     if (resendCountdown.value <= 0) {
       clearInterval(countdownInterval);
@@ -162,7 +162,7 @@ onMounted(() => {
   resendCountdown.value = 60;
   resendDisabled.value = true;
 
-  countdownInterval = setInterval(() => {
+  countdownInterval = window.setInterval(() => {
     resendCountdown.value--;
     if (resendCountdown.value <= 0) {
       clearInterval(countdownInterval);
