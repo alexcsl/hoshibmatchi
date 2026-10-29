@@ -437,7 +437,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { postAPI, collectionAPI } from "@/services/api";
 import { useAuthStore } from "@/stores/auth";
 import { useRichText } from "@/composables/useRichText";
-import { getSecureMediaURL } from "@/services/media";
+import { getSecureURL } from "@/services/media";
 import SecureImage from "@/components/SecureImage.vue";
 import SaveToCollectionModal from "@/components/SaveToCollectionModal.vue";
 
@@ -519,7 +519,7 @@ const loadSecureUrls = async () => {
   loadingMedia.value = true;
   try {
     const urls = await Promise.all(
-      props.post.media_urls.map(url => getSecureMediaURL(url))
+      props.post.media_urls.map(url => getSecureURL(url))
     );
     secureMediaUrls.value = urls;
   } catch (error) {
