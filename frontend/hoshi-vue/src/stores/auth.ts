@@ -10,6 +10,7 @@ interface User {
   profile_picture_url?: string
   role?: string
   is_verified?: boolean
+  is_private?: boolean
   bio?: string
   gender?: string
 }

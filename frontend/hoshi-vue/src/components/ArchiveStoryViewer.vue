@@ -222,7 +222,7 @@ let interval: number | null = null;
 const startProgress = () => {
   stopProgress(); // Ensure no duplicate intervals
   progress.value = 0;
-  interval = setInterval(() => {
+  interval = window.setInterval(() => {
     progress.value += 100;
     if (progress.value >= storyDuration.value) {
       if (canGoNext.value) {

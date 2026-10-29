@@ -304,7 +304,7 @@ const startProgress = () => {
   
   // For videos, use video currentTime for progress
   if (isVideoStory.value) {
-    interval = setInterval(() => {
+    interval = window.setInterval(() => {
       if (!isPaused.value && videoElement.value) {
         const currentTime = videoElement.value.currentTime * 1000;
         progress.value = currentTime;
@@ -312,7 +312,7 @@ const startProgress = () => {
     }, 100);
   } else {
     // For images, use fixed duration
-    interval = setInterval(() => {
+    interval = window.setInterval(() => {
       if (!isPaused.value) {
         progress.value += 100;
         if (progress.value >= storyDuration.value) {
